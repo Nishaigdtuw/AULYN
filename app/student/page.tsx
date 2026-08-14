@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useState } from "react"
-import { Book, BookOpen, Download, LogOut, PenTool, Send, Star, CheckCircle2, Circle, AlertCircle, Plus, Sparkles, Check, FileCheck, PlayCircle, Trophy } from "lucide-react"
+import { Book, BookOpen, LogOut, PenTool, Send, CheckCircle2, Circle, AlertCircle, Plus, Sparkles, Check, FileCheck, PlayCircle, Trophy, Flame, Award, Crown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -9,9 +9,13 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Progress } from "@/components/ui/progress"
 import Markdown from 'react-markdown'
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import CodeVisualizer from "@/components/code-visualizer"
+import NotesAiConverter from "@/components/notes-ai-converter"
+import PricingModal from "@/components/pricing-modal"
 
 interface AiMessage {
   type: 'ai' | 'user'
@@ -39,8 +43,11 @@ export default function StudentPortal() {
   const [studentEmail, setStudentEmail] = useState("student@edumeet.ai")
 
   const [activeClass, setActiveClass] = useState<number>(1)
+  const [aiQueryCount, setAiQueryCount] = useState(2) // Free tier 5 max
+  const [pricingOpen, setPricingOpen] = useState(false)
+
   const [aiMessages, setAiMessages] = useState<AiMessage[]>([
-    { type: "ai", content: "Hello! I am your **EduBridge AI Learning Assistant**. Ask me any question about Mathematics, Physics, History, or Blockchain!" }
+    { type: "ai", content: "Hello! I am your **EduBridge AI Learning Assistant**. Ask me any question about Mathematics, Physics, History, or Coding!" }
   ])
   const [inputMessage, setInputMessage] = useState("")
   const [isAiLoading, setIsAiLoading] = useState(false)
@@ -102,13 +109,6 @@ export default function StudentPortal() {
   const [mockTestOpen, setMockTestOpen] = useState(false)
   const [mockTestFinished, setMockTestFinished] = useState(false)
 
-  // Saved resources
-  const [savedItems] = useState([
-    { id: 1, title: "Calculus Formula Cheat Sheet", type: "PDF", saved: true },
-    { id: 2, title: "World History Timeline Template", type: "Doc", saved: true },
-    { id: 3, title: "Physics Mechanics Quick Reference", type: "PDF", saved: true },
-  ])
-
   useEffect(() => {
     const userStr = localStorage.getItem("user")
     if (!userStr) {
@@ -128,8 +128,15 @@ export default function StudentPortal() {
     const messageToSend = inputMessage.trim()
     if (!messageToSend) return
 
+    if (aiQueryCount >= 5) {
+      toast.warning("Free daily AI query limit reached (5/5). Upgrade to Pro for unlimited AI!")
+      setPricingOpen(true)
+      return
+    }
+
     setAiMessages((prev) => [...prev, { type: 'user', content: messageToSend }])
     setInputMessage("")
+    setAiQueryCount((prev) => prev + 1)
     setIsAiLoading(true)
 
     try {
@@ -149,15 +156,14 @@ export default function StudentPortal() {
         }
       }
     } catch {
-      // Backend not running, use client smart AI response fallback
+      // AI Backend offline fallback
     }
 
-    // Fallback smart AI response logic
     setTimeout(() => {
       let aiResponse = `Here is a breakdown for your query regarding **"${messageToSend}"**:\n\n`
       const lower = messageToSend.toLowerCase()
       if (lower.includes("calculus") || lower.includes("math") || lower.includes("integration") || lower.includes("derivative")) {
-        aiResponse += `• **Integration Rule**: \\(\\int x^n dx = \\frac{x^{n+1}}{n+1} + C\\)\n• **Derivative Rule**: \\(\\frac{d}{dx}[x^n] = n x^{n-1}\\)\n\nPracticing these core rules will help you solve calculus problems step bystep!`
+        aiResponse += `• **Integration Rule**: \\(\\int x^n dx = \\frac{x^{n+1}}{n+1} + C\\)\n• **Derivative Rule**: \\(\\frac{d}{dx}[x^n] = n x^{n-1}\\)\n\nPracticing these core rules will help you solve calculus problems step by step!`
       } else if (lower.includes("history") || lower.includes("war") || lower.includes("revolution")) {
         aiResponse += `• The Industrial Revolution began in Great Britain in the late 18th century.\n• Key inventions include the Steam Engine (James Watt) and Cotton Gin (Eli Whitney).`
       } else if (lower.includes("physics") || lower.includes("motion") || lower.includes("force")) {
@@ -238,26 +244,37 @@ export default function StudentPortal() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-indigo-600 leading-none">Edubridge Student Portal</h1>
-            <p className="text-xs text-slate-500 mt-1">Interactive Learning & AI Study Assistant</p>
+            <p className="text-xs text-slate-500 mt-1">Progress Tracker & Code Visualizer</p>
           </div>
         </div>
 
         <div className="flex items-center space-x-4">
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold text-xs"
+            onClick={() => setPricingOpen(true)}
+          >
+            <Crown className="w-3.5 h-3.5 mr-1.5 text-amber-600" /> Upgrade Pro
+          </Button>
+
           <div className="text-right hidden sm:block">
             <p className="text-sm font-semibold text-slate-800">{studentName}</p>
             <p className="text-xs text-slate-500">{studentEmail}</p>
           </div>
+
           <Button variant="outline" size="sm" onClick={handleLogout} className="text-slate-600 hover:text-red-600 border-slate-200">
             <LogOut className="w-4 h-4 mr-1.5" /> Logout
           </Button>
         </div>
       </header>
 
+      <PricingModal open={pricingOpen} onOpenChange={setPricingOpen} userRole="student" />
+
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside className="w-64 border-r bg-white p-5 flex flex-col justify-between overflow-y-auto">
           <div>
-            {/* Join Class Dialog */}
             <Dialog>
               <DialogTrigger asChild>
                 <Button className="w-full mb-6 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl shadow-md">
@@ -309,33 +326,137 @@ export default function StudentPortal() {
             </ul>
           </div>
 
-          <div className="mt-8 pt-4 border-t border-slate-100">
-            <div className="p-3 bg-indigo-50 rounded-xl text-xs text-indigo-800 space-y-1">
-              <p className="font-semibold flex items-center">
-                <Sparkles className="w-3.5 h-3.5 mr-1 text-indigo-600" /> Need Help?
-              </p>
-              <p className="text-slate-600">Switch to the **QNA** tab to chat live with AI.</p>
+          <div className="mt-8 pt-4 border-t border-slate-100 space-y-3">
+            {/* Free Tier AI Limit Badge */}
+            <div className="p-3 bg-indigo-50 rounded-xl text-xs text-indigo-900 border border-indigo-100 space-y-1.5">
+              <div className="flex items-center justify-between font-bold">
+                <span className="flex items-center gap-1"><Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Daily AI Limit</span>
+                <span className="text-indigo-700">{aiQueryCount} / 5</span>
+              </div>
+              <Progress value={(aiQueryCount / 5) * 100} className="h-1.5" />
             </div>
           </div>
         </aside>
 
         {/* Main Workspace */}
         <main className="flex-1 p-8 overflow-y-auto">
-          <Tabs defaultValue="assessments" className="w-full h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-4 max-w-xl bg-white p-1 rounded-xl border shadow-sm mb-6">
-              <TabsTrigger value="assessments" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium">
-                Assessments
+          <Tabs defaultValue="progress" className="w-full h-full flex flex-col">
+            <TabsList className="grid w-full grid-cols-6 max-w-3xl bg-white p-1 rounded-xl border shadow-sm mb-6">
+              <TabsTrigger value="progress" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium text-xs">
+                Progress
               </TabsTrigger>
-              <TabsTrigger value="qna" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium">
-                AI Q&A Assistant
+              <TabsTrigger value="code" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium text-xs">
+                Code Trace
               </TabsTrigger>
-              <TabsTrigger value="prep" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium">
+              <TabsTrigger value="notes" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium text-xs">
+                Notes AI
+              </TabsTrigger>
+              <TabsTrigger value="assessments" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium text-xs">
+                Assignments
+              </TabsTrigger>
+              <TabsTrigger value="qna" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium text-xs">
+                AI Q&A
+              </TabsTrigger>
+              <TabsTrigger value="prep" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium text-xs">
                 Prep & Practice
               </TabsTrigger>
-              <TabsTrigger value="saved" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium">
-                Saved Materials
-              </TabsTrigger>
             </TabsList>
+
+            {/* Student Progress Tracker Tab (from handwritten note) */}
+            <TabsContent value="progress" className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="shadow-sm border-slate-200">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-slate-500 font-semibold uppercase">Course Progress</p>
+                      <p className="text-2xl font-bold text-indigo-600 mt-1">76%</p>
+                    </div>
+                    <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center font-bold">
+                      <Trophy className="w-5 h-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm border-slate-200">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-slate-500 font-semibold uppercase">Study Streak</p>
+                      <p className="text-2xl font-bold text-amber-600 mt-1">5 Days 🔥</p>
+                    </div>
+                    <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center font-bold">
+                      <Flame className="w-5 h-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm border-slate-200">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-slate-500 font-semibold uppercase">Quiz Accuracy</p>
+                      <p className="text-2xl font-bold text-emerald-600 mt-1">92%</p>
+                    </div>
+                    <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center font-bold">
+                      <Award className="w-5 h-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm border-slate-200">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-slate-500 font-semibold uppercase">Completed Tasks</p>
+                      <p className="text-2xl font-bold text-purple-600 mt-1">12 / 15</p>
+                    </div>
+                    <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center font-bold">
+                      <FileCheck className="w-5 h-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Learning Skill Mastery */}
+              <Card className="shadow-sm border-slate-200">
+                <CardHeader>
+                  <CardTitle className="text-indigo-600 text-lg">Subject Progress & Skill Mastery</CardTitle>
+                  <CardDescription>Real-time progress overview across your enrolled courses</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm font-semibold">
+                      <span>Mathematics 101 (Calculus & Vectors)</span>
+                      <span className="text-indigo-600">85%</span>
+                    </div>
+                    <Progress value={85} className="h-2.5" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm font-semibold">
+                      <span>History 202 (Industrial Revolution)</span>
+                      <span className="text-purple-600">70%</span>
+                    </div>
+                    <Progress value={70} className="h-2.5" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm font-semibold">
+                      <span>Physics 301 (Projectile Motion & Mechanics)</span>
+                      <span className="text-blue-600">65%</span>
+                    </div>
+                    <Progress value={65} className="h-2.5" />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Code Visualizer Tab (from handwritten note) */}
+            <TabsContent value="code">
+              <CodeVisualizer />
+            </TabsContent>
+
+            {/* Notes AI Converter Tab (Notes -> Quiz / Flashcards / Summarize) */}
+            <TabsContent value="notes">
+              <NotesAiConverter />
+            </TabsContent>
 
             {/* Assessments Tab */}
             <TabsContent value="assessments" className="space-y-6">
@@ -404,7 +525,7 @@ export default function StudentPortal() {
                     <CardTitle className="text-indigo-600 flex items-center">
                       <Sparkles className="w-5 h-5 mr-2 text-indigo-500" /> AI Study Assistant
                     </CardTitle>
-                    <CardDescription>Ask questions, request explanations, or get math step-by-step help</CardDescription>
+                    <CardDescription>Ask questions, request explanations, or get step-by-step help</CardDescription>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => setAiMessages([])} className="text-xs">
                     Clear Chat
@@ -615,34 +736,6 @@ export default function StudentPortal() {
                   )}
                 </DialogContent>
               </Dialog>
-            </TabsContent>
-
-            {/* Saved Materials Tab */}
-            <TabsContent value="saved">
-              <Card className="shadow-sm border-slate-200">
-                <CardHeader>
-                  <CardTitle className="text-indigo-600">Saved Study Resources</CardTitle>
-                  <CardDescription>Access bookmarked cheat sheets, reference sheets, and templates</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="divide-y divide-slate-100">
-                    {savedItems.map((item) => (
-                      <li key={item.id} className="py-3 flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-                          <div>
-                            <p className="font-medium text-slate-800 text-sm">{item.title}</p>
-                            <p className="text-xs text-slate-500">Format: {item.type}</p>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm" className="text-xs" onClick={() => toast.info(`Downloading ${item.title}...`)}>
-                          <Download className="w-3.5 h-3.5 mr-1" /> Download
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
             </TabsContent>
           </Tabs>
         </main>

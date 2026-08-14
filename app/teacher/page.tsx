@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useState, useCallback, useRef } from "react"
-import { FileText, LogOut, Mic, Plus, Upload, Book, Trash2, Check, X, UserPlus, FileCheck, HelpCircle, Volume2, Sparkles } from "lucide-react"
+import { FileText, LogOut, Mic, Plus, Upload, Book, Trash2, Check, X, UserPlus, FileCheck, HelpCircle, Volume2, Sparkles, BarChart3, TrendingUp, Award, Code, Crown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -8,10 +8,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Progress } from "@/components/ui/progress"
 import { toast } from "sonner"
 import { addChapter, addClass, addContentToChapter, getChapters, getClasses, getContent } from "@/actions/teacher/action"
 import { useRouter } from "next/navigation"
 import { getPresignedUrl } from "@/actions/teacher/s3"
+import NotesAiConverter from "@/components/notes-ai-converter"
+import PricingModal from "@/components/pricing-modal"
 
 interface CustomClassroom {
   classId: string
@@ -40,12 +43,14 @@ interface StudentItem {
   name: string
   email: string
   status: "Enrolled" | "Pending"
+  score: number
+  completion: number
 }
 
 interface AssignmentItem {
   id: string
   title: string
-  type: "Test" | "Quiz" | "Announcement"
+  type: "Test" | "Quiz" | "Coding Quiz" | "Announcement"
   dueDate: string
   marks?: number
 }
@@ -64,7 +69,8 @@ const DEFAULT_CHAPTERS: CustomChapter[] = [
 export default function TeacherPortal() {
   const router = useRouter()
   const [self, setSelf] = useState<{ userId: string; name: string; email: string } | null>(null)
-  
+  const [pricingOpen, setPricingOpen] = useState(false)
+
   const [yourClasses, setYourClasses] = useState<CustomClassroom[]>(DEFAULT_CLASSES)
   const [activeClass, setActiveClass] = useState<CustomClassroom>(DEFAULT_CLASSES[0])
   
@@ -78,25 +84,26 @@ export default function TeacherPortal() {
   const [newChapter, setNewChapter] = useState("")
   const [file, setFile] = useState<File | null>(null)
 
-  // Students state
+  // Students state with analytics score
   const [students, setStudents] = useState<StudentItem[]>([
-    { id: 1, name: "Alice Johnson", email: "alice@example.com", status: "Enrolled" },
-    { id: 2, name: "Bob Smith", email: "bob@example.com", status: "Pending" },
-    { id: 3, name: "Charlie Brown", email: "charlie@example.com", status: "Enrolled" },
+    { id: 1, name: "Alice Johnson", email: "alice@example.com", status: "Enrolled", score: 94, completion: 90 },
+    { id: 2, name: "Bob Smith", email: "bob@example.com", status: "Pending", score: 78, completion: 60 },
+    { id: 3, name: "Charlie Brown", email: "charlie@example.com", status: "Enrolled", score: 88, completion: 85 },
   ])
   const [newStudentName, setNewStudentName] = useState("")
   const [newStudentEmail, setNewStudentEmail] = useState("")
 
   // Assignments & Quizzes state
   const [assignments, setAssignments] = useState<AssignmentItem[]>([
-    { id: "asgn-1", title: "Binary Search Trees Assessment", type: "Test", dueDate: "2026-08-20", marks: 50 },
-    { id: "asgn-2", title: "Solidity Basics Quiz", type: "Quiz", dueDate: "2026-08-22", marks: 20 }
+    { id: "asgn-1", title: "Binary Search Trees Coding Quiz", type: "Coding Quiz", dueDate: "2026-08-20", marks: 50 },
+    { id: "asgn-2", title: "Solidity Basics Topic MCQ", type: "Quiz", dueDate: "2026-08-22", marks: 20 }
   ])
   const [testTitle, setTestTitle] = useState("")
   const [testMarks, setTestMarks] = useState("50")
   const [testDueDate, setTestDueDate] = useState("")
 
   const [quizTitle, setQuizTitle] = useState("")
+  const [quizType, setQuizType] = useState<"Quiz" | "Coding Quiz">("Coding Quiz")
   const [quizDueDate, setQuizDueDate] = useState("")
 
   const [announcementText, setAnnouncementText] = useState("")
@@ -242,17 +249,12 @@ export default function TeacherPortal() {
     toast.success(`Uploaded "${file.name}" to ${selectedChapter.chapterName}!`)
   }
 
-  // Voice capture audio recording
   const handleVoiceCapture = async (chapterId: string) => {
     if (isRecording) {
-      // Stop recording
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.stop()
-      }
+      if (mediaRecorderRef.current) mediaRecorderRef.current.stop()
       setIsRecording(false)
       if (timerRef.current) clearInterval(timerRef.current)
     } else {
-      // Start recording
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
         const mediaRecorder = new MediaRecorder(stream)
@@ -285,15 +287,14 @@ export default function TeacherPortal() {
         setIsRecording(true)
         setRecordingTime(0)
         timerRef.current = setInterval(() => setRecordingTime((prev) => prev + 1), 1000)
-        toast.info("Voice capture started. Speak into your microphone...")
+        toast.info("Voice capture started...")
       } catch (err) {
-        console.error("Microphone access error:", err)
-        toast.error("Microphone access denied or unsupported.")
+        console.error(err)
+        toast.error("Microphone access denied.")
       }
     }
   }
 
-  // Student management actions
   const handleAcceptStudent = (id: number) => {
     setStudents((prev) => prev.map((s) => (s.id === id ? { ...s, status: "Enrolled" } : s)))
     toast.success("Student accepted!")
@@ -313,7 +314,9 @@ export default function TeacherPortal() {
       id: Date.now(),
       name: newStudentName.trim(),
       email: newStudentEmail.trim(),
-      status: "Enrolled"
+      status: "Enrolled",
+      score: 85,
+      completion: 75
     }
     setStudents((prev) => [...prev, newStud])
     setNewStudentName("")
@@ -321,7 +324,6 @@ export default function TeacherPortal() {
     toast.success(`Student ${newStud.name} added!`)
   }
 
-  // Assignment handlers
   const handleCreateTest = () => {
     if (!testTitle.trim()) {
       toast.warning("Please enter a test title")
@@ -347,13 +349,13 @@ export default function TeacherPortal() {
     const newAsgn: AssignmentItem = {
       id: `quiz-${Date.now()}`,
       title: quizTitle.trim(),
-      type: "Quiz",
+      type: quizType,
       dueDate: quizDueDate || "2026-08-26",
-      marks: 20
+      marks: quizType === "Coding Quiz" ? 40 : 20
     }
     setAssignments((prev) => [...prev, newAsgn])
     setQuizTitle("")
-    toast.success(`Quiz "${newAsgn.title}" created!`)
+    toast.success(`${quizType} "${newAsgn.title}" created!`)
   }
 
   const handleShareAnnouncement = () => {
@@ -369,7 +371,7 @@ export default function TeacherPortal() {
     }
     setAssignments((prev) => [...prev, newAsgn])
     setAnnouncementText("")
-    toast.success("Announcement broadcasted to students!")
+    toast.success("Announcement broadcasted!")
   }
 
   const handleLogout = () => {
@@ -380,6 +382,7 @@ export default function TeacherPortal() {
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
+      {/* Header */}
       <header className="flex justify-between items-center px-6 py-4 bg-white border-b shadow-sm sticky top-0 z-10">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md">
@@ -387,20 +390,32 @@ export default function TeacherPortal() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-indigo-600 leading-none">Edubridge Teacher Portal</h1>
-            <p className="text-xs text-slate-500 mt-1">Classroom Management & AI Assistant</p>
+            <p className="text-xs text-slate-500 mt-1">Classroom Analytics & AI Summarizer Hub</p>
           </div>
         </div>
 
         <div className="flex items-center space-x-4">
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold text-xs"
+            onClick={() => setPricingOpen(true)}
+          >
+            <Crown className="w-3.5 h-3.5 mr-1.5 text-amber-600" /> Upgrade Pro
+          </Button>
+
           <div className="text-right hidden sm:block">
             <p className="text-sm font-semibold text-slate-800">{self?.name || "Teacher"}</p>
             <p className="text-xs text-slate-500">{self?.email || "teacher@edumeet.ai"}</p>
           </div>
+
           <Button variant="outline" size="sm" onClick={handleLogout} className="text-slate-600 hover:text-red-600 border-slate-200">
             <LogOut className="w-4 h-4 mr-1.5" /> Logout
           </Button>
         </div>
       </header>
+
+      <PricingModal open={pricingOpen} onOpenChange={setPricingOpen} userRole="teacher" />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
@@ -469,8 +484,11 @@ export default function TeacherPortal() {
 
         {/* Main Workspace */}
         <main className="flex-1 p-8 overflow-y-auto bg-slate-50/50">
-          <Tabs defaultValue="assignments" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 max-w-xl bg-white p-1 rounded-xl border shadow-sm mb-6">
+          <Tabs defaultValue="analytics" className="w-full">
+            <TabsList className="grid w-full grid-cols-5 max-w-2xl bg-white p-1 rounded-xl border shadow-sm mb-6">
+              <TabsTrigger value="analytics" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium">
+                Analytics
+              </TabsTrigger>
               <TabsTrigger value="assignments" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium">
                 Assignments
               </TabsTrigger>
@@ -478,22 +496,180 @@ export default function TeacherPortal() {
                 Students ({students.length})
               </TabsTrigger>
               <TabsTrigger value="chapters" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium">
-                Chapters
+                Chapters & AI
               </TabsTrigger>
               <TabsTrigger value="content" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium">
                 Content
               </TabsTrigger>
             </TabsList>
 
+            {/* Analytics Dashboard Tab (from handwritten note) */}
+            <TabsContent value="analytics" className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="shadow-sm border-slate-200">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-slate-500 font-semibold uppercase">Total Students</p>
+                      <p className="text-2xl font-bold text-slate-900 mt-1">{students.length}</p>
+                    </div>
+                    <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center font-bold">
+                      <UserPlus className="w-5 h-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm border-slate-200">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-slate-500 font-semibold uppercase">Class Average</p>
+                      <p className="text-2xl font-bold text-emerald-600 mt-1">86.7%</p>
+                    </div>
+                    <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center font-bold">
+                      <Award className="w-5 h-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm border-slate-200">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-slate-500 font-semibold uppercase">Completion Rate</p>
+                      <p className="text-2xl font-bold text-blue-600 mt-1">78.3%</p>
+                    </div>
+                    <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center font-bold">
+                      <TrendingUp className="w-5 h-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm border-slate-200">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-slate-500 font-semibold uppercase">Active Quizzes</p>
+                      <p className="text-2xl font-bold text-purple-600 mt-1">{assignments.length}</p>
+                    </div>
+                    <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center font-bold">
+                      <BarChart3 className="w-5 h-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Student Performance Analysis Table */}
+              <Card className="shadow-sm border-slate-200">
+                <CardHeader>
+                  <CardTitle className="text-indigo-600 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-indigo-600" /> Student Performance & Topic Mastery Analysis
+                  </CardTitle>
+                  <CardDescription>Individual student scores, assignment completion, and AI recommendations</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Student Name</TableHead>
+                        <TableHead>Avg Score</TableHead>
+                        <TableHead>Course Completion</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Performance</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {students.map((student) => (
+                        <TableRow key={student.id}>
+                          <TableCell className="font-medium text-slate-800">{student.name}</TableCell>
+                          <TableCell className="font-bold text-indigo-600">{student.score}%</TableCell>
+                          <TableCell className="w-48">
+                            <div className="space-y-1">
+                              <Progress value={student.completion} className="h-2" />
+                              <span className="text-[10px] text-slate-500">{student.completion}% completed</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                              {student.status}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right font-medium text-xs">
+                            {student.score >= 85 ? (
+                              <span className="text-emerald-600 font-bold">🌟 Excellent</span>
+                            ) : (
+                              <span className="text-amber-600 font-bold">⚠️ Needs Practice</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             {/* Assignments & Tools Tab */}
             <TabsContent value="assignments" className="space-y-6">
               <Card className="shadow-sm border-slate-200">
                 <CardHeader>
-                  <CardTitle className="text-indigo-600">Quick Tools & Announcements</CardTitle>
-                  <CardDescription>Create tests, quizzes, and broadcast notices to your students</CardDescription>
+                  <CardTitle className="text-indigo-600">Assignment & Quiz Builders</CardTitle>
+                  <CardDescription>Create Coding Quizzes, Topic MCQs, Short Answer Q&As, and Announcements</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Create Coding / Topic Quiz Modal */}
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button className="w-full justify-start bg-purple-600 hover:bg-purple-700 text-white font-medium p-4 h-auto rounded-xl">
+                          <Code className="w-5 h-5 mr-3" />
+                          <div>
+                            <div className="font-semibold text-left">Coding & Topic Quiz</div>
+                            <div className="text-xs text-purple-100 font-normal">Create Coding Quizzes & MCQs</div>
+                          </div>
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Create Coding / Topic Quiz</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-2">
+                          <div className="space-y-2">
+                            <Label>Quiz Title</Label>
+                            <Input placeholder="e.g. Binary Tree Traversal Coding Quiz" value={quizTitle} onChange={(e) => setQuizTitle(e.target.value)} />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Quiz Format</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button
+                                type="button"
+                                variant={quizType === "Coding Quiz" ? "secondary" : "outline"}
+                                className={quizType === "Coding Quiz" ? "bg-purple-100 text-purple-700 border-purple-300 font-bold" : ""}
+                                onClick={() => setQuizType("Coding Quiz")}
+                              >
+                                Coding Quiz
+                              </Button>
+                              <Button
+                                type="button"
+                                variant={quizType === "Quiz" ? "secondary" : "outline"}
+                                className={quizType === "Quiz" ? "bg-purple-100 text-purple-700 border-purple-300 font-bold" : ""}
+                                onClick={() => setQuizType("Quiz")}
+                              >
+                                Topic MCQ
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Due Date</Label>
+                            <Input type="date" value={quizDueDate} onChange={(e) => setQuizDueDate(e.target.value)} />
+                          </div>
+                        </div>
+                        <DialogClose asChild>
+                          <Button className="w-full bg-purple-600 text-white" onClick={handleCreateQuiz}>
+                            Publish Quiz
+                          </Button>
+                        </DialogClose>
+                      </DialogContent>
+                    </Dialog>
+
                     {/* Create Test Modal */}
                     <Dialog>
                       <DialogTrigger asChild>
@@ -501,13 +677,13 @@ export default function TeacherPortal() {
                           <Plus className="w-5 h-5 mr-3" />
                           <div>
                             <div className="font-semibold text-left">Create Test</div>
-                            <div className="text-xs text-indigo-100 font-normal">Timed assessments & marks</div>
+                            <div className="text-xs text-indigo-100 font-normal">Timed assessments & Q&A</div>
                           </div>
                         </Button>
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
-                          <DialogTitle>Create New Assessment Test</DialogTitle>
+                          <DialogTitle>Create Assessment Test</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 py-2">
                           <div className="space-y-2">
@@ -533,47 +709,14 @@ export default function TeacherPortal() {
                       </DialogContent>
                     </Dialog>
 
-                    {/* Create Quiz Modal */}
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button className="w-full justify-start bg-purple-600 hover:bg-purple-700 text-white font-medium p-4 h-auto rounded-xl">
-                          <HelpCircle className="w-5 h-5 mr-3" />
-                          <div>
-                            <div className="font-semibold text-left">Create Quiz</div>
-                            <div className="text-xs text-purple-100 font-normal">Quick MCQ & One-word questions</div>
-                          </div>
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Create Quick Quiz</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4 py-2">
-                          <div className="space-y-2">
-                            <Label>Quiz Title</Label>
-                            <Input placeholder="e.g. Weekly Review Quiz" value={quizTitle} onChange={(e) => setQuizTitle(e.target.value)} />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Due Date</Label>
-                            <Input type="date" value={quizDueDate} onChange={(e) => setQuizDueDate(e.target.value)} />
-                          </div>
-                        </div>
-                        <DialogClose asChild>
-                          <Button className="w-full bg-purple-600 text-white" onClick={handleCreateQuiz}>
-                            Publish Quiz
-                          </Button>
-                        </DialogClose>
-                      </DialogContent>
-                    </Dialog>
-
-                    {/* Share Info Modal */}
+                    {/* Share Announcement Modal */}
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button className="w-full justify-start bg-slate-800 hover:bg-slate-900 text-white font-medium p-4 h-auto rounded-xl">
                           <FileText className="w-5 h-5 mr-3" />
                           <div>
-                            <div className="font-semibold text-left">Share Announcement</div>
-                            <div className="text-xs text-slate-300 font-normal">Post notice to class board</div>
+                            <div className="font-semibold text-left">Share Notice</div>
+                            <div className="text-xs text-slate-300 font-normal">Broadcast to class board</div>
                           </div>
                         </Button>
                       </DialogTrigger>
@@ -601,19 +744,20 @@ export default function TeacherPortal() {
               {/* Published Assessments List */}
               <Card className="shadow-sm border-slate-200">
                 <CardHeader>
-                  <CardTitle className="text-slate-800 text-lg">Active Assessments & Broadcasts</CardTitle>
+                  <CardTitle className="text-slate-800 text-lg">Active Quizzes & Assessments</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ul className="divide-y divide-slate-100">
                     {assignments.map((item) => (
                       <li key={item.id} className="py-3 flex items-center justify-between">
                         <div className="flex items-center space-x-3">
+                          {item.type === "Coding Quiz" && <Code className="w-5 h-5 text-purple-600" />}
                           {item.type === "Test" && <FileCheck className="w-5 h-5 text-indigo-600" />}
                           {item.type === "Quiz" && <HelpCircle className="w-5 h-5 text-purple-600" />}
                           {item.type === "Announcement" && <FileText className="w-5 h-5 text-slate-600" />}
                           <div>
                             <p className="font-medium text-slate-800">{item.title}</p>
-                            <p className="text-xs text-slate-500">Type: {item.type} {item.marks ? `• ${item.marks} Marks` : ""} • Due: {item.dueDate}</p>
+                            <p className="text-xs text-slate-500">Format: {item.type} {item.marks ? `• ${item.marks} Marks` : ""} • Due: {item.dueDate}</p>
                           </div>
                         </div>
                         <Button variant="ghost" size="sm" className="text-xs text-red-500 hover:text-red-700" onClick={() => setAssignments((prev) => prev.filter((a) => a.id !== item.id))}>
@@ -631,7 +775,7 @@ export default function TeacherPortal() {
               <Card className="shadow-sm border-slate-200">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle className="text-indigo-600">Student Enrollment</CardTitle>
+                    <CardTitle className="text-indigo-600">Student Roster</CardTitle>
                     <CardDescription>Manage students enrolled in {activeClass?.className}</CardDescription>
                   </div>
                   <Dialog>
@@ -708,12 +852,12 @@ export default function TeacherPortal() {
               </Card>
             </TabsContent>
 
-            {/* Chapters Tab */}
+            {/* Chapters & AI Bullet Summarizer Tab */}
             <TabsContent value="chapters" className="space-y-6">
               <Card className="shadow-sm border-slate-200">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle className="text-indigo-600">Course Chapters</CardTitle>
+                    <CardTitle className="text-indigo-600">Course Chapters & Uploads</CardTitle>
                     <CardDescription>Upload notes, slides, and voice recordings for {activeClass?.className}</CardDescription>
                   </div>
                   <Dialog>
@@ -841,6 +985,9 @@ export default function TeacherPortal() {
                     })}
                 </CardContent>
               </Card>
+
+              {/* AI Notes Bullet Summarizer Tool (from handwritten note) */}
+              <NotesAiConverter />
             </TabsContent>
 
             {/* Content Management Tab */}
