@@ -1,6 +1,6 @@
 'use client'
 import React, { useState } from 'react'
-import { Sparkles, ArrowRight, ShieldCheck, UserCheck, GraduationCap, School, Code2, BarChart3, Zap, Trophy, Binary, Layers } from 'lucide-react'
+import { ArrowRight, ShieldCheck, UserCheck, GraduationCap, School, Zap, Sparkles, CheckCircle2 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -43,7 +43,6 @@ export default function AuthPage() {
     }
 
     setIsLoading(true)
-    toast.info('Authenticating engineering credentials...')
 
     try {
       const res = await handleLogin(loginEmail, loginPassword)
@@ -55,38 +54,37 @@ export default function AuthPage() {
           email: u.email || loginEmail,
           role: u.type || u.role || role
         }))
-        toast.success(`Welcome back, ${u.name || 'Engineer'}! Redirecting...`)
+        toast.success(`Welcome back, ${u.name || 'User'}!`)
         const destRole = u.type || u.role || role
         router.push(destRole === 'teacher' ? '/teacher' : '/student')
         return
       }
     } catch {
-      // Backend offline fallback
+      // Offline fallback
     }
 
     setTimeout(() => {
       const mockUser = {
         userId: role === 'teacher' ? 'teacher-demo' : 'student-demo',
-        name: role === 'teacher' ? 'Prof. Sarah Jenkins (CS Dept)' : 'Alex Rivera (B.Tech CS)',
+        name: role === 'teacher' ? 'Prof. Sarah Jenkins' : 'Alex Rivera',
         email: loginEmail,
         role: role
       }
       localStorage.setItem('user', JSON.stringify(mockUser))
-      toast.success(`Authenticated as ${mockUser.name}!`)
+      toast.success(`Logged in as ${mockUser.name}`)
       setIsLoading(false)
       router.push(role === 'teacher' ? '/teacher' : '/student')
-    }, 700)
+    }, 500)
   }
 
   const handleSignUpSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!signupName || !signupEmail || !signupPassword) {
-      toast.warning('Please complete all registration fields.')
+      toast.warning('Please complete all fields.')
       return
     }
 
     setIsLoading(true)
-    toast.info('Registering engineering profile...')
 
     try {
       const res = await handleSignup(signupName, signupEmail, signupPassword, role)
@@ -98,12 +96,12 @@ export default function AuthPage() {
           email: u.email || signupEmail,
           role: u.type || u.role || role
         }))
-        toast.success(`Account created! Welcome, ${signupName}!`)
+        toast.success(`Welcome, ${signupName}!`)
         router.push(role === 'teacher' ? '/teacher' : '/student')
         return
       }
     } catch {
-      // Backend offline fallback
+      // Offline fallback
     }
 
     setTimeout(() => {
@@ -114,181 +112,178 @@ export default function AuthPage() {
         role: role
       }
       localStorage.setItem('user', JSON.stringify(mockUser))
-      toast.success(`Account created! Redirecting to ${role} portal...`)
+      toast.success(`Account created!`)
       setIsLoading(false)
       router.push(role === 'teacher' ? '/teacher' : '/student')
-    }, 700)
+    }, 500)
   }
 
   const handleQuickDemo = (demoRole: 'student' | 'teacher') => {
     const mockUser = demoRole === 'teacher'
-      ? { userId: 'teacher-demo', name: 'Prof. Sarah Jenkins (CS Dept)', email: 'sarah.jenkins@edumeet.ai', role: 'teacher' }
-      : { userId: 'student-demo', name: 'Alex Rivera (B.Tech CS)', email: 'alex.rivera@edumeet.ai', role: 'student' }
+      ? { userId: 'teacher-demo', name: 'Prof. Sarah Jenkins', email: 'sarah.jenkins@edumeet.ai', role: 'teacher' }
+      : { userId: 'student-demo', name: 'Alex Rivera', email: 'alex.rivera@edumeet.ai', role: 'student' }
 
     localStorage.setItem('user', JSON.stringify(mockUser))
-    toast.success(`Logged in as ${mockUser.name} (${demoRole.toUpperCase()})`)
+    toast.success(`Logged in as ${mockUser.name}`)
     router.push(demoRole === 'teacher' ? '/teacher' : '/student')
   }
 
   return (
     <div className="min-h-screen bg-[#faf8f5] text-slate-800 flex flex-col justify-between relative overflow-hidden">
-      {/* Animated Floating Engineering Background */}
+      {/* Clean Subtle Background */}
       <AnimatedLearningBackground />
 
       {/* Header Bar */}
-      <header className="px-8 py-4 flex items-center justify-between border-b border-slate-200/80 studio-panel sticky top-0 z-50">
+      <header className="px-8 py-4 flex items-center justify-between border-b border-slate-200/80 bg-white/80 backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center font-black text-xl shadow-md text-white">
+          <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-sm">
             EB
           </div>
           <div>
-            <h1 className="text-xl font-extrabold tracking-tight gradient-text-indigo">EduMeet.Ai</h1>
-            <p className="text-[11px] text-slate-500 font-semibold">Engineering Learning Studio (B.Tech & CS)</p>
+            <h1 className="text-lg font-black tracking-tight text-slate-900">EduMeet.Ai</h1>
+            <p className="text-[11px] text-slate-500 font-medium">Interactive Learning Platform</p>
           </div>
         </div>
 
         <div className="flex items-center space-x-3">
-          <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-700 border border-amber-500/20">
-            <Trophy className="w-3.5 h-3.5 text-amber-500" /> B.Tech & Engineering Edition
-          </span>
-          <Button variant="outline" size="sm" onClick={() => handleQuickDemo('student')} className="text-xs border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100 text-indigo-700 font-bold">
+          <Button variant="outline" size="sm" onClick={() => handleQuickDemo('student')} className="text-xs border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold rounded-xl">
             Demo Student
           </Button>
-          <Button size="sm" onClick={() => handleQuickDemo('teacher')} className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md">
-            Demo Professor
+          <Button size="sm" onClick={() => handleQuickDemo('teacher')} className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-xs">
+            Demo Teacher
           </Button>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center flex-1 z-10">
-        {/* Left Column: Engineering Hero Showcase */}
+      <main className="max-w-6xl mx-auto px-6 py-14 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center flex-1 z-10">
+        {/* Left Column: Hero & Clean SaaS Product Pitch */}
         <div className="lg:col-span-6 space-y-6">
-          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-indigo-100/80 border border-indigo-200 text-indigo-800 text-xs font-bold">
-            <Sparkles className="w-4 h-4 text-indigo-600" />
-            <span>Built Specifically for Engineering & B.Tech Students</span>
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Smart Interactive Workspace for Education</span>
           </div>
 
           <h2 className="text-4xl sm:text-5xl font-black text-slate-900 leading-tight tracking-tight">
-            Creative AI Studio for <br />
-            <span className="gradient-text-indigo">Engineering & Code</span>
+            Elevate Learning with <br />
+            <span className="text-indigo-600">Interactive AI Tools</span>
           </h2>
 
-          <p className="text-slate-600 text-base leading-relaxed">
-            Master Data Structures, Operating Systems, Machine Learning, and Engineering Mathematics with interactive code trace visualization, real-time analytics, automated AI notes summarizer, and placement test prep.
+          <p className="text-slate-600 text-sm leading-relaxed">
+            EduMeet.Ai connects students and teachers with interactive code visualization, automated AI notes summarization, progress tracking, and lecture management in a clean, modern workspace.
           </p>
 
-          {/* 1-Click Instant Demo Portals */}
+          {/* 1-Click Instant Demo Cards */}
           <div className="pt-2 space-y-3">
-            <p className="text-xs font-extrabold uppercase tracking-wider text-slate-500">⚡ 1-Click Instant Engineering Portals</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Quick Access Portals</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Student Card */}
+              {/* Student Portal Card */}
               <div
                 onClick={() => handleQuickDemo('student')}
-                className="bg-gradient-to-br from-indigo-50/90 to-purple-50/90 border border-indigo-200/80 p-4 rounded-3xl cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex items-center space-x-4 group"
+                className="bg-white border border-slate-200/90 p-4 rounded-2xl cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all flex items-center space-x-3.5 group"
               >
-                <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white shadow-md flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <GraduationCap className="w-6 h-6" />
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                  <GraduationCap className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-900 text-sm group-hover:text-indigo-600 transition-colors">Engineering Student</h4>
-                  <p className="text-xs text-slate-500">DSA visualizer, AI tutor & Placement prep</p>
+                  <h4 className="font-bold text-slate-900 text-sm group-hover:text-indigo-600 transition-colors">Student Portal</h4>
+                  <p className="text-xs text-slate-500">Code trace, notes & study tools</p>
                 </div>
               </div>
 
-              {/* Teacher Card */}
+              {/* Teacher Portal Card */}
               <div
                 onClick={() => handleQuickDemo('teacher')}
-                className="bg-gradient-to-br from-orange-50/90 to-amber-50/90 border border-orange-200/80 p-4 rounded-3xl cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex items-center space-x-4 group"
+                className="bg-white border border-slate-200/90 p-4 rounded-2xl cursor-pointer hover:border-purple-300 hover:shadow-md transition-all flex items-center space-x-3.5 group"
               >
-                <div className="w-12 h-12 rounded-2xl bg-orange-500 text-white shadow-md flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <School className="w-6 h-6" />
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                  <School className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-900 text-sm group-hover:text-orange-600 transition-colors">Department Faculty</h4>
-                  <p className="text-xs text-slate-500">Analytics, coding quizzes & lecture capture</p>
+                  <h4 className="font-bold text-slate-900 text-sm group-hover:text-purple-600 transition-colors">Teacher Portal</h4>
+                  <p className="text-xs text-slate-500">Analytics, rosters & materials</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Engineering Subject Badges */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-200/80">
-            <div className="flex items-center space-x-2 text-xs text-slate-700 font-semibold">
-              <Code2 className="w-4 h-4 text-indigo-600" /> <span>DSA & Code Trace</span>
+          {/* Clean SaaS Feature Checkmarks */}
+          <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-200/60 text-xs text-slate-600 font-medium">
+            <div className="flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" /> <span>Code Trace IDE</span>
             </div>
-            <div className="flex items-center space-x-2 text-xs text-slate-700 font-semibold">
-              <Binary className="w-4 h-4 text-purple-600" /> <span>OS & Systems</span>
+            <div className="flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" /> <span>Notes to Quiz Converter</span>
             </div>
-            <div className="flex items-center space-x-2 text-xs text-slate-700 font-semibold">
-              <BarChart3 className="w-4 h-4 text-teal-600" /> <span>Placement Analytics</span>
+            <div className="flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" /> <span>Real-Time Progress Tracking</span>
             </div>
-            <div className="flex items-center space-x-2 text-xs text-slate-700 font-semibold">
-              <Layers className="w-4 h-4 text-rose-500" /> <span>GATE & Test Prep</span>
+            <div className="flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" /> <span>Voice Lecture Capture</span>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Light Studio Auth Form */}
+        {/* Right Column: Sleek SaaS Auth Form */}
         <div className="lg:col-span-6 flex justify-center">
-          <Card className="w-full max-w-md studio-panel border-slate-200/90 shadow-2xl rounded-3xl overflow-hidden bg-white/90">
-            <CardHeader className="space-y-1 pb-4 text-center border-b border-slate-100">
-              <CardTitle className="text-xl font-black text-slate-900 flex items-center justify-center gap-2">
-                <Zap className="w-5 h-5 text-indigo-600" /> Engineering Workspace
+          <Card className="w-full max-w-md bg-white border border-slate-200/90 shadow-xl rounded-2xl overflow-hidden">
+            <CardHeader className="space-y-1 pb-4 text-center border-b border-slate-100 bg-slate-50/50">
+              <CardTitle className="text-lg font-black text-slate-900 flex items-center justify-center gap-2">
+                <Zap className="w-4 h-4 text-indigo-600" /> Workspace Login
               </CardTitle>
               <CardDescription className="text-xs text-slate-500">
-                Select your engineering role to sign in or register
+                Sign in to your account or register a new profile
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="p-6 space-y-6">
+            <CardContent className="p-6 space-y-5">
               {/* Role Selection Toggle */}
-              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100/80 rounded-2xl border border-slate-200">
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/80">
                 <button
                   type="button"
-                  className={`py-2 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                     role === 'student'
-                      ? 'bg-indigo-600 text-white shadow-md'
+                      ? 'bg-white text-indigo-600 shadow-xs border border-slate-200'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                   onClick={() => setRole('student')}
                 >
-                  <UserCheck className="w-4 h-4" /> B.Tech Student
+                  <UserCheck className="w-3.5 h-3.5" /> Student
                 </button>
                 <button
                   type="button"
-                  className={`py-2 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                     role === 'teacher'
-                      ? 'bg-orange-500 text-white shadow-md'
+                      ? 'bg-white text-purple-600 shadow-xs border border-slate-200'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                   onClick={() => setRole('teacher')}
                 >
-                  <ShieldCheck className="w-4 h-4" /> Faculty / Professor
+                  <ShieldCheck className="w-3.5 h-3.5" /> Teacher
                 </button>
               </div>
 
               {/* Tabs for Sign In vs Register */}
               <Tabs defaultValue="login" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 bg-slate-100/80 p-1 rounded-2xl border border-slate-200">
-                  <TabsTrigger value="login" className="text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
+                <TabsList className="grid w-full grid-cols-2 bg-slate-100 p-1 rounded-xl border border-slate-200/80">
+                  <TabsTrigger value="login" className="text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs">
                     Sign In
                   </TabsTrigger>
-                  <TabsTrigger value="signup" className="text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
+                  <TabsTrigger value="signup" className="text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs">
                     Register
                   </TabsTrigger>
                 </TabsList>
 
                 {/* Login Tab Content */}
                 <TabsContent value="login" className="space-y-4 pt-4">
-                  <form onSubmit={handleSignInSubmit} className="space-y-4">
+                  <form onSubmit={handleSignInSubmit} className="space-y-3.5">
                     <div className="space-y-1.5">
-                      <Label htmlFor="loginEmail" className="text-xs font-bold text-slate-700">Engineering Email</Label>
+                      <Label htmlFor="loginEmail" className="text-xs font-bold text-slate-700">Email Address</Label>
                       <Input
                         id="loginEmail"
                         type="email"
                         placeholder={role === 'teacher' ? 'sarah.jenkins@edumeet.ai' : 'alex.rivera@edumeet.ai'}
-                        className="bg-white border-slate-200 text-slate-900 text-sm focus:border-indigo-500 rounded-xl"
+                        className="bg-white border-slate-200 text-slate-900 text-xs focus:border-indigo-500 rounded-xl"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
                       />
@@ -299,38 +294,38 @@ export default function AuthPage() {
                         id="loginPassword"
                         type="password"
                         placeholder="••••••••"
-                        className="bg-white border-slate-200 text-slate-900 text-sm focus:border-indigo-500 rounded-xl"
+                        className="bg-white border-slate-200 text-slate-900 text-xs focus:border-indigo-500 rounded-xl"
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
                       />
                     </div>
-                    <Button type="submit" className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-2.5 rounded-xl shadow-lg" disabled={isLoading}>
-                      {isLoading ? 'Authenticating...' : `Sign In as ${role.toUpperCase()}`}
-                      <ArrowRight className="w-4 h-4 ml-2" />
+                    <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl text-xs shadow-xs" disabled={isLoading}>
+                      {isLoading ? 'Authenticating...' : `Sign In as ${role === 'student' ? 'Student' : 'Teacher'}`}
+                      <ArrowRight className="w-3.5 h-3.5 ml-2" />
                     </Button>
                   </form>
                 </TabsContent>
 
                 {/* Registration Tab Content */}
                 <TabsContent value="signup" className="space-y-4 pt-4">
-                  <form onSubmit={handleSignUpSubmit} className="space-y-4">
+                  <form onSubmit={handleSignUpSubmit} className="space-y-3.5">
                     <div className="space-y-1.5">
                       <Label htmlFor="signupName" className="text-xs font-bold text-slate-700">Full Name</Label>
                       <Input
                         id="signupName"
                         placeholder="e.g. Alex Rivera"
-                        className="bg-white border-slate-200 text-slate-900 text-sm focus:border-indigo-500 rounded-xl"
+                        className="bg-white border-slate-200 text-slate-900 text-xs focus:border-indigo-500 rounded-xl"
                         value={signupName}
                         onChange={(e) => setSignupName(e.target.value)}
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="signupEmail" className="text-xs font-bold text-slate-700">Engineering Email</Label>
+                      <Label htmlFor="signupEmail" className="text-xs font-bold text-slate-700">Email Address</Label>
                       <Input
                         id="signupEmail"
                         type="email"
-                        placeholder="alex@college.edu"
-                        className="bg-white border-slate-200 text-slate-900 text-sm focus:border-indigo-500 rounded-xl"
+                        placeholder="alex@example.com"
+                        className="bg-white border-slate-200 text-slate-900 text-xs focus:border-indigo-500 rounded-xl"
                         value={signupEmail}
                         onChange={(e) => setSignupEmail(e.target.value)}
                       />
@@ -341,14 +336,14 @@ export default function AuthPage() {
                         id="signupPassword"
                         type="password"
                         placeholder="••••••••"
-                        className="bg-white border-slate-200 text-slate-900 text-sm focus:border-indigo-500 rounded-xl"
+                        className="bg-white border-slate-200 text-slate-900 text-xs focus:border-indigo-500 rounded-xl"
                         value={signupPassword}
                         onChange={(e) => setSignupPassword(e.target.value)}
                       />
                     </div>
-                    <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-lg" disabled={isLoading}>
-                      {isLoading ? 'Creating Account...' : `Register ${role.toUpperCase()} Account`}
-                      <ArrowRight className="w-4 h-4 ml-2" />
+                    <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-xl text-xs shadow-xs" disabled={isLoading}>
+                      {isLoading ? 'Creating Account...' : `Register ${role === 'student' ? 'Student' : 'Teacher'} Account`}
+                      <ArrowRight className="w-3.5 h-3.5 ml-2" />
                     </Button>
                   </form>
                 </TabsContent>
@@ -359,8 +354,8 @@ export default function AuthPage() {
       </main>
 
       {/* Footer */}
-      <footer className="px-8 py-4 border-t border-slate-200/80 studio-panel text-center text-xs text-slate-500">
-        <p>© 2026 EduMeet.Ai • Tailored for Engineering Students (CS, ECE, Mech & AI) • Next.js 14 & Gemini AI</p>
+      <footer className="px-8 py-4 border-t border-slate-200/80 bg-white/60 text-center text-xs text-slate-500">
+        <p>© 2026 EduMeet.Ai • Interactive Learning Studio for Students & Educators</p>
       </footer>
     </div>
   )
