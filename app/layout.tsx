@@ -16,8 +16,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "EduMeet.Ai | Next-Gen AI Learning Platform",
-  description: "Hackathon-winning AI Educational Platform for Teachers & Students featuring Code Trace Visualizer, AI Notes Summarizer, and Interactive Analytics.",
+  title: "EduMeet.Ai | Premium AI Educational Platform",
+  description: "Creative AI Learning Studio for Teachers & Students featuring Code Trace Visualizer, AI Notes Summarizer, and Interactive Analytics.",
 };
 
 export default function RootLayout({
@@ -26,11 +26,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="light">
       <body
-        className={`${plusJakartaSans.variable} ${jetbrainsMono.variable} font-sans bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500 selection:text-white min-h-screen`}
+        className={`${plusJakartaSans.variable} ${jetbrainsMono.variable} font-sans bg-[#faf8f5] text-slate-800 antialiased selection:bg-indigo-500 selection:text-white min-h-screen relative`}
       >
-        <Toaster richColors position="top-right" theme="dark" />
+        <Toaster richColors position="top-right" theme="light" />
         {children}
       </body>
     </html>

@@ -4,69 +4,85 @@
 
 @layer base {
   :root {
-    --background: 224 71% 4%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 7%;
-    --card-foreground: 210 40% 98%;
-    --popover: 224 71% 4%;
-    --popover-foreground: 210 40% 98%;
+    --background: 38 30% 97%; /* #faf8f5 Warm Ivory */
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
     --primary: 239 84% 67%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%;
     --accent: 239 84% 67%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
     --ring: 239 84% 67%;
-    --radius: 0.75rem;
+    --radius: 1rem;
   }
 }
 
 @layer utilities {
-  .bg-mesh-dark {
-    background-color: #0b0f19;
-    background-image: 
-      radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.15) 0px, transparent 50%),
-      radial-gradient(at 50% 100%, rgba(59, 130, 246, 0.12) 0px, transparent 50%);
+  .bg-warm-ivory {
+    background-color: #faf8f5;
   }
 
-  .glass-panel {
-    background: rgba(15, 23, 42, 0.65);
+  .bg-cream-soft {
+    background-color: #f5f2eb;
+  }
+
+  .bg-lavender-soft {
+    background-color: #f3f0fa;
+  }
+
+  .bg-mist-blue {
+    background-color: #f0f4f9;
+  }
+
+  .bg-soft-peach {
+    background-color: #faf0eb;
+  }
+
+  .bg-soft-mint {
+    background-color: #edf7f4;
+  }
+
+  .studio-panel {
+    background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 4px 20px -4px rgba(148, 163, 184, 0.15);
   }
 
-  .glass-card {
-    background: rgba(30, 41, 59, 0.5);
+  .studio-card {
+    background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 4px 14px -2px rgba(148, 163, 184, 0.08);
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  .glass-card:hover {
-    border-color: rgba(99, 102, 241, 0.4);
-    box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.2);
+  .studio-card:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+    box-shadow: 0 12px 28px -8px rgba(99, 102, 241, 0.12);
     transform: translateY(-2px);
   }
 
-  .glow-indigo {
-    box-shadow: 0 0 25px -5px rgba(99, 102, 241, 0.3);
+  .gradient-text-indigo {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #2563eb 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 
-  .glow-purple {
-    box-shadow: 0 0 25px -5px rgba(168, 85, 247, 0.3);
-  }
-
-  .gradient-text {
-    background: linear-gradient(135deg, #a5b4fc 0%, #c084fc 50%, #60a5fa 100%);
+  .gradient-text-coral {
+    background: linear-gradient(135deg, #ea580c 0%, #d97706 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
@@ -79,14 +95,14 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #0b0f19;
+  background: #faf8f5;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #cbd5e1;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #94a3b8;
 }
