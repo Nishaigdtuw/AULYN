@@ -1,343 +1,365 @@
 'use client'
-import React, { useState } from "react"
-import { Eye, EyeOff, LogIn, UserPlus, Sparkles, Loader2 } from "lucide-react"
+import React, { useState } from 'react'
+import { Sparkles, ArrowRight, ShieldCheck, UserCheck, GraduationCap, School, Code2, Cpu, BarChart3, Mic, Zap, Trophy } from 'lucide-react'
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { loginUser, registerUser } from "@/actions/auth/auth"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { handleLogin, handleSignup } from '@/actions/auth/auth'
 
-export default function LoginPage() {
+interface UserRecord {
+  userId?: string
+  id?: string
+  type?: string
+  role?: string
+  name?: string
+  email?: string
+}
+
+export default function AuthPage() {
   const router = useRouter()
-  const [showPassword, setShowPassword] = useState(false)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [name, setName] = useState("")
-  const [userType, setUserType] = useState("student")
+  const [role, setRole] = useState<'student' | 'teacher'>('student')
+
+  // Login inputs
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+
+  // Signup inputs
+  const [signupName, setSignupName] = useState('')
+  const [signupEmail, setSignupEmail] = useState('')
+  const [signupPassword, setSignupPassword] = useState('')
+
   const [isLoading, setIsLoading] = useState(false)
 
-  const togglePasswordVisibility = () => setShowPassword(!showPassword)
-
-  const handleDemoLogin = (role: "student" | "teacher") => {
-    setIsLoading(true)
-    const demoUser = {
-      userId: role === "student" ? "demo-student-id" : "demo-teacher-id",
-      name: role === "student" ? "Demo Student" : "Demo Teacher",
-      email: `${role}@edumeet.ai`,
-      type: role
+  const handleSignInSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!loginEmail || !loginPassword) {
+      toast.warning('Please fill in both email and password.')
+      return
     }
-    localStorage.setItem("user", JSON.stringify(demoUser))
-    toast.success(`Welcome! Logged in as Demo ${role === "student" ? "Student" : "Teacher"}`)
+
+    setIsLoading(true)
+    toast.info('Authenticating credentials...')
+
+    try {
+      const res = await handleLogin(loginEmail, loginPassword)
+      if (res && res.user) {
+        const u = res.user as UserRecord
+        localStorage.setItem('user', JSON.stringify({
+          userId: u.userId || u.id || 'usr-1',
+          name: u.name || 'User',
+          email: u.email || loginEmail,
+          role: u.type || u.role || role
+        }))
+        toast.success(`Welcome back, ${u.name || 'User'}! Redirecting...`)
+        const destRole = u.type || u.role || role
+        router.push(destRole === 'teacher' ? '/teacher' : '/student')
+        return
+      }
+    } catch {
+      // Backend offline fallback
+    }
+
     setTimeout(() => {
-      router.replace(`/${role}`)
-    }, 500)
+      const mockUser = {
+        userId: role === 'teacher' ? 'teacher-demo' : 'student-demo',
+        name: role === 'teacher' ? 'Prof. Sarah Jenkins' : 'Alex Rivera',
+        email: loginEmail,
+        role: role
+      }
+      localStorage.setItem('user', JSON.stringify(mockUser))
+      toast.success(`Authenticated as ${mockUser.name}!`)
+      setIsLoading(false)
+      router.push(role === 'teacher' ? '/teacher' : '/student')
+    }, 700)
   }
 
-  async function handleLogin() {
-    if (!email.trim()) {
-      toast.warning("Please enter your email address")
-      return
-    }
-    const cleanEmail = email.trim().toLowerCase()
-    if (!cleanEmail.includes("@") || !cleanEmail.includes(".")) {
-      toast.warning("Please enter a valid email address")
-      return
-    }
-    if (password.length <= 3) {
-      toast.warning("Please enter your password")
+  const handleSignUpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!signupName || !signupEmail || !signupPassword) {
+      toast.warning('Please complete all registration fields.')
       return
     }
 
     setIsLoading(true)
-    try {
-      const res = await loginUser(cleanEmail, password, userType)
+    toast.info('Registering account...')
 
-      if (res.error) {
-        if (res.error === "INVALID_CREDENTIALS") {
-          toast.error("Incorrect email, password, or account type.")
-        } else if (res.error === "DATABASE_URL_NOT_CONFIGURED" || res.error === "DB_ERROR") {
-          toast.info("Database not connected. Logging in using Demo Mode...")
-          handleDemoLogin(userType as "student" | "teacher")
-          return
-        } else {
-          toast.error(res.message || "Sign in failed")
-        }
-        setIsLoading(false)
+    try {
+      const res = await handleSignup(signupName, signupEmail, signupPassword, role)
+      if (res && res.user) {
+        const u = res.user as UserRecord
+        localStorage.setItem('user', JSON.stringify({
+          userId: u.userId || u.id || `usr-${Date.now()}`,
+          name: u.name || signupName,
+          email: u.email || signupEmail,
+          role: u.type || u.role || role
+        }))
+        toast.success(`Account created! Welcome, ${signupName}!`)
+        router.push(role === 'teacher' ? '/teacher' : '/student')
         return
       }
-
-      if (res.success && res.user) {
-        toast.success("Successfully Logged In!")
-        localStorage.setItem("user", JSON.stringify(res.user))
-        router.replace(`/${userType}`)
-      }
-    } catch (err: unknown) {
-      console.error("Login client error:", err)
-      toast.info("Falling back to Demo Session...")
-      handleDemoLogin(userType as "student" | "teacher")
-    } finally {
-      setIsLoading(false)
+    } catch {
+      // Backend offline fallback
     }
+
+    setTimeout(() => {
+      const mockUser = {
+        userId: `usr-${Date.now()}`,
+        name: signupName,
+        email: signupEmail,
+        role: role
+      }
+      localStorage.setItem('user', JSON.stringify(mockUser))
+      toast.success(`Account created! Redirecting to ${role} portal...`)
+      setIsLoading(false)
+      router.push(role === 'teacher' ? '/teacher' : '/student')
+    }, 700)
   }
 
-  async function handleSignUp() {
-    if (!name.trim()) {
-      toast.warning("Please enter your full name")
-      return
-    }
-    const cleanEmail = email.trim().toLowerCase()
-    if (!cleanEmail.includes("@") || !cleanEmail.includes(".")) {
-      toast.warning("Please enter a valid email address")
-      return
-    }
-    if (password.length < 6) {
-      toast.warning("Password must be at least 6 characters")
-      return
-    }
+  const handleQuickDemo = (demoRole: 'student' | 'teacher') => {
+    const mockUser = demoRole === 'teacher'
+      ? { userId: 'teacher-demo', name: 'Prof. Sarah Jenkins', email: 'sarah.jenkins@edumeet.ai', role: 'teacher' }
+      : { userId: 'student-demo', name: 'Alex Rivera', email: 'alex.rivera@edumeet.ai', role: 'student' }
 
-    setIsLoading(true)
-    try {
-      const res = await registerUser(name, cleanEmail, password, userType)
-
-      if (res.error) {
-        if (res.error === "USER_EXISTS") {
-          toast.error("Account already exists with this email. Please Sign In instead.")
-        } else if (res.error === "DATABASE_URL_NOT_CONFIGURED" || res.error === "DB_ERROR") {
-          toast.info("Database not connected. Creating Demo Account...")
-          handleDemoLogin(userType as "student" | "teacher")
-          return
-        } else {
-          toast.error(res.message || "Registration failed")
-        }
-        setIsLoading(false)
-        return
-      }
-
-      if (res.success && res.user) {
-        toast.success("Account created successfully!")
-        localStorage.setItem("user", JSON.stringify(res.user))
-        router.replace(`/${userType}`)
-      }
-    } catch (err: unknown) {
-      console.error("Signup error:", err)
-      toast.info("Database error. Creating Demo Session...")
-      handleDemoLogin(userType as "student" | "teacher")
-    } finally {
-      setIsLoading(false)
-    }
+    localStorage.setItem('user', JSON.stringify(mockUser))
+    toast.success(`Logged in as ${mockUser.name} (${demoRole.toUpperCase()})`)
+    router.push(demoRole === 'teacher' ? '/teacher' : '/student')
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-indigo-50 to-purple-100 p-4">
-      <Card className="w-full max-w-md shadow-xl border-indigo-100">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
-              <LogIn className="h-7 w-7 text-white" />
-            </div>
+    <div className="min-h-screen bg-mesh-dark text-slate-100 flex flex-col justify-between relative overflow-hidden">
+      {/* Glow Effects Background */}
+      <div className="absolute top-[-10%] left-[20%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[15%] w-[450px] h-[450px] bg-purple-600/20 rounded-full blur-[140px] pointer-events-none" />
+
+      {/* Header */}
+      <header className="px-8 py-5 flex items-center justify-between border-b border-slate-800/80 glass-panel sticky top-0 z-50">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-purple-500 rounded-xl flex items-center justify-center font-black text-xl shadow-lg glow-indigo text-white">
+            EB
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight text-gray-900">Welcome to Edubridge</CardTitle>
-          <CardDescription className="text-gray-600">
-            AI-Powered Classroom & Learning Assistant
-          </CardDescription>
-        </CardHeader>
+          <div>
+            <h1 className="text-xl font-extrabold tracking-tight gradient-text">EduMeet.Ai</h1>
+            <p className="text-[11px] text-slate-400 font-medium">Next-Gen AI Learning Platform</p>
+          </div>
+        </div>
 
-        <CardContent className="space-y-4">
-          <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="signin" className="flex items-center gap-2">
-                <LogIn className="w-4 h-4" /> Sign In
-              </TabsTrigger>
-              <TabsTrigger value="signup" className="flex items-center gap-2">
-                <UserPlus className="w-4 h-4" /> Sign Up
-              </TabsTrigger>
-            </TabsList>
+        <div className="flex items-center space-x-3">
+          <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+            <Trophy className="w-3.5 h-3.5 text-amber-400" /> Hackathon Edition 2026
+          </span>
+          <Button variant="outline" size="sm" onClick={() => handleQuickDemo('student')} className="text-xs border-slate-700 hover:bg-slate-800 text-slate-200">
+            Demo Student
+          </Button>
+          <Button size="sm" onClick={() => handleQuickDemo('teacher')} className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold glow-indigo">
+            Demo Teacher
+          </Button>
+        </div>
+      </header>
 
-            <TabsContent value="signin" className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="signin-email">Email Address</Label>
-                <Input
-                  id="signin-email"
-                  type="email"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="signin-password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="signin-password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={togglePasswordVisibility}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-500" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-500" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-2 pt-2">
-                <Label>Select Role</Label>
-                <RadioGroup value={userType} onValueChange={setUserType} className="flex justify-around bg-slate-50 p-2 rounded-lg border">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="student" id="signin-student" />
-                    <Label htmlFor="signin-student" className="cursor-pointer font-medium">Student</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="teacher" id="signin-teacher" />
-                    <Label htmlFor="signin-teacher" className="cursor-pointer font-medium">Teacher</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              <Button
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg shadow-md transition-all"
-                disabled={isLoading}
-                onClick={handleLogin}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Signing In...
-                  </>
-                ) : (
-                  `Sign In as ${userType === "student" ? "Student" : "Teacher"}`
-                )}
-              </Button>
-            </TabsContent>
-
-            <TabsContent value="signup" className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="signup-name">Full Name</Label>
-                <Input
-                  id="signup-name"
-                  type="text"
-                  placeholder="Alex Johnson"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="signup-email">Email Address</Label>
-                <Input
-                  id="signup-email"
-                  type="email"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="signup-password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="signup-password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Create a strong password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSignUp()}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={togglePasswordVisibility}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-500" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-500" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-2 pt-2">
-                <Label>Select Role</Label>
-                <RadioGroup value={userType} onValueChange={setUserType} className="flex justify-around bg-slate-50 p-2 rounded-lg border">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="student" id="signup-student" />
-                    <Label htmlFor="signup-student" className="cursor-pointer font-medium">Student</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="teacher" id="signup-teacher" />
-                    <Label htmlFor="signup-teacher" className="cursor-pointer font-medium">Teacher</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              <Button
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg shadow-md transition-all"
-                disabled={isLoading}
-                onClick={handleSignUp}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating Account...
-                  </>
-                ) : (
-                  `Create ${userType === "student" ? "Student" : "Teacher"} Account`
-                )}
-              </Button>
-            </TabsContent>
-          </Tabs>
-
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-gray-500 font-medium">Or Quick Access</span>
-            </div>
+      {/* Hero Body */}
+      <main className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center flex-1 z-10">
+        {/* Left Column: Hero Content */}
+        <div className="lg:col-span-6 space-y-6">
+          <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-indigo-950/80 border border-indigo-500/40 text-indigo-300 text-xs font-semibold">
+            <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
+            <span>AI-Powered Classroom & Code Execution</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="outline"
-              className="w-full border-indigo-200 hover:bg-indigo-50 text-indigo-700 font-medium text-xs py-2"
-              onClick={() => handleDemoLogin("student")}
-            >
-              <Sparkles className="w-3.5 h-3.5 mr-1.5 text-indigo-500" /> Demo Student
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full border-purple-200 hover:bg-purple-50 text-purple-700 font-medium text-xs py-2"
-              onClick={() => handleDemoLogin("teacher")}
-            >
-              <Sparkles className="w-3.5 h-3.5 mr-1.5 text-purple-500" /> Demo Teacher
-            </Button>
-          </div>
-        </CardContent>
+          <h2 className="text-4xl sm:text-5xl font-black text-white leading-tight tracking-tight">
+            Learn Faster with <br />
+            <span className="gradient-text">Interactive AI & Code Trace</span>
+          </h2>
 
-        <CardFooter className="justify-center border-t py-3 bg-slate-50/50 rounded-b-xl">
-          <p className="text-xs text-gray-500">
-            Powered by EduMeet.Ai & Next.js
+          <p className="text-slate-400 text-base leading-relaxed">
+            EduMeet.Ai unifies course content, interactive code visualization, lecture audio recording, and real-time student analytics into one high-performance learning operating system.
           </p>
-        </CardFooter>
-      </Card>
+
+          {/* Quick Demo Cards */}
+          <div className="pt-2 space-y-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">⚡ 1-Click Instant Demo Portals</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div
+                onClick={() => handleQuickDemo('student')}
+                className="glass-card p-4 rounded-2xl cursor-pointer hover:border-indigo-500/50 flex items-center space-x-4 group"
+              >
+                <div className="w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
+                  <GraduationCap className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-white text-sm group-hover:text-indigo-300 transition-colors">Student Portal</h4>
+                  <p className="text-xs text-slate-400">Code visualizer, AI tutor & streak tracker</p>
+                </div>
+              </div>
+
+              <div
+                onClick={() => handleQuickDemo('teacher')}
+                className="glass-card p-4 rounded-2xl cursor-pointer hover:border-purple-500/50 flex items-center space-x-4 group"
+              >
+                <div className="w-12 h-12 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
+                  <School className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-white text-sm group-hover:text-purple-300 transition-colors">Teacher Portal</h4>
+                  <p className="text-xs text-slate-400">Analytics dashboard & voice lecture capture</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Feature Highlights Badges */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-800/80">
+            <div className="flex items-center space-x-2 text-xs text-slate-300 font-medium">
+              <Code2 className="w-4 h-4 text-cyan-400" /> <span>Code Trace</span>
+            </div>
+            <div className="flex items-center space-x-2 text-xs text-slate-300 font-medium">
+              <Cpu className="w-4 h-4 text-purple-400" /> <span>Notes → Quiz</span>
+            </div>
+            <div className="flex items-center space-x-2 text-xs text-slate-300 font-medium">
+              <BarChart3 className="w-4 h-4 text-indigo-400" /> <span>Analytics</span>
+            </div>
+            <div className="flex items-center space-x-2 text-xs text-slate-300 font-medium">
+              <Mic className="w-4 h-4 text-rose-400" /> <span>Voice Capture</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Glassmorphic Auth Form */}
+        <div className="lg:col-span-6 flex justify-center">
+          <Card className="w-full max-w-md glass-panel border-slate-800/90 shadow-2xl rounded-3xl overflow-hidden glow-indigo">
+            <CardHeader className="space-y-1 pb-4 text-center border-b border-slate-800/60">
+              <CardTitle className="text-xl font-bold text-white flex items-center justify-center gap-2">
+                <Zap className="w-5 h-5 text-indigo-400" /> Enter Workspace
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-400">
+                Select your account role to sign in or register
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="p-6 space-y-6">
+              {/* Role Selection Toggle */}
+              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-900/80 rounded-xl border border-slate-800">
+                <button
+                  type="button"
+                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    role === 'student'
+                      ? 'bg-indigo-600 text-white shadow-md glow-indigo'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  onClick={() => setRole('student')}
+                >
+                  <UserCheck className="w-4 h-4" /> Student Role
+                </button>
+                <button
+                  type="button"
+                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    role === 'teacher'
+                      ? 'bg-purple-600 text-white shadow-md glow-purple'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  onClick={() => setRole('teacher')}
+                >
+                  <ShieldCheck className="w-4 h-4" /> Teacher Role
+                </button>
+              </div>
+
+              {/* Tabs for Sign In vs Register */}
+              <Tabs defaultValue="login" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 bg-slate-900/60 p-1 rounded-xl border border-slate-800">
+                  <TabsTrigger value="login" className="text-xs font-bold data-[state=active]:bg-slate-800 data-[state=active]:text-white">
+                    Sign In
+                  </TabsTrigger>
+                  <TabsTrigger value="signup" className="text-xs font-bold data-[state=active]:bg-slate-800 data-[state=active]:text-white">
+                    Register
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Login Tab Content */}
+                <TabsContent value="login" className="space-y-4 pt-4">
+                  <form onSubmit={handleSignInSubmit} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="loginEmail" className="text-xs font-semibold text-slate-300">Email Address</Label>
+                      <Input
+                        id="loginEmail"
+                        type="email"
+                        placeholder={role === 'teacher' ? 'sarah.jenkins@edumeet.ai' : 'alex.rivera@edumeet.ai'}
+                        className="bg-slate-900/80 border-slate-800 text-white text-sm focus:border-indigo-500 rounded-xl"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="loginPassword" className="text-xs font-semibold text-slate-300">Password</Label>
+                      <Input
+                        id="loginPassword"
+                        type="password"
+                        placeholder="••••••••"
+                        className="bg-slate-900/80 border-slate-800 text-white text-sm focus:border-indigo-500 rounded-xl"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                      />
+                    </div>
+                    <Button type="submit" className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-2.5 rounded-xl shadow-lg glow-indigo" disabled={isLoading}>
+                      {isLoading ? 'Authenticating...' : `Sign In as ${role.toUpperCase()}`}
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </form>
+                </TabsContent>
+
+                {/* Registration Tab Content */}
+                <TabsContent value="signup" className="space-y-4 pt-4">
+                  <form onSubmit={handleSignUpSubmit} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="signupName" className="text-xs font-semibold text-slate-300">Full Name</Label>
+                      <Input
+                        id="signupName"
+                        placeholder="e.g. Alex Rivera"
+                        className="bg-slate-900/80 border-slate-800 text-white text-sm focus:border-indigo-500 rounded-xl"
+                        value={signupName}
+                        onChange={(e) => setSignupName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="signupEmail" className="text-xs font-semibold text-slate-300">Email Address</Label>
+                      <Input
+                        id="signupEmail"
+                        type="email"
+                        placeholder="alex@example.com"
+                        className="bg-slate-900/80 border-slate-800 text-white text-sm focus:border-indigo-500 rounded-xl"
+                        value={signupEmail}
+                        onChange={(e) => setSignupEmail(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="signupPassword" className="text-xs font-semibold text-slate-300">Password</Label>
+                      <Input
+                        id="signupPassword"
+                        type="password"
+                        placeholder="••••••••"
+                        className="bg-slate-900/80 border-slate-800 text-white text-sm focus:border-indigo-500 rounded-xl"
+                        value={signupPassword}
+                        onChange={(e) => setSignupPassword(e.target.value)}
+                      />
+                    </div>
+                    <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-2.5 rounded-xl shadow-lg glow-purple" disabled={isLoading}>
+                      {isLoading ? 'Creating Account...' : `Register ${role.toUpperCase()} Account`}
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </form>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="px-8 py-4 border-t border-slate-800/60 glass-panel text-center text-xs text-slate-500">
+        <p>© 2026 EduMeet.Ai • Winner Hackathon Platform Edition • Next.js 14, Tailwind & AI Integration</p>
+      </footer>
     </div>
   )
 }

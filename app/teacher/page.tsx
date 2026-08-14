@@ -381,16 +381,19 @@ export default function TeacherPortal() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-mesh-dark text-slate-100 flex flex-col justify-between relative overflow-hidden">
+      {/* Glow Backdrops */}
+      <div className="absolute top-0 left-1/3 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[150px] pointer-events-none" />
+
       {/* Header */}
-      <header className="flex justify-between items-center px-6 py-4 bg-white border-b shadow-sm sticky top-0 z-10">
+      <header className="flex justify-between items-center px-8 py-4 glass-panel border-b border-slate-800/80 sticky top-0 z-50">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md">
+          <div className="w-10 h-10 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center text-white font-extrabold text-lg shadow-lg glow-purple">
             EB
           </div>
           <div>
-            <h1 className="text-xl font-bold text-indigo-600 leading-none">Edubridge Teacher Portal</h1>
-            <p className="text-xs text-slate-500 mt-1">Classroom Analytics & AI Summarizer Hub</p>
+            <h1 className="text-xl font-black gradient-text leading-none">Teacher Control Center</h1>
+            <p className="text-[11px] text-slate-400 font-medium mt-1">Classroom Analytics & AI Summarizer</p>
           </div>
         </div>
 
@@ -398,18 +401,18 @@ export default function TeacherPortal() {
           <Button
             variant="outline"
             size="sm"
-            className="border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold text-xs"
+            className="border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 font-bold text-xs"
             onClick={() => setPricingOpen(true)}
           >
-            <Crown className="w-3.5 h-3.5 mr-1.5 text-amber-600" /> Upgrade Pro
+            <Crown className="w-3.5 h-3.5 mr-1.5 text-amber-400" /> Upgrade Pro
           </Button>
 
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-semibold text-slate-800">{self?.name || "Teacher"}</p>
-            <p className="text-xs text-slate-500">{self?.email || "teacher@edumeet.ai"}</p>
+            <p className="text-xs font-bold text-white">{self?.name || "Teacher"}</p>
+            <p className="text-[10px] text-slate-400">{self?.email || "teacher@edumeet.ai"}</p>
           </div>
 
-          <Button variant="outline" size="sm" onClick={handleLogout} className="text-slate-600 hover:text-red-600 border-slate-200">
+          <Button variant="outline" size="sm" onClick={handleLogout} className="text-slate-300 hover:text-red-400 border-slate-800 hover:bg-slate-900 text-xs">
             <LogOut className="w-4 h-4 mr-1.5" /> Logout
           </Button>
         </div>
@@ -417,40 +420,41 @@ export default function TeacherPortal() {
 
       <PricingModal open={pricingOpen} onOpenChange={setPricingOpen} userRole="teacher" />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden z-10">
         {/* Sidebar */}
-        <aside className="w-72 border-r bg-white p-5 flex flex-col justify-between overflow-y-auto">
+        <aside className="w-72 border-r border-slate-800/80 glass-panel p-5 flex flex-col justify-between overflow-y-auto">
           <div>
             <Dialog>
               <DialogTrigger asChild>
-                <Button className="w-full mb-6 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl shadow-md">
+                <Button className="w-full mb-6 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-2.5 rounded-xl shadow-lg glow-purple text-xs">
                   <Plus className="w-4 h-4 mr-2" /> Create New Class
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent className="sm:max-w-md glass-panel border-slate-800 text-white rounded-3xl">
                 <DialogHeader>
-                  <DialogTitle className="text-indigo-600">Create a New Classroom</DialogTitle>
+                  <DialogTitle className="text-purple-400 font-bold">Create a New Classroom</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-2">
                   <div className="space-y-2">
-                    <Label htmlFor="className">Classroom Name</Label>
+                    <Label htmlFor="className" className="text-slate-300 text-xs font-semibold">Classroom Name</Label>
                     <Input
                       id="className"
                       value={newClass}
                       onChange={(e) => setNewClass(e.target.value)}
                       placeholder="e.g. Advanced Web Engineering"
+                      className="bg-slate-950 border-slate-800 text-white rounded-xl text-xs"
                     />
                   </div>
                 </div>
                 <DialogClose asChild>
-                  <Button type="button" className="w-full bg-indigo-600 text-white" onClick={handleCreateClassroom}>
+                  <Button type="button" className="w-full bg-purple-600 text-white font-bold text-xs" onClick={handleCreateClassroom}>
                     Create Classroom
                   </Button>
                 </DialogClose>
               </DialogContent>
             </Dialog>
 
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">Your Classrooms</h2>
+            <h2 className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-3 px-1">Your Classrooms</h2>
             <ul className="space-y-1.5">
               {yourClasses.map((cls) => {
                 const isActive = activeClass?.classId === cls.classId
@@ -458,12 +462,12 @@ export default function TeacherPortal() {
                   <li key={cls.classId}>
                     <Button
                       variant={isActive ? "secondary" : "ghost"}
-                      className={`w-full justify-start text-left font-medium rounded-lg px-3 py-2.5 transition-all ${
-                        isActive ? "bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold" : "text-slate-700 hover:bg-slate-100"
+                      className={`w-full justify-start text-left font-semibold rounded-xl px-3 py-2.5 transition-all text-xs ${
+                        isActive ? "bg-purple-950/80 text-purple-300 border border-purple-500/40 font-bold glow-purple" : "text-slate-400 hover:bg-slate-900 hover:text-white"
                       }`}
                       onClick={() => setActiveClass(cls)}
                     >
-                      <Book className={`w-4 h-4 mr-2.5 ${isActive ? "text-indigo-600" : "text-slate-400"}`} />
+                      <Book className={`w-4 h-4 mr-2.5 ${isActive ? "text-purple-400" : "text-slate-500"}`} />
                       <span className="truncate">{cls.className}</span>
                     </Button>
                   </li>
@@ -472,33 +476,33 @@ export default function TeacherPortal() {
             </ul>
           </div>
 
-          <div className="mt-8 pt-4 border-t border-slate-100">
-            <div className="p-3 bg-indigo-50/70 rounded-xl border border-indigo-100 text-xs text-indigo-800 space-y-1">
-              <p className="font-semibold flex items-center">
-                <Sparkles className="w-3.5 h-3.5 mr-1 text-indigo-600" /> Active Class:
+          <div className="mt-8 pt-4 border-t border-slate-800">
+            <div className="p-3 bg-slate-900/80 rounded-2xl border border-slate-800 text-xs text-slate-300 space-y-1">
+              <p className="font-bold flex items-center text-purple-400">
+                <Sparkles className="w-3.5 h-3.5 mr-1" /> Active Classroom:
               </p>
-              <p className="truncate font-bold text-indigo-900">{activeClass?.className}</p>
+              <p className="truncate font-black text-white">{activeClass?.className}</p>
             </div>
           </div>
         </aside>
 
         {/* Main Workspace */}
-        <main className="flex-1 p-8 overflow-y-auto bg-slate-50/50">
+        <main className="flex-1 p-8 overflow-y-auto">
           <Tabs defaultValue="analytics" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 max-w-2xl bg-white p-1 rounded-xl border shadow-sm mb-6">
-              <TabsTrigger value="analytics" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium">
+            <TabsList className="grid w-full grid-cols-5 max-w-2xl bg-slate-900/80 p-1 rounded-2xl border border-slate-800 shadow-xl mb-6">
+              <TabsTrigger value="analytics" className="rounded-xl data-[state=active]:bg-purple-600 data-[state=active]:text-white font-bold text-xs">
                 Analytics
               </TabsTrigger>
-              <TabsTrigger value="assignments" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium">
+              <TabsTrigger value="assignments" className="rounded-xl data-[state=active]:bg-purple-600 data-[state=active]:text-white font-bold text-xs">
                 Assignments
               </TabsTrigger>
-              <TabsTrigger value="students" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium">
+              <TabsTrigger value="students" className="rounded-xl data-[state=active]:bg-purple-600 data-[state=active]:text-white font-bold text-xs">
                 Students ({students.length})
               </TabsTrigger>
-              <TabsTrigger value="chapters" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium">
+              <TabsTrigger value="chapters" className="rounded-xl data-[state=active]:bg-purple-600 data-[state=active]:text-white font-bold text-xs">
                 Chapters & AI
               </TabsTrigger>
-              <TabsTrigger value="content" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-medium">
+              <TabsTrigger value="content" className="rounded-xl data-[state=active]:bg-purple-600 data-[state=active]:text-white font-bold text-xs">
                 Content
               </TabsTrigger>
             </TabsList>
@@ -506,49 +510,49 @@ export default function TeacherPortal() {
             {/* Analytics Dashboard Tab (from handwritten note) */}
             <TabsContent value="analytics" className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="shadow-sm border-slate-200">
+                <Card className="glass-card border-slate-800">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-slate-500 font-semibold uppercase">Total Students</p>
-                      <p className="text-2xl font-bold text-slate-900 mt-1">{students.length}</p>
+                      <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Total Enrolled</p>
+                      <p className="text-2xl font-black text-white mt-1">{students.length}</p>
                     </div>
-                    <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center font-bold">
+                    <div className="w-10 h-10 bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 rounded-2xl flex items-center justify-center font-bold">
                       <UserPlus className="w-5 h-5" />
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="shadow-sm border-slate-200">
+                <Card className="glass-card border-slate-800">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-slate-500 font-semibold uppercase">Class Average</p>
-                      <p className="text-2xl font-bold text-emerald-600 mt-1">86.7%</p>
+                      <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Class Average</p>
+                      <p className="text-2xl font-black text-emerald-400 mt-1">86.7%</p>
                     </div>
-                    <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center font-bold">
+                    <div className="w-10 h-10 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-2xl flex items-center justify-center font-bold">
                       <Award className="w-5 h-5" />
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="shadow-sm border-slate-200">
+                <Card className="glass-card border-slate-800">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-slate-500 font-semibold uppercase">Completion Rate</p>
-                      <p className="text-2xl font-bold text-blue-600 mt-1">78.3%</p>
+                      <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Completion Rate</p>
+                      <p className="text-2xl font-black text-cyan-400 mt-1">78.3%</p>
                     </div>
-                    <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center font-bold">
+                    <div className="w-10 h-10 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-2xl flex items-center justify-center font-bold">
                       <TrendingUp className="w-5 h-5" />
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="shadow-sm border-slate-200">
+                <Card className="glass-card border-slate-800">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-slate-500 font-semibold uppercase">Active Quizzes</p>
-                      <p className="text-2xl font-bold text-purple-600 mt-1">{assignments.length}</p>
+                      <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Active Quizzes</p>
+                      <p className="text-2xl font-black text-purple-400 mt-1">{assignments.length}</p>
                     </div>
-                    <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center font-bold">
+                    <div className="w-10 h-10 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-2xl flex items-center justify-center font-bold">
                       <BarChart3 className="w-5 h-5" />
                     </div>
                   </CardContent>
@@ -556,45 +560,45 @@ export default function TeacherPortal() {
               </div>
 
               {/* Student Performance Analysis Table */}
-              <Card className="shadow-sm border-slate-200">
+              <Card className="glass-panel border-slate-800 rounded-3xl shadow-2xl overflow-hidden glow-purple">
                 <CardHeader>
-                  <CardTitle className="text-indigo-600 flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-indigo-600" /> Student Performance & Topic Mastery Analysis
+                  <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-purple-400" /> Student Performance & Topic Mastery Analysis
                   </CardTitle>
-                  <CardDescription>Individual student scores, assignment completion, and AI recommendations</CardDescription>
+                  <CardDescription className="text-slate-400 text-xs">Individual student scores, assignment completion, and AI recommendations</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>Student Name</TableHead>
-                        <TableHead>Avg Score</TableHead>
-                        <TableHead>Course Completion</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Performance</TableHead>
+                      <TableRow className="border-slate-800">
+                        <TableHead className="text-slate-400">Student Name</TableHead>
+                        <TableHead className="text-slate-400">Avg Score</TableHead>
+                        <TableHead className="text-slate-400">Course Completion</TableHead>
+                        <TableHead className="text-slate-400">Status</TableHead>
+                        <TableHead className="text-right text-slate-400">Performance</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {students.map((student) => (
-                        <TableRow key={student.id}>
-                          <TableCell className="font-medium text-slate-800">{student.name}</TableCell>
-                          <TableCell className="font-bold text-indigo-600">{student.score}%</TableCell>
+                        <TableRow key={student.id} className="border-slate-800/60 hover:bg-slate-900/50">
+                          <TableCell className="font-semibold text-slate-200">{student.name}</TableCell>
+                          <TableCell className="font-black text-purple-400">{student.score}%</TableCell>
                           <TableCell className="w-48">
                             <div className="space-y-1">
-                              <Progress value={student.completion} className="h-2" />
-                              <span className="text-[10px] text-slate-500">{student.completion}% completed</span>
+                              <Progress value={student.completion} className="h-2 bg-slate-900" />
+                              <span className="text-[10px] text-slate-500 font-mono">{student.completion}% completed</span>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/30">
                               {student.status}
                             </span>
                           </TableCell>
-                          <TableCell className="text-right font-medium text-xs">
+                          <TableCell className="text-right font-bold text-xs">
                             {student.score >= 85 ? (
-                              <span className="text-emerald-600 font-bold">🌟 Excellent</span>
+                              <span className="text-emerald-400 flex items-center justify-end gap-1">🌟 Mastered</span>
                             ) : (
-                              <span className="text-amber-600 font-bold">⚠️ Needs Practice</span>
+                              <span className="text-amber-400 flex items-center justify-end gap-1">⚠️ Needs Review</span>
                             )}
                           </TableCell>
                         </TableRow>
@@ -607,41 +611,41 @@ export default function TeacherPortal() {
 
             {/* Assignments & Tools Tab */}
             <TabsContent value="assignments" className="space-y-6">
-              <Card className="shadow-sm border-slate-200">
+              <Card className="glass-panel border-slate-800 rounded-3xl shadow-2xl">
                 <CardHeader>
-                  <CardTitle className="text-indigo-600">Assignment & Quiz Builders</CardTitle>
-                  <CardDescription>Create Coding Quizzes, Topic MCQs, Short Answer Q&As, and Announcements</CardDescription>
+                  <CardTitle className="text-purple-400 font-bold">Assignment & Quiz Builders</CardTitle>
+                  <CardDescription className="text-slate-400 text-xs">Create Coding Quizzes, Topic MCQs, Short Answer Q&As, and Announcements</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Create Coding / Topic Quiz Modal */}
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button className="w-full justify-start bg-purple-600 hover:bg-purple-700 text-white font-medium p-4 h-auto rounded-xl">
-                          <Code className="w-5 h-5 mr-3" />
+                        <Button className="w-full justify-start bg-purple-600 hover:bg-purple-500 text-white font-bold p-4 h-auto rounded-2xl shadow-lg glow-purple">
+                          <Code className="w-5 h-5 mr-3 text-purple-200" />
                           <div>
-                            <div className="font-semibold text-left">Coding & Topic Quiz</div>
-                            <div className="text-xs text-purple-100 font-normal">Create Coding Quizzes & MCQs</div>
+                            <div className="font-bold text-left text-sm">Coding & Topic Quiz</div>
+                            <div className="text-xs text-purple-200 font-normal">Create Coding Quizzes & MCQs</div>
                           </div>
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent className="glass-panel border-slate-800 text-white rounded-3xl">
                         <DialogHeader>
-                          <DialogTitle>Create Coding / Topic Quiz</DialogTitle>
+                          <DialogTitle className="text-purple-400 font-bold">Create Coding / Topic Quiz</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 py-2">
                           <div className="space-y-2">
-                            <Label>Quiz Title</Label>
-                            <Input placeholder="e.g. Binary Tree Traversal Coding Quiz" value={quizTitle} onChange={(e) => setQuizTitle(e.target.value)} />
+                            <Label className="text-slate-300 text-xs">Quiz Title</Label>
+                            <Input placeholder="e.g. Binary Tree Traversal Coding Quiz" value={quizTitle} onChange={(e) => setQuizTitle(e.target.value)} className="bg-slate-950 border-slate-800 text-white text-xs rounded-xl" />
                           </div>
 
                           <div className="space-y-2">
-                            <Label>Quiz Format</Label>
+                            <Label className="text-slate-300 text-xs">Quiz Format</Label>
                             <div className="grid grid-cols-2 gap-2">
                               <Button
                                 type="button"
                                 variant={quizType === "Coding Quiz" ? "secondary" : "outline"}
-                                className={quizType === "Coding Quiz" ? "bg-purple-100 text-purple-700 border-purple-300 font-bold" : ""}
+                                className={quizType === "Coding Quiz" ? "bg-purple-600 text-white font-bold text-xs" : "border-slate-800 text-slate-300 text-xs"}
                                 onClick={() => setQuizType("Coding Quiz")}
                               >
                                 Coding Quiz
@@ -649,7 +653,7 @@ export default function TeacherPortal() {
                               <Button
                                 type="button"
                                 variant={quizType === "Quiz" ? "secondary" : "outline"}
-                                className={quizType === "Quiz" ? "bg-purple-100 text-purple-700 border-purple-300 font-bold" : ""}
+                                className={quizType === "Quiz" ? "bg-purple-600 text-white font-bold text-xs" : "border-slate-800 text-slate-300 text-xs"}
                                 onClick={() => setQuizType("Quiz")}
                               >
                                 Topic MCQ
@@ -658,12 +662,12 @@ export default function TeacherPortal() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label>Due Date</Label>
-                            <Input type="date" value={quizDueDate} onChange={(e) => setQuizDueDate(e.target.value)} />
+                            <Label className="text-slate-300 text-xs">Due Date</Label>
+                            <Input type="date" value={quizDueDate} onChange={(e) => setQuizDueDate(e.target.value)} className="bg-slate-950 border-slate-800 text-white text-xs rounded-xl" />
                           </div>
                         </div>
                         <DialogClose asChild>
-                          <Button className="w-full bg-purple-600 text-white" onClick={handleCreateQuiz}>
+                          <Button className="w-full bg-purple-600 text-white font-bold text-xs" onClick={handleCreateQuiz}>
                             Publish Quiz
                           </Button>
                         </DialogClose>
@@ -673,36 +677,36 @@ export default function TeacherPortal() {
                     {/* Create Test Modal */}
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button className="w-full justify-start bg-indigo-600 hover:bg-indigo-700 text-white font-medium p-4 h-auto rounded-xl">
-                          <Plus className="w-5 h-5 mr-3" />
+                        <Button className="w-full justify-start bg-indigo-600 hover:bg-indigo-500 text-white font-bold p-4 h-auto rounded-2xl shadow-lg glow-indigo">
+                          <Plus className="w-5 h-5 mr-3 text-indigo-200" />
                           <div>
-                            <div className="font-semibold text-left">Create Test</div>
-                            <div className="text-xs text-indigo-100 font-normal">Timed assessments & Q&A</div>
+                            <div className="font-bold text-left text-sm">Create Test</div>
+                            <div className="text-xs text-indigo-200 font-normal">Timed assessments & Q&A</div>
                           </div>
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent className="glass-panel border-slate-800 text-white rounded-3xl">
                         <DialogHeader>
-                          <DialogTitle>Create Assessment Test</DialogTitle>
+                          <DialogTitle className="text-indigo-400 font-bold">Create Assessment Test</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 py-2">
                           <div className="space-y-2">
-                            <Label>Test Title</Label>
-                            <Input placeholder="e.g. Midterm Examination" value={testTitle} onChange={(e) => setTestTitle(e.target.value)} />
+                            <Label className="text-slate-300 text-xs">Test Title</Label>
+                            <Input placeholder="e.g. Midterm Examination" value={testTitle} onChange={(e) => setTestTitle(e.target.value)} className="bg-slate-950 border-slate-800 text-white text-xs rounded-xl" />
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label>Total Marks</Label>
-                              <Input type="number" value={testMarks} onChange={(e) => setTestMarks(e.target.value)} />
+                              <Label className="text-slate-300 text-xs">Total Marks</Label>
+                              <Input type="number" value={testMarks} onChange={(e) => setTestMarks(e.target.value)} className="bg-slate-950 border-slate-800 text-white text-xs rounded-xl" />
                             </div>
                             <div className="space-y-2">
-                              <Label>Due Date</Label>
-                              <Input type="date" value={testDueDate} onChange={(e) => setTestDueDate(e.target.value)} />
+                              <Label className="text-slate-300 text-xs">Due Date</Label>
+                              <Input type="date" value={testDueDate} onChange={(e) => setTestDueDate(e.target.value)} className="bg-slate-950 border-slate-800 text-white text-xs rounded-xl" />
                             </div>
                           </div>
                         </div>
                         <DialogClose asChild>
-                          <Button className="w-full bg-indigo-600 text-white" onClick={handleCreateTest}>
+                          <Button className="w-full bg-indigo-600 text-white font-bold text-xs" onClick={handleCreateTest}>
                             Publish Test
                           </Button>
                         </DialogClose>
@@ -712,26 +716,26 @@ export default function TeacherPortal() {
                     {/* Share Announcement Modal */}
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button className="w-full justify-start bg-slate-800 hover:bg-slate-900 text-white font-medium p-4 h-auto rounded-xl">
-                          <FileText className="w-5 h-5 mr-3" />
+                        <Button className="w-full justify-start bg-slate-900 hover:bg-slate-800 text-white font-bold p-4 h-auto rounded-2xl border border-slate-800">
+                          <FileText className="w-5 h-5 mr-3 text-slate-400" />
                           <div>
-                            <div className="font-semibold text-left">Share Notice</div>
-                            <div className="text-xs text-slate-300 font-normal">Broadcast to class board</div>
+                            <div className="font-bold text-left text-sm">Share Notice</div>
+                            <div className="text-xs text-slate-400 font-normal">Broadcast to class board</div>
                           </div>
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent className="glass-panel border-slate-800 text-white rounded-3xl">
                         <DialogHeader>
-                          <DialogTitle>Broadcast Announcement</DialogTitle>
+                          <DialogTitle className="text-white font-bold">Broadcast Announcement</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 py-2">
                           <div className="space-y-2">
-                            <Label>Announcement Message</Label>
-                            <Input placeholder="e.g. Next class will cover Trees and Graphs." value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} />
+                            <Label className="text-slate-300 text-xs">Announcement Message</Label>
+                            <Input placeholder="e.g. Next class will cover Trees and Graphs." value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} className="bg-slate-950 border-slate-800 text-white text-xs rounded-xl" />
                           </div>
                         </div>
                         <DialogClose asChild>
-                          <Button className="w-full bg-slate-900 text-white" onClick={handleShareAnnouncement}>
+                          <Button className="w-full bg-slate-800 text-white font-bold text-xs" onClick={handleShareAnnouncement}>
                             Broadcast Notice
                           </Button>
                         </DialogClose>
@@ -742,25 +746,25 @@ export default function TeacherPortal() {
               </Card>
 
               {/* Published Assessments List */}
-              <Card className="shadow-sm border-slate-200">
+              <Card className="glass-panel border-slate-800 rounded-3xl">
                 <CardHeader>
-                  <CardTitle className="text-slate-800 text-lg">Active Quizzes & Assessments</CardTitle>
+                  <CardTitle className="text-white text-lg font-bold">Active Quizzes & Assessments</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="divide-y divide-slate-100">
+                  <ul className="divide-y divide-slate-800">
                     {assignments.map((item) => (
-                      <li key={item.id} className="py-3 flex items-center justify-between">
+                      <li key={item.id} className="py-3.5 flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                          {item.type === "Coding Quiz" && <Code className="w-5 h-5 text-purple-600" />}
-                          {item.type === "Test" && <FileCheck className="w-5 h-5 text-indigo-600" />}
-                          {item.type === "Quiz" && <HelpCircle className="w-5 h-5 text-purple-600" />}
-                          {item.type === "Announcement" && <FileText className="w-5 h-5 text-slate-600" />}
+                          {item.type === "Coding Quiz" && <Code className="w-5 h-5 text-purple-400" />}
+                          {item.type === "Test" && <FileCheck className="w-5 h-5 text-indigo-400" />}
+                          {item.type === "Quiz" && <HelpCircle className="w-5 h-5 text-purple-400" />}
+                          {item.type === "Announcement" && <FileText className="w-5 h-5 text-slate-400" />}
                           <div>
-                            <p className="font-medium text-slate-800">{item.title}</p>
-                            <p className="text-xs text-slate-500">Format: {item.type} {item.marks ? `• ${item.marks} Marks` : ""} • Due: {item.dueDate}</p>
+                            <p className="font-semibold text-white text-sm">{item.title}</p>
+                            <p className="text-xs text-slate-400">Format: {item.type} {item.marks ? `• ${item.marks} Marks` : ""} • Due: {item.dueDate}</p>
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" className="text-xs text-red-500 hover:text-red-700" onClick={() => setAssignments((prev) => prev.filter((a) => a.id !== item.id))}>
+                        <Button variant="ghost" size="sm" className="text-xs text-red-400 hover:text-red-300 hover:bg-slate-900" onClick={() => setAssignments((prev) => prev.filter((a) => a.id !== item.id))}>
                           Remove
                         </Button>
                       </li>
@@ -772,34 +776,34 @@ export default function TeacherPortal() {
 
             {/* Students Management Tab */}
             <TabsContent value="students">
-              <Card className="shadow-sm border-slate-200">
+              <Card className="glass-panel border-slate-800 rounded-3xl">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle className="text-indigo-600">Student Roster</CardTitle>
-                    <CardDescription>Manage students enrolled in {activeClass?.className}</CardDescription>
+                    <CardTitle className="text-purple-400 font-bold">Student Roster</CardTitle>
+                    <CardDescription className="text-slate-400 text-xs">Manage students enrolled in {activeClass?.className}</CardDescription>
                   </div>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button size="sm" className="bg-indigo-600 text-white">
+                      <Button size="sm" className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs">
                         <UserPlus className="w-4 h-4 mr-1.5" /> Add Student
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="glass-panel border-slate-800 text-white rounded-3xl">
                       <DialogHeader>
-                        <DialogTitle>Enroll New Student</DialogTitle>
+                        <DialogTitle className="text-purple-400 font-bold">Enroll New Student</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4 py-2">
                         <div className="space-y-2">
-                          <Label>Student Full Name</Label>
-                          <Input placeholder="e.g. David Miller" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} />
+                          <Label className="text-slate-300 text-xs">Student Full Name</Label>
+                          <Input placeholder="e.g. David Miller" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} className="bg-slate-950 border-slate-800 text-white text-xs rounded-xl" />
                         </div>
                         <div className="space-y-2">
-                          <Label>Student Email</Label>
-                          <Input placeholder="david@example.com" value={newStudentEmail} onChange={(e) => setNewStudentEmail(e.target.value)} />
+                          <Label className="text-slate-300 text-xs">Student Email</Label>
+                          <Input placeholder="david@example.com" value={newStudentEmail} onChange={(e) => setNewStudentEmail(e.target.value)} className="bg-slate-950 border-slate-800 text-white text-xs rounded-xl" />
                         </div>
                       </div>
                       <DialogClose asChild>
-                        <Button className="w-full bg-indigo-600 text-white" onClick={handleAddStudent}>
+                        <Button className="w-full bg-purple-600 text-white font-bold text-xs" onClick={handleAddStudent}>
                           Add Student
                         </Button>
                       </DialogClose>
@@ -809,21 +813,21 @@ export default function TeacherPortal() {
                 <CardContent>
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>Student Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                      <TableRow className="border-slate-800">
+                        <TableHead className="text-slate-400">Student Name</TableHead>
+                        <TableHead className="text-slate-400">Email</TableHead>
+                        <TableHead className="text-slate-400">Status</TableHead>
+                        <TableHead className="text-right text-slate-400">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {students.map((student) => (
-                        <TableRow key={student.id}>
-                          <TableCell className="font-medium text-slate-800">{student.name}</TableCell>
-                          <TableCell className="text-slate-600 text-sm">{student.email}</TableCell>
+                        <TableRow key={student.id} className="border-slate-800/60">
+                          <TableCell className="font-semibold text-white">{student.name}</TableCell>
+                          <TableCell className="text-slate-400 text-xs font-mono">{student.email}</TableCell>
                           <TableCell>
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                              student.status === "Enrolled" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
+                              student.status === "Enrolled" ? "bg-emerald-950/80 text-emerald-400 border-emerald-500/40" : "bg-amber-950/80 text-amber-400 border-amber-500/40"
                             }`}>
                               {student.status}
                             </span>
@@ -831,7 +835,7 @@ export default function TeacherPortal() {
                           <TableCell className="text-right space-x-2">
                             {student.status === "Pending" ? (
                               <>
-                                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleAcceptStudent(student.id)}>
+                                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs" onClick={() => handleAcceptStudent(student.id)}>
                                   <Check className="w-3.5 h-3.5 mr-1" /> Accept
                                 </Button>
                                 <Button size="sm" variant="destructive" onClick={() => handleRemoveStudent(student.id)}>
@@ -839,7 +843,7 @@ export default function TeacherPortal() {
                                 </Button>
                               </>
                             ) : (
-                              <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleRemoveStudent(student.id)}>
+                              <Button size="sm" variant="outline" className="text-red-400 border-red-500/30 hover:bg-red-950/50 text-xs" onClick={() => handleRemoveStudent(student.id)}>
                                 <Trash2 className="w-3.5 h-3.5 mr-1" /> Remove
                               </Button>
                             )}
@@ -854,35 +858,36 @@ export default function TeacherPortal() {
 
             {/* Chapters & AI Bullet Summarizer Tab */}
             <TabsContent value="chapters" className="space-y-6">
-              <Card className="shadow-sm border-slate-200">
+              <Card className="glass-panel border-slate-800 rounded-3xl">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle className="text-indigo-600">Course Chapters & Uploads</CardTitle>
-                    <CardDescription>Upload notes, slides, and voice recordings for {activeClass?.className}</CardDescription>
+                    <CardTitle className="text-purple-400 font-bold">Course Chapters & Uploads</CardTitle>
+                    <CardDescription className="text-slate-400 text-xs">Upload notes, slides, and voice recordings for {activeClass?.className}</CardDescription>
                   </div>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button className="bg-indigo-600 text-white">
+                      <Button className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs">
                         <Plus className="w-4 h-4 mr-2" /> Create Chapter
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="glass-panel border-slate-800 text-white rounded-3xl">
                       <DialogHeader>
-                        <DialogTitle>Create a New Chapter</DialogTitle>
+                        <DialogTitle className="text-purple-400 font-bold">Create a New Chapter</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4 py-2">
                         <div className="space-y-2">
-                          <Label htmlFor="chapterName">Chapter Name</Label>
+                          <Label htmlFor="chapterName" className="text-slate-300 text-xs">Chapter Name</Label>
                           <Input
                             id="chapterName"
                             placeholder="e.g. Chapter 3: Dynamic Programming"
                             value={newChapter}
                             onChange={(e) => setNewChapter(e.target.value)}
+                            className="bg-slate-950 border-slate-800 text-white text-xs rounded-xl"
                           />
                         </div>
                       </div>
                       <DialogClose asChild>
-                        <Button className="w-full bg-indigo-600 text-white" onClick={handleCreateChapter}>
+                        <Button className="w-full bg-purple-600 text-white font-bold text-xs" onClick={handleCreateChapter}>
                           Create Chapter
                         </Button>
                       </DialogClose>
@@ -898,15 +903,15 @@ export default function TeacherPortal() {
 
                       return (
                         <div key={chap.chapterId} className={`p-5 rounded-2xl border transition-all ${
-                          isSelected ? "border-indigo-300 bg-indigo-50/30 shadow-sm" : "border-slate-200 bg-white"
+                          isSelected ? "border-purple-500/50 bg-purple-950/30 shadow-lg glow-purple" : "border-slate-800 bg-slate-900/50"
                         }`}>
                           <div className="flex items-center justify-between mb-3">
-                            <h4 className="font-bold text-slate-800 text-base">{chap.chapterName}</h4>
+                            <h4 className="font-bold text-white text-base">{chap.chapterName}</h4>
                             <Button
                               variant={isSelected ? "secondary" : "outline"}
                               size="sm"
                               onClick={() => setSelectedChapter(chap)}
-                              className="text-xs"
+                              className={`text-xs font-bold ${isSelected ? "bg-purple-600 text-white" : "border-slate-800 text-slate-300"}`}
                             >
                               {isSelected ? "Selected Chapter" : "Select Chapter"}
                             </Button>
@@ -914,9 +919,9 @@ export default function TeacherPortal() {
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
                             {/* File Upload Box */}
-                            <div className="p-4 border-2 border-dashed border-slate-200 hover:border-indigo-300 rounded-xl bg-slate-50 flex flex-col items-center justify-center text-center">
-                              <Upload className="w-6 h-6 text-indigo-500 mb-2" />
-                              <p className="text-xs font-semibold text-slate-700 mb-1">
+                            <div className="p-4 border-2 border-dashed border-slate-800 hover:border-purple-500/50 rounded-2xl bg-slate-950/80 flex flex-col items-center justify-center text-center">
+                              <Upload className="w-6 h-6 text-purple-400 mb-2" />
+                              <p className="text-xs font-bold text-slate-200 mb-1">
                                 {file && isSelected ? file.name : "Select PDF / PPT / Document"}
                               </p>
                               <input
@@ -934,12 +939,12 @@ export default function TeacherPortal() {
                               <div className="flex gap-2 mt-2">
                                 <Label
                                   htmlFor={`fileUpload-${chap.chapterId}`}
-                                  className="cursor-pointer inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+                                  className="cursor-pointer inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800"
                                 >
                                   Browse File
                                 </Label>
                                 {file && isSelected && (
-                                  <Button size="sm" className="bg-indigo-600 text-white text-xs h-7" onClick={handleFileUpload}>
+                                  <Button size="sm" className="bg-purple-600 text-white text-xs h-7 font-bold" onClick={handleFileUpload}>
                                     Upload
                                   </Button>
                                 )}
@@ -947,34 +952,34 @@ export default function TeacherPortal() {
                             </div>
 
                             {/* Voice Capture Box */}
-                            <div className="p-4 border border-slate-200 rounded-xl bg-slate-50 flex flex-col items-center justify-center text-center">
-                              <Mic className={`w-6 h-6 mb-2 ${isRecording ? "text-red-500 animate-pulse" : "text-purple-600"}`} />
-                              <p className="text-xs font-semibold text-slate-700">
-                                {isRecording ? `Recording... (${recordingTime}s)` : "Voice Lecture Capture"}
+                            <div className="p-4 border border-slate-800 rounded-2xl bg-slate-950/80 flex flex-col items-center justify-center text-center">
+                              <Mic className={`w-6 h-6 mb-2 ${isRecording ? "text-rose-500 animate-pulse" : "text-indigo-400"}`} />
+                              <p className="text-xs font-bold text-slate-200">
+                                {isRecording ? `Recording Audio... (${recordingTime}s)` : "Voice Lecture Capture"}
                               </p>
-                              <p className="text-[11px] text-slate-500 mb-2">Record audio note directly from browser</p>
+                              <p className="text-[11px] text-slate-500 mb-2">Record live audio note from browser</p>
                               <Button
                                 size="sm"
-                                className={isRecording ? "bg-red-600 hover:bg-red-700 text-white text-xs" : "bg-purple-600 hover:bg-purple-700 text-white text-xs"}
+                                className={isRecording ? "bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold" : "bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold glow-indigo"}
                                 onClick={() => handleVoiceCapture(chap.chapterId)}
                               >
-                                {isRecording ? "Stop & Save Note" : "Start Audio Recording"}
+                                {isRecording ? "Stop & Save Recording" : "Start Voice Capture"}
                               </Button>
                             </div>
                           </div>
 
                           {/* Uploaded Content */}
                           {contentList.length > 0 && (
-                            <div className="mt-4 pt-3 border-t border-slate-100">
-                              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Uploaded Materials ({contentList.length})</p>
+                            <div className="mt-4 pt-3 border-t border-slate-800">
+                              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">Uploaded Materials ({contentList.length})</p>
                               <ul className="space-y-1.5">
                                 {contentList.map((item) => (
-                                  <li key={item.fileId} className="flex items-center justify-between p-2 rounded-lg bg-slate-100/70 text-xs">
-                                    <span className="font-medium text-slate-700 flex items-center">
-                                      {item.fileType.includes("audio") ? <Volume2 className="w-3.5 h-3.5 mr-1.5 text-purple-600" /> : <FileText className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />}
+                                  <li key={item.fileId} className="flex items-center justify-between p-2 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+                                    <span className="font-semibold text-slate-200 flex items-center">
+                                      {item.fileType.includes("audio") ? <Volume2 className="w-3.5 h-3.5 mr-1.5 text-rose-400" /> : <FileText className="w-3.5 h-3.5 mr-1.5 text-purple-400" />}
                                       {item.fileName}
                                     </span>
-                                    <span className="text-[10px] text-slate-400">Attached</span>
+                                    <span className="text-[10px] text-slate-500 font-mono">Attached</span>
                                   </li>
                                 ))}
                               </ul>
@@ -992,10 +997,10 @@ export default function TeacherPortal() {
 
             {/* Content Management Tab */}
             <TabsContent value="content">
-              <Card className="shadow-sm border-slate-200">
+              <Card className="glass-panel border-slate-800 rounded-3xl">
                 <CardHeader>
-                  <CardTitle className="text-indigo-600">Course Materials & Downloads</CardTitle>
-                  <CardDescription>View all materials uploaded across chapters in {activeClass?.className}</CardDescription>
+                  <CardTitle className="text-purple-400 font-bold">Course Materials & Downloads</CardTitle>
+                  <CardDescription className="text-slate-400 text-xs">View all materials uploaded across chapters in {activeClass?.className}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {chapterContent.length === 0 ? (
@@ -1003,22 +1008,22 @@ export default function TeacherPortal() {
                   ) : (
                     <Table>
                       <TableHeader>
-                        <TableRow>
-                          <TableHead>File Name</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
+                        <TableRow className="border-slate-800">
+                          <TableHead className="text-slate-400">File Name</TableHead>
+                          <TableHead className="text-slate-400">Type</TableHead>
+                          <TableHead className="text-right text-slate-400">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {chapterContent.map((item) => (
-                          <TableRow key={item.fileId}>
-                            <TableCell className="font-medium text-slate-800 flex items-center">
-                              {item.fileType.includes("audio") ? <Volume2 className="w-4 h-4 mr-2 text-purple-600" /> : <FileText className="w-4 h-4 mr-2 text-indigo-600" />}
+                          <TableRow key={item.fileId} className="border-slate-800/60">
+                            <TableCell className="font-semibold text-white flex items-center">
+                              {item.fileType.includes("audio") ? <Volume2 className="w-4 h-4 mr-2 text-rose-400" /> : <FileText className="w-4 h-4 mr-2 text-purple-400" />}
                               {item.fileName}
                             </TableCell>
-                            <TableCell className="text-xs text-slate-500 uppercase">{item.fileType.split("/")[1] || "DOCUMENT"}</TableCell>
+                            <TableCell className="text-xs text-slate-400 uppercase font-mono">{item.fileType.split("/")[1] || "DOCUMENT"}</TableCell>
                             <TableCell className="text-right">
-                              <Button variant="outline" size="sm" className="text-xs" onClick={() => toast.info(`Opening ${item.fileName}...`)}>
+                              <Button variant="outline" size="sm" className="text-xs border-slate-800 text-slate-300 hover:bg-slate-900" onClick={() => toast.info(`Opening ${item.fileName}...`)}>
                                 Download / View
                               </Button>
                             </TableCell>

@@ -71,3 +71,11 @@ export async function registerUser(name: string, email: string, password: string
     return { error: "DB_ERROR", message: errorMsg }
   }
 }
+
+export async function handleLogin(email: string, password: string, type: string = "student") {
+  return loginUser(email, password, type)
+}
+
+export async function handleSignup(name: string, email: string, password: string, type: string = "student") {
+  return registerUser(name, email, password, type)
+}
