@@ -1,6 +1,6 @@
 'use client'
 import React, { useState } from 'react'
-import { Sparkles, ArrowRight, ShieldCheck, UserCheck, GraduationCap, School, Code2, Cpu, BarChart3, Mic, Zap, Trophy } from 'lucide-react'
+import { Sparkles, ArrowRight, ShieldCheck, UserCheck, GraduationCap, School, Code2, BarChart3, Zap, Trophy, Binary, Layers } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -43,7 +43,7 @@ export default function AuthPage() {
     }
 
     setIsLoading(true)
-    toast.info('Authenticating credentials...')
+    toast.info('Authenticating engineering credentials...')
 
     try {
       const res = await handleLogin(loginEmail, loginPassword)
@@ -55,7 +55,7 @@ export default function AuthPage() {
           email: u.email || loginEmail,
           role: u.type || u.role || role
         }))
-        toast.success(`Welcome back, ${u.name || 'User'}! Redirecting...`)
+        toast.success(`Welcome back, ${u.name || 'Engineer'}! Redirecting...`)
         const destRole = u.type || u.role || role
         router.push(destRole === 'teacher' ? '/teacher' : '/student')
         return
@@ -67,7 +67,7 @@ export default function AuthPage() {
     setTimeout(() => {
       const mockUser = {
         userId: role === 'teacher' ? 'teacher-demo' : 'student-demo',
-        name: role === 'teacher' ? 'Prof. Sarah Jenkins' : 'Alex Rivera',
+        name: role === 'teacher' ? 'Prof. Sarah Jenkins (CS Dept)' : 'Alex Rivera (B.Tech CS)',
         email: loginEmail,
         role: role
       }
@@ -86,7 +86,7 @@ export default function AuthPage() {
     }
 
     setIsLoading(true)
-    toast.info('Registering account...')
+    toast.info('Registering engineering profile...')
 
     try {
       const res = await handleSignup(signupName, signupEmail, signupPassword, role)
@@ -122,8 +122,8 @@ export default function AuthPage() {
 
   const handleQuickDemo = (demoRole: 'student' | 'teacher') => {
     const mockUser = demoRole === 'teacher'
-      ? { userId: 'teacher-demo', name: 'Prof. Sarah Jenkins', email: 'sarah.jenkins@edumeet.ai', role: 'teacher' }
-      : { userId: 'student-demo', name: 'Alex Rivera', email: 'alex.rivera@edumeet.ai', role: 'student' }
+      ? { userId: 'teacher-demo', name: 'Prof. Sarah Jenkins (CS Dept)', email: 'sarah.jenkins@edumeet.ai', role: 'teacher' }
+      : { userId: 'student-demo', name: 'Alex Rivera (B.Tech CS)', email: 'alex.rivera@edumeet.ai', role: 'student' }
 
     localStorage.setItem('user', JSON.stringify(mockUser))
     toast.success(`Logged in as ${mockUser.name} (${demoRole.toUpperCase()})`)
@@ -132,7 +132,7 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-[#faf8f5] text-slate-800 flex flex-col justify-between relative overflow-hidden">
-      {/* Animated Floating Nodes Background */}
+      {/* Animated Floating Engineering Background */}
       <AnimatedLearningBackground />
 
       {/* Header Bar */}
@@ -143,44 +143,44 @@ export default function AuthPage() {
           </div>
           <div>
             <h1 className="text-xl font-extrabold tracking-tight gradient-text-indigo">EduMeet.Ai</h1>
-            <p className="text-[11px] text-slate-500 font-semibold">Creative AI Learning Studio</p>
+            <p className="text-[11px] text-slate-500 font-semibold">Engineering Learning Studio (B.Tech & CS)</p>
           </div>
         </div>
 
         <div className="flex items-center space-x-3">
           <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-700 border border-amber-500/20">
-            <Trophy className="w-3.5 h-3.5 text-amber-500" /> Hackathon Winner Edition
+            <Trophy className="w-3.5 h-3.5 text-amber-500" /> B.Tech & Engineering Edition
           </span>
           <Button variant="outline" size="sm" onClick={() => handleQuickDemo('student')} className="text-xs border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100 text-indigo-700 font-bold">
             Demo Student
           </Button>
           <Button size="sm" onClick={() => handleQuickDemo('teacher')} className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md">
-            Demo Teacher
+            Demo Professor
           </Button>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center flex-1 z-10">
-        {/* Left Column: Hero Showcase */}
+        {/* Left Column: Engineering Hero Showcase */}
         <div className="lg:col-span-6 space-y-6">
-          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-purple-100/80 border border-purple-200 text-purple-800 text-xs font-bold">
-            <Sparkles className="w-4 h-4 text-purple-600" />
-            <span>Next-Gen Interactive EdTech Platform</span>
+          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-indigo-100/80 border border-indigo-200 text-indigo-800 text-xs font-bold">
+            <Sparkles className="w-4 h-4 text-indigo-600" />
+            <span>Built Specifically for Engineering & B.Tech Students</span>
           </div>
 
           <h2 className="text-4xl sm:text-5xl font-black text-slate-900 leading-tight tracking-tight">
             Creative AI Studio for <br />
-            <span className="gradient-text-indigo">Modern Learning & Code</span>
+            <span className="gradient-text-indigo">Engineering & Code</span>
           </h2>
 
           <p className="text-slate-600 text-base leading-relaxed">
-            EduMeet.Ai brings together interactive code trace visualization, real-time analytics, automated AI notes summarization, and browser voice lecture capture in a warm, premium studio environment.
+            Master Data Structures, Operating Systems, Machine Learning, and Engineering Mathematics with interactive code trace visualization, real-time analytics, automated AI notes summarizer, and placement test prep.
           </p>
 
           {/* 1-Click Instant Demo Portals */}
           <div className="pt-2 space-y-3">
-            <p className="text-xs font-extrabold uppercase tracking-wider text-slate-500">⚡ 1-Click Instant Demo Portals</p>
+            <p className="text-xs font-extrabold uppercase tracking-wider text-slate-500">⚡ 1-Click Instant Engineering Portals</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Student Card */}
               <div
@@ -191,8 +191,8 @@ export default function AuthPage() {
                   <GraduationCap className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-900 text-sm group-hover:text-indigo-600 transition-colors">Student Portal</h4>
-                  <p className="text-xs text-slate-500">Code visualizer, AI tutor & progress streak</p>
+                  <h4 className="font-bold text-slate-900 text-sm group-hover:text-indigo-600 transition-colors">Engineering Student</h4>
+                  <p className="text-xs text-slate-500">DSA visualizer, AI tutor & Placement prep</p>
                 </div>
               </div>
 
@@ -205,26 +205,26 @@ export default function AuthPage() {
                   <School className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-900 text-sm group-hover:text-orange-600 transition-colors">Teacher Portal</h4>
-                  <p className="text-xs text-slate-500">Analytics dashboard & voice lecture capture</p>
+                  <h4 className="font-bold text-slate-900 text-sm group-hover:text-orange-600 transition-colors">Department Faculty</h4>
+                  <p className="text-xs text-slate-500">Analytics, coding quizzes & lecture capture</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Feature Highlights Badges */}
+          {/* Engineering Subject Badges */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-200/80">
             <div className="flex items-center space-x-2 text-xs text-slate-700 font-semibold">
-              <Code2 className="w-4 h-4 text-indigo-600" /> <span>Code Trace</span>
+              <Code2 className="w-4 h-4 text-indigo-600" /> <span>DSA & Code Trace</span>
             </div>
             <div className="flex items-center space-x-2 text-xs text-slate-700 font-semibold">
-              <Cpu className="w-4 h-4 text-purple-600" /> <span>Notes → Quiz</span>
+              <Binary className="w-4 h-4 text-purple-600" /> <span>OS & Systems</span>
             </div>
             <div className="flex items-center space-x-2 text-xs text-slate-700 font-semibold">
-              <BarChart3 className="w-4 h-4 text-teal-600" /> <span>Analytics</span>
+              <BarChart3 className="w-4 h-4 text-teal-600" /> <span>Placement Analytics</span>
             </div>
             <div className="flex items-center space-x-2 text-xs text-slate-700 font-semibold">
-              <Mic className="w-4 h-4 text-rose-500" /> <span>Voice Capture</span>
+              <Layers className="w-4 h-4 text-rose-500" /> <span>GATE & Test Prep</span>
             </div>
           </div>
         </div>
@@ -234,10 +234,10 @@ export default function AuthPage() {
           <Card className="w-full max-w-md studio-panel border-slate-200/90 shadow-2xl rounded-3xl overflow-hidden bg-white/90">
             <CardHeader className="space-y-1 pb-4 text-center border-b border-slate-100">
               <CardTitle className="text-xl font-black text-slate-900 flex items-center justify-center gap-2">
-                <Zap className="w-5 h-5 text-indigo-600" /> Enter Learning Workspace
+                <Zap className="w-5 h-5 text-indigo-600" /> Engineering Workspace
               </CardTitle>
               <CardDescription className="text-xs text-slate-500">
-                Select your role to sign in or register
+                Select your engineering role to sign in or register
               </CardDescription>
             </CardHeader>
 
@@ -253,7 +253,7 @@ export default function AuthPage() {
                   }`}
                   onClick={() => setRole('student')}
                 >
-                  <UserCheck className="w-4 h-4" /> Student Role
+                  <UserCheck className="w-4 h-4" /> B.Tech Student
                 </button>
                 <button
                   type="button"
@@ -264,7 +264,7 @@ export default function AuthPage() {
                   }`}
                   onClick={() => setRole('teacher')}
                 >
-                  <ShieldCheck className="w-4 h-4" /> Teacher Role
+                  <ShieldCheck className="w-4 h-4" /> Faculty / Professor
                 </button>
               </div>
 
@@ -283,7 +283,7 @@ export default function AuthPage() {
                 <TabsContent value="login" className="space-y-4 pt-4">
                   <form onSubmit={handleSignInSubmit} className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="loginEmail" className="text-xs font-bold text-slate-700">Email Address</Label>
+                      <Label htmlFor="loginEmail" className="text-xs font-bold text-slate-700">Engineering Email</Label>
                       <Input
                         id="loginEmail"
                         type="email"
@@ -325,11 +325,11 @@ export default function AuthPage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="signupEmail" className="text-xs font-bold text-slate-700">Email Address</Label>
+                      <Label htmlFor="signupEmail" className="text-xs font-bold text-slate-700">Engineering Email</Label>
                       <Input
                         id="signupEmail"
                         type="email"
-                        placeholder="alex@example.com"
+                        placeholder="alex@college.edu"
                         className="bg-white border-slate-200 text-slate-900 text-sm focus:border-indigo-500 rounded-xl"
                         value={signupEmail}
                         onChange={(e) => setSignupEmail(e.target.value)}
@@ -360,7 +360,7 @@ export default function AuthPage() {
 
       {/* Footer */}
       <footer className="px-8 py-4 border-t border-slate-200/80 studio-panel text-center text-xs text-slate-500">
-        <p>© 2026 EduMeet.Ai • Creative Learning Studio • Built with Next.js 14 & Gemini AI</p>
+        <p>© 2026 EduMeet.Ai • Tailored for Engineering Students (CS, ECE, Mech & AI) • Next.js 14 & Gemini AI</p>
       </footer>
     </div>
   )

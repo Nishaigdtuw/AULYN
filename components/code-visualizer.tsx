@@ -54,6 +54,28 @@ const PRESET_EXAMPLES = {
       { line: 3, explanation: "Loop i=1, num=7. Calculate diff = 9 - 7 = 2", variables: { i: 1, num: 7, diff: 2, seen: "{2: 0}" } },
       { line: 5, explanation: "Diff 2 is found in seen! Return indices [0, 1]", variables: { i: 1, num: 7, diff: 2, result: "[0, 1]" }, consoleOutput: "Indices found: [0, 1]" }
     ]
+  },
+  bfsGraph: {
+    title: "Graph BFS Traversal (O(V + E))",
+    language: "javascript",
+    code: `function bfs(graph, startNode) {
+  let queue = [startNode];
+  let visited = new Set([startNode]);
+  while (queue.length > 0) {
+    let node = queue.shift();
+    for (let neighbor of graph[node]) {
+      if (!visited.has(neighbor)) {
+        visited.add(neighbor);
+        queue.push(neighbor);
+      }
+    }
+  }
+}`,
+    steps: [
+      { line: 2, explanation: "Initialize Queue with startNode = 'A'", variables: { queue: "['A']", visited: "{'A'}" } },
+      { line: 5, explanation: "Dequeue Node 'A'. Inspect neighbors ['B', 'C']", variables: { node: "'A'", queue: "[]", neighbors: "['B', 'C']" } },
+      { line: 8, explanation: "Visit 'B' and 'C'. Push to Queue", variables: { queue: "['B', 'C']", visited: "{'A', 'B', 'C'}" }, consoleOutput: "Visited BFS Node: A -> B -> C" }
+    ]
   }
 }
 
@@ -121,10 +143,10 @@ export default function CodeVisualizer() {
       <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-100">
         <div>
           <CardTitle className="text-xl font-black gradient-text-indigo flex items-center gap-2">
-            <Cpu className="w-6 h-6 text-indigo-600" /> Interactive Code Trace Visualizer
+            <Cpu className="w-6 h-6 text-indigo-600" /> Engineering Code Trace IDE & Memory Visualizer
           </CardTitle>
           <CardDescription className="text-slate-500 text-xs mt-1">
-            Step line-by-line through algorithms and inspect real-time variable memory state
+            Trace Data Structures & Algorithms line-by-line for B.Tech CS & Placement Prep
           </CardDescription>
         </div>
         <div className="flex gap-2">
@@ -143,6 +165,14 @@ export default function CodeVisualizer() {
             className={`text-xs font-bold rounded-xl ${selectedPreset === "twoSum" ? "bg-purple-600 text-white shadow-md" : "border-slate-200 text-slate-700"}`}
           >
             Two Sum
+          </Button>
+          <Button
+            variant={selectedPreset === "bfsGraph" ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => handleSelectPreset("bfsGraph")}
+            className={`text-xs font-bold rounded-xl ${selectedPreset === "bfsGraph" ? "bg-cyan-600 text-white shadow-md" : "border-slate-200 text-slate-700"}`}
+          >
+            Graph BFS
           </Button>
         </div>
       </CardHeader>
@@ -211,7 +241,7 @@ export default function CodeVisualizer() {
             {/* Step Explanation Card */}
             <div className="p-4 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200/80 rounded-2xl shadow-sm space-y-1.5">
               <div className="text-[11px] font-black uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-indigo-600" /> Trace Explanation
+                <Sparkles className="w-4 h-4 text-indigo-600" /> Engineering Trace Explanation
               </div>
               <p className="text-sm font-bold text-slate-800 leading-relaxed">{currentStep.explanation}</p>
             </div>
@@ -220,7 +250,7 @@ export default function CodeVisualizer() {
             <Card className="bg-white border-slate-200/80 shadow-sm rounded-2xl">
               <CardHeader className="p-4 pb-2 border-b border-slate-100">
                 <CardTitle className="text-xs font-black uppercase tracking-wider text-slate-500">
-                  Variable & Stack Frame Memory
+                  Heap & Stack Pointer Memory
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 pt-3 space-y-2 font-mono text-xs">
