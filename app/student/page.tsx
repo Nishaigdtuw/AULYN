@@ -1,18 +1,17 @@
 'use client'
 import React, { useState } from "react"
-import { Book, BookOpen, Download, LogIn, MessageSquare, PenTool, Send, Star, Upload, CheckCircle2, Circle, AlertCircle } from "lucide-react"
+import { Book, BookOpen, Download, LogIn, MessageSquare, PenTool, Send, Star, CheckCircle2, Circle, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Progress } from "@/components/ui/progress"
 import Markdown from 'react-markdown'
 import { toast } from "sonner"
 
 
 export default function StudentPortal() {
-  const [activeClass, setActiveClass] = useState(null)
+  const [activeClass, setActiveClass] = useState<number | null>(null)
   const [showAiChat, setShowAiChat] = useState(false)
   const [aiMessages, setAiMessages] = useState<AiMessage[]>([])
   const [inputMessage, setInputMessage] = useState("")
@@ -78,7 +77,7 @@ export default function StudentPortal() {
                 <Button
                   variant="ghost"
                   className={`w-full justify-start ${activeClass === cls.id ? "bg-indigo-100 text-indigo-600" : ""}`}
-                  // onClick={() => setActiveClass(cls.id)}
+                  onClick={() => setActiveClass(cls.id)}
                 >
                   {cls.icon}
                   <span className="ml-2">{cls.name}</span>

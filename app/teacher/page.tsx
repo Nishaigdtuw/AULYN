@@ -1,6 +1,6 @@
 'use client'
-import React, { useEffect, useState } from "react"
-import { Book, BookOpen, FileText, LogIn, Mic, PenTool, Plus, Upload, Users } from "lucide-react"
+import React, { useEffect, useState, useCallback } from "react"
+import { FileText, LogIn, Mic, Plus, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -26,9 +26,7 @@ export default function TeacherPortal() {
   const [selectedChapter, setSelectedChapter] = useState<chapter>()
   const [chapterContent, setChapterContent] = useState<content[]>();
 
-
-
-  async function fetchClasses(){
+  const fetchClasses = useCallback(async () => {
     if (self && self.userId){
       const resClasses = await getClasses(self?.userId);
       if (resClasses.length === 0 ){
@@ -38,8 +36,7 @@ export default function TeacherPortal() {
         toast.success("Classes Fetched")
       }
     }
-  }
-
+  }, [self])
 
   useEffect(()=>{
     const user = localStorage.getItem("user");
@@ -48,16 +45,13 @@ export default function TeacherPortal() {
       return;
     }
     setSelf(JSON.parse(user));
-  },[])
+  }, [router])
 
   useEffect(()=>{
     fetchClasses()
-  }, [self])
+  }, [fetchClasses])
 
-
-
-  const [isRecording, setIsRecording] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
+  const [isRecording] = useState(false)
 
   const students = [
     { id: 1, name: "Alice Johnson", status: "Enrolled" },
@@ -85,56 +79,50 @@ export default function TeacherPortal() {
 
   }
 
-  async function fetchChapters(){
-    if(!activeClass){
-      return;
-    }
-    const data = await getChapters(activeClass.classId);
-    setChapters(data);
-    
-  }
+  useEffect(() => {
+    if (file) toast.success("Got Your File: " + file?.name)
+  }, [file])
 
-
-  useEffect(()=>{
-    if(file)
-    toast.success("Got Your File: " + file?.name)
-  }
-  ,[file])
-
-  async function handleFileUpload(){
-    if(!file) return;
-    if(!activeClass) return;
-    if(!self) return;
-    if(!selectedChapter) return;
+  const handleFileUpload = async () => {
+    if (!file) return
+    if (!activeClass) return
+    if (!self) return
+    if (!selectedChapter) return
     toast.success("Uploading File...")
     const presigned = await getPresignedUrl(file?.name, activeClass?.classId, activeClass?.classId)
-    if(presigned.error){
+    if (presigned.error) {
       toast.error(presigned.error)
-      return;
+      return
     }
-    if(!presigned.signedUrl){
+    if (!presigned.signedUrl) {
       toast.error("No Signed URL")
-      return;
+      return
     }
     const res = await fetch(presigned.signedUrl, {
       method: 'PUT',
       body: file
     })
     setFile(null)
-    if(res.ok){
+    if (res.ok) {
       const content = await addContentToChapter(selectedChapter?.chapterId, file?.name, file?.type, presigned.signedUrl, activeClass?.classId)
-      if(content){
+      if (content) {
         toast.success("File Uploaded")
         fetchContentByClass()
-      }else{
+      } else {
         toast.error("Error Uploading File")
       }
     }
-
   }
 
+  const fetchChapters = useCallback(async () => {
+    if(!activeClass){
+      return;
+    }
+    const data = await getChapters(activeClass.classId);
+    setChapters(data);
+  }, [activeClass])
 
-  async function fetchContentByClass(){
+  const fetchContentByClass = useCallback(async () => {
     toast.success("Fetching Content...")
     if(!activeClass) return;
     const cc = await getContent(activeClass.classId)
@@ -144,8 +132,8 @@ export default function TeacherPortal() {
       toast.success("Content Fetched")
     }else{
       toast.error("Error Fetching")
-  }
-}
+    }
+  }, [activeClass])
 
   const handleCreateChapter = async () => {
     if(newChapter.length < 5){
@@ -155,18 +143,16 @@ export default function TeacherPortal() {
     if(!activeClass) return;
     if(!self) return;
     toast.success("Creating Chapter...")
-    const chps = await addChapter(newChapter, activeClass?.classId, self?.userId)
+    await addChapter(newChapter, activeClass?.classId, self?.userId)
     fetchChapters();
     toast.success("Chapters Fetched")
     setNewChapter("")
   }
 
-
   useEffect(()=>{
     fetchContentByClass();
     fetchChapters();
-    
-  }, [activeClass])
+  }, [activeClass, fetchContentByClass, fetchChapters])
 
  
 
@@ -298,7 +284,7 @@ export default function TeacherPortal() {
                       </DialogClose>
                     </DialogContent>
                   </Dialog>
-                  {chapters && chapters.filter((c,i,v)=>c.classId === activeClass?.classId).map((chapter) => (
+                  {chapters && chapters.filter((c)=>c.classId === activeClass?.classId).map((chapter) => (
                     <div key={chapter.chapterName} className="mb-4 p-4 border rounded-lg">
                       <h4 className="font-semibold mb-2">{chapter.chapterName}</h4>
                       
@@ -342,7 +328,7 @@ export default function TeacherPortal() {
                         <div className="mt-2">
                           <h5 className="font-semibold">Uploaded Content:</h5>
                           <ul>
-                            {chapterContent.filter((c,i,v)=>c.chapterId === selectedChapter.chapterId).map((item, index) => (
+                            {chapterContent.filter((c)=>c.chapterId === selectedChapter.chapterId).map((item, index) => (
                               <li key={index}>{index+1} - {item.fileName}</li>
                             ))}
                           </ul>
