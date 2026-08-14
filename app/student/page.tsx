@@ -28,26 +28,36 @@ export default function StudentPortal() {
   ]
 
   const handleSendMessage = async () => {
-    if (inputMessage.trim()) {
-      
-        setAiMessages([...aiMessages, { type: 'user', content: inputMessage }])
-        setInputMessage("")
-        toast.warning("Please wait while we fetch the response")
+    const messageToSend = inputMessage.trim()
+    if (!messageToSend) return
 
-      const response = await fetch("http://localhost:8000/chat", {
+    setAiMessages((prev) => [...prev, { type: 'user', content: messageToSend }])
+    setInputMessage("")
+    toast.warning("Please wait while we fetch the response")
+
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_AI_CHAT_URL || "http://localhost:8000"
+      const response = await fetch(`${baseUrl}/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message: inputMessage, currentClass: "blockchain", currentChapter: "ether" }),
-      });
-      toast.success("Successfully fetched the response")
-      const data = await response.json();
-      console.log(data);
-      if (data.message) {
-          setAiMessages([...aiMessages, { type: 'ai', content: data.message }])
+        body: JSON.stringify({ message: messageToSend, currentClass: "blockchain", currentChapter: "ether" }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Server returned status ${response.status}`)
       }
-      setInputMessage("")
+
+      const data = await response.json()
+      toast.success("Successfully fetched the response")
+
+      if (data && data.message) {
+        setAiMessages((prev) => [...prev, { type: 'ai', content: data.message }])
+      }
+    } catch (err: unknown) {
+      console.error(err)
+      toast.error("Failed to fetch AI response")
     }
   }
 

@@ -22,20 +22,20 @@ export default function LoginPage() {
       toast.warning("Password length is too short")
       return;
     }
-    if(!email.endsWith(".com")){
-      toast.warning("Incorrect Email address")
+    const cleanEmail = email.trim().toLowerCase();
+    if(!cleanEmail.includes("@") || !cleanEmail.includes(".")){
+      toast.warning("Please enter a valid email address")
       return;
     }
-    setEmail(email.toLowerCase())
-    const res = await loginUser(email, password, userType);
+    const res = await loginUser(cleanEmail, password, userType);
     if(res === null){
       console.log("No User Found")
       toast.error("Incorrect Credentials")
       return;
     }else{
-      toast.success("Succesfully Logged In")
+      toast.success("Successfully Logged In")
       localStorage.setItem("user", JSON.stringify(res))
-      router.replace(userType)
+      router.replace(`/${userType}`)
     }
   }
 
