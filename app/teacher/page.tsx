@@ -24,6 +24,8 @@ import { StudentGroupsModal } from "@/components/student-groups-modal"
 import { NotificationsDrawer } from "@/components/notifications-drawer"
 import { AiTutorDialog } from "@/components/ai-tutor-dialog"
 import { UploadMaterialModal } from "@/components/upload-material-modal"
+import { TeacherReviewModal } from "@/components/teacher-review-modal"
+
 
 
 import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, AnnouncementData, NotificationItem, AssignmentData } from "@/lib/data-store"
@@ -59,7 +61,10 @@ export default function TeacherPortal() {
   const [studentGroupsOpen, setStudentGroupsOpen] = useState(false)
   const [asgnSubmissionOpen, setAsgnSubmissionOpen] = useState(false)
   const [selectedAsgn, setSelectedAsgn] = useState<AssignmentData | null>(null)
+  const [teacherReviewOpen, setTeacherReviewOpen] = useState(false)
+  const [selectedSubForReview, setSelectedSubForReview] = useState<SubmissionData | null>(null)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+
 
   // Submissions state
   const [studentSubmissions, setStudentSubmissions] = useState<SubmissionData[]>([])
@@ -769,35 +774,58 @@ export default function TeacherPortal() {
                   ) : (
                     studentSubmissions.filter((s) => s.classId === activeClassroom?.classId).map((sub) => (
                       <div key={sub.submissionId} className="p-3.5 bg-white border border-[#E5DCD0] rounded-xl text-xs space-y-2 font-bold shadow-2xs">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[#292724]">{sub.studentName} — {sub.assignmentTitle}</span>
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              const targetAsgn: AssignmentData = activeClassroom?.assignments?.find((a) => a.id === sub.assignmentId) || {
-                                id: sub.assignmentId,
-                                classId: sub.classId,
-                                chapterId: "c1",
-                                title: sub.assignmentTitle,
-                                type: "Coding",
-                                difficulty: "Intermediate",
-                                dueDate: "2026-08-25",
-                                totalMarks: 50,
-                                instructions: "Review student code submission.",
-                                published: true,
-                                submissionsCount: 1
-                              }
-                              setSelectedAsgn(targetAsgn)
-                              setAsgnSubmissionOpen(true)
-                            }}
-                            className="bg-[#8B7EC8] hover:bg-[#7a6db7] text-white font-bold text-[11px] h-7 rounded-lg cursor-pointer"
-                          >
-                            Inspect Submission & Thread
-                          </Button>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-[#292724]">{sub.studentName} — {sub.assignmentTitle}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] ${
+                              sub.status === 'Graded' ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-amber-100 text-amber-700 border border-amber-300'
+                            }`}>
+                              {sub.status === 'Graded' ? `Graded (${sub.marks || 45}/50)` : 'Pending Review'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const targetAsgn: AssignmentData = activeClassroom?.assignments?.find((a) => a.id === sub.assignmentId) || {
+                                  id: sub.assignmentId,
+                                  classId: sub.classId,
+                                  chapterId: "c1",
+                                  title: sub.assignmentTitle,
+                                  type: "Coding",
+                                  difficulty: "Intermediate",
+                                  dueDate: "2026-08-25",
+                                  totalMarks: 50,
+                                  instructions: "Review student code submission.",
+                                  published: true,
+                                  submissionsCount: 1
+                                }
+                                setSelectedAsgn(targetAsgn)
+                                setAsgnSubmissionOpen(true)
+                              }}
+                              className="bg-white border-[#E5DCD0] text-[#292724] hover:bg-[#F1E8DD] font-bold text-[11px] h-7 rounded-lg cursor-pointer"
+                            >
+                              Thread
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setSelectedSubForReview(sub)
+                                setTeacherReviewOpen(true)
+                              }}
+                              className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-[11px] h-7 rounded-lg cursor-pointer flex items-center gap-1"
+                            >
+                              <Sparkles className="w-3 h-3 text-[#E9B949]" /> Inspect, Grade & Generate Report
+                            </Button>
+                          </div>
+
                         </div>
                         <p className="text-[11px] font-mono text-[#77716A] bg-[#FFF9F1] p-2.5 rounded-lg border border-[#E5DCD0]">{sub.content}</p>
                       </div>
                     ))
+
                   )}
                 </CardContent>
               </Card>
@@ -859,11 +887,18 @@ export default function TeacherPortal() {
       </div>
 
       {activeClassroom && (
-        <UploadMaterialModal
-          open={uploadMaterialOpen}
-          onOpenChange={setUploadMaterialOpen}
-          activeClassroom={activeClassroom}
-        />
+        <>
+          <UploadMaterialModal
+            open={uploadMaterialOpen}
+            onOpenChange={setUploadMaterialOpen}
+            activeClassroom={activeClassroom}
+          />
+          <TeacherReviewModal
+            open={teacherReviewOpen}
+            onOpenChange={setTeacherReviewOpen}
+            submission={selectedSubForReview}
+          />
+        </>
       )}
     </div>
   )

@@ -78,6 +78,17 @@ export interface AssignmentData {
   vivaRequired?: boolean
 }
 
+export interface EvaluationReportData {
+  overallScore: number
+  maxScore: number
+  percentage: number
+  codeQuality: string
+  strengths: string[]
+  weaknesses: string[]
+  recommendations: string[]
+  generatedAt: string
+}
+
 export interface SubmissionData {
   submissionId: string
   assignmentId: string
@@ -89,10 +100,14 @@ export interface SubmissionData {
   content: string
   fileUrl?: string
   status: 'Submitted' | 'Graded'
+  gradeStatus?: 'Pending Review' | 'Graded'
   marks?: number
+  maxMarks?: number
   feedback?: string
   comments?: AssignmentComment[]
+  evaluationReport?: EvaluationReportData
 }
+
 
 export interface AssignmentComment {
   id: string
@@ -878,4 +893,30 @@ export function uploadClassroomMaterial(
     window.dispatchEvent(new Event("aulyn-data-update"))
   }
 }
+
+export function gradeSubmission(
+  submissionId: string,
+  marks: number,
+  feedback: string,
+  evaluationReport?: EvaluationReportData
+) {
+  if (typeof window === "undefined") return
+  const submissionsKey = "aulyn_submissions_v1"
+  const list = getSubmissions()
+  const idx = list.findIndex((s) => s.submissionId === submissionId)
+  if (idx >= 0) {
+    list[idx] = {
+      ...list[idx],
+      status: 'Graded',
+      gradeStatus: 'Graded',
+      marks,
+      feedback,
+      evaluationReport
+    }
+    localStorage.setItem(submissionsKey, JSON.stringify(list))
+    window.dispatchEvent(new Event("aulyn-data-update"))
+  }
+}
+
+
 
