@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useState } from "react"
-import { Book, BookOpen, LogOut, PenTool, Send, CheckCircle2, Circle, AlertCircle, Plus, Sparkles, Check, FileCheck, PlayCircle, Trophy, Award, Crown, Compass, Clock, ArrowUpRight, Menu, ChevronDown, ChevronRight, Play, Pause, RotateCcw, Code, Brain, Settings, FileText, Download, User, Bell, Shield, Save } from "lucide-react"
+import { Book, BookOpen, LogOut, PenTool, Send, CheckCircle2, Circle, AlertCircle, Plus, Sparkles, Check, FileCheck, PlayCircle, Trophy, Award, Crown, Compass, Clock, ArrowUpRight, Menu, ChevronDown, ChevronRight, Play, Pause, RotateCcw, Code, Brain, Settings, FileText, Download, User, Bell, Shield, Save, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -22,6 +22,11 @@ interface AiMessage {
   content: string
 }
 
+interface MaterialItem {
+  title: string
+  url: string
+}
+
 interface EnrolledClass {
   id: string
   name: string
@@ -30,7 +35,7 @@ interface EnrolledClass {
   icon: React.ReactNode
   progress: number
   chapters: string[]
-  materials: string[]
+  materials: MaterialItem[]
   assignments: Array<{ id: number; title: string; dueDate: string; status: "Pending" | "Submitted" }>
   announcement: string
 }
@@ -44,7 +49,11 @@ const CLASSROOM_DATABASE: Record<string, EnrolledClass> = {
     icon: <PenTool className="w-4 h-4 text-[#E76F51]" />,
     progress: 85,
     chapters: ["Chapter 1: Binary Search Trees", "Chapter 2: Recursion & Backtracking", "Chapter 3: Graph Traversals (BFS/DFS)"],
-    materials: ["Trees_Lecture_Notes.pdf", "Recursion_CallStack_Guide.pdf", "Graph_Algorithms.pptx"],
+    materials: [
+      { title: "Trees_Lecture_Notes.pdf", url: "/materials/Trees_Lecture_Notes.pdf" },
+      { title: "Recursion_CallStack_Guide.pdf", url: "/materials/Recursion_CallStack_Guide.pdf" },
+      { title: "Graph_Algorithms.pdf", url: "/materials/Graph_Algorithms.pdf" }
+    ],
     assignments: [
       { id: 101, title: "Binary Search Tree Implementation", dueDate: "2026-08-20", status: "Pending" },
       { id: 102, title: "Recursion & Call Stack Problem Set", dueDate: "2026-08-22", status: "Pending" }
@@ -59,7 +68,10 @@ const CLASSROOM_DATABASE: Record<string, EnrolledClass> = {
     icon: <BookOpen className="w-4 h-4 text-[#8B7EC8]" />,
     progress: 72,
     chapters: ["Chapter 1: Limits & Continuity", "Chapter 2: Derivatives & Chain Rule", "Chapter 3: Definite & Indefinite Integrals"],
-    materials: ["Calculus_CheatSheet.pdf", "Limits_Practice_Problems.pdf"],
+    materials: [
+      { title: "Calculus_CheatSheet.pdf", url: "/materials/Calculus_CheatSheet.pdf" },
+      { title: "Limits_Practice_Problems.pdf", url: "/materials/Limits_Practice_Problems.pdf" }
+    ],
     assignments: [
       { id: 201, title: "Limits & Derivatives Quiz", dueDate: "2026-08-21", status: "Pending" },
       { id: 202, title: "Integration Techniques Assignment", dueDate: "2026-08-24", status: "Pending" }
@@ -74,7 +86,10 @@ const CLASSROOM_DATABASE: Record<string, EnrolledClass> = {
     icon: <Book className="w-4 h-4 text-[#75B798]" />,
     progress: 68,
     chapters: ["Chapter 1: Newton's Laws of Motion", "Chapter 2: Work, Energy & Momentum", "Chapter 3: Rotational Dynamics"],
-    materials: ["Mechanics_Lab_Guide.pdf", "Kinematics_Formulas.pdf"],
+    materials: [
+      { title: "Mechanics_Lab_Guide.pdf", url: "/materials/Mechanics_Lab_Guide.pdf" },
+      { title: "Kinematics_Formulas.pdf", url: "/materials/Kinematics_Formulas.pdf" }
+    ],
     assignments: [
       { id: 301, title: "Newtonian Motion Lab Report", dueDate: "2026-08-23", status: "Pending" }
     ],
@@ -88,7 +103,10 @@ const CLASSROOM_DATABASE: Record<string, EnrolledClass> = {
     icon: <Award className="w-4 h-4 text-[#E9B949]" />,
     progress: 90,
     chapters: ["Chapter 1: The Industrial Revolution", "Chapter 2: World War I & II Dynamics", "Chapter 3: Cold War Geopolitics"],
-    materials: ["Industrial_Revolution_Essays.pdf", "Cold_War_Timeline.pdf"],
+    materials: [
+      { title: "Industrial_Revolution_Essays.pdf", url: "/materials/Industrial_Revolution_Essays.pdf" },
+      { title: "Cold_War_Timeline.pdf", url: "/materials/Cold_War_Timeline.pdf" }
+    ],
     assignments: [
       { id: 401, title: "Industrialization Historical Analysis", dueDate: "2026-08-25", status: "Pending" }
     ],
@@ -143,6 +161,25 @@ export default function StudentPortal() {
   const [submissionText, setSubmissionText] = useState("")
   const [submittingId, setSubmittingId] = useState<number | null>(null)
 
+  // Load user data & settings on mount with localStorage persistence
+  useEffect(() => {
+    const userStr = localStorage.getItem("user")
+    if (!userStr) {
+      router.replace("/")
+      return
+    }
+    try {
+      const parsed = JSON.parse(userStr)
+      if (parsed.name) setStudentName(parsed.name)
+      if (parsed.email) setStudentEmail(parsed.email)
+      if (parsed.major) setStudentMajor(parsed.major)
+      if (parsed.reminder) setStudyReminder(parsed.reminder)
+      if (parsed.notifications !== undefined) setNotificationsEnabled(parsed.notifications)
+    } catch {
+      router.replace("/")
+    }
+  }, [router])
+
   // Timer Effect for Focus Session
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
@@ -160,60 +197,35 @@ export default function StudentPortal() {
     }
   }, [isFocusActive, focusTimerSeconds])
 
-  useEffect(() => {
-    const userStr = localStorage.getItem("user")
-    if (!userStr) {
-      router.replace("/")
-      return
-    }
-    try {
-      const parsed = JSON.parse(userStr)
-      if (parsed.name) setStudentName(parsed.name)
-      if (parsed.email) setStudentEmail(parsed.email)
-    } catch {
-      router.replace("/")
-    }
-  }, [router])
-
   const toggleSection = (section: string) => {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }))
   }
 
-  // Real File Download Flow Fix
-  const handleDownloadMaterial = (fileName: string, fileUrl?: string) => {
-    toast.info(`Preparing download for "${fileName}"...`)
-
-    setTimeout(() => {
-      try {
-        if (fileUrl && fileUrl.startsWith("http")) {
-          const a = document.createElement("a")
-          a.href = fileUrl
-          a.download = fileName
-          a.target = "_blank"
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-        } else {
-          // Generate Blob download fallback
-          const dummyContent = `%PDF-1.4\n1 0 obj\n<< /Title (${fileName}) /Student (${studentName}) >>\nendobj\nEduMeet.Ai Course Content: ${fileName}`
-          const blob = new Blob([dummyContent], { type: "application/pdf" })
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement("a")
-          a.href = url
-          a.download = fileName
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          URL.revokeObjectURL(url)
-        }
-        toast.success(`Downloaded "${fileName}" successfully!`)
-      } catch {
-        toast.error("Download failed. Please check network connection.")
-      }
-    }, 400)
+  // Real Working View Handler for Materials
+  const handleViewMaterial = (fileName: string, url: string) => {
+    toast.info(`Opening "${fileName}"...`)
+    window.open(url, "_blank")
   }
 
-  // Save Settings Function
+  // Real Working Download Handler for Materials
+  const handleDownloadMaterial = (fileName: string, url: string) => {
+    toast.info(`Downloading "${fileName}"...`)
+
+    try {
+      const a = document.createElement("a")
+      a.href = url
+      a.download = fileName
+      a.target = "_blank"
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      toast.success(`Downloaded "${fileName}" successfully!`)
+    } catch {
+      toast.error("Download failed. Please check network connection.")
+    }
+  }
+
+  // Save Settings Function with localStorage Persistence
   const handleSaveSettings = () => {
     const userStr = localStorage.getItem("user")
     let parsedUser = {}
@@ -317,7 +329,7 @@ export default function StudentPortal() {
     router.replace("/")
   }
 
-  // Sidebar Content Component
+  // Sidebar Navigation Content
   const RenderSidebarContent = () => (
     <div className="flex flex-col justify-between h-full space-y-6">
       <div className="space-y-4">
@@ -352,7 +364,7 @@ export default function StudentPortal() {
           </DialogContent>
         </Dialog>
 
-        {/* Structured Expandable Navigation */}
+        {/* Structured Navigation */}
         <nav className="space-y-1 text-xs">
           {/* Home */}
           <button
@@ -530,9 +542,10 @@ export default function StudentPortal() {
             <Crown className="w-3.5 h-3.5 mr-1.5 text-[#E9B949]" /> Pro
           </Button>
 
+          {/* High-Contrast Student Profile Indicator */}
           <div className="text-right hidden sm:block">
             <p className="text-xs font-bold text-[#292724]">{studentName}</p>
-            <p className="text-[10px] text-[#77716A]">{studentEmail}</p>
+            <p className="text-[10px] font-semibold text-[#4A453F]">{studentEmail}</p>
           </div>
 
           <Button variant="outline" size="sm" onClick={handleLogout} className="text-[#77716A] hover:text-red-600 border-[#E5DCD0] text-xs font-semibold rounded-xl">
@@ -637,25 +650,26 @@ export default function StudentPortal() {
 
         {/* Main Workspace */}
         <main className="flex-1 p-4 sm:p-8 overflow-y-auto space-y-6">
-          {/* Header & Active Classroom Switcher Indicator */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          {/* HIGH-CONTRAST GREETING PILL & CLASSROOM SELECTOR (Fix Prompt Rule #3: Good morning Alex Readability) */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#FFF9F1]/90 backdrop-blur-md p-5 rounded-2xl border border-[#E5DCD0] shadow-sm">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#292724]">
+              <h2 className="text-2xl sm:text-3xl font-serif font-black text-[#292724] tracking-tight">
                 Good morning, {studentName.split(" ")[0]}.
               </h2>
-              <p className="text-xs font-semibold text-[#77716A] mt-0.5">
-                Active Classroom: <span className="text-[#E76F51] font-bold">{currentClass.name}</span> ({currentClass.code} • {currentClass.teacher})
+              {/* High-Contrast Professor / Teacher Name Indicator (Fix Prompt Rule #4) */}
+              <p className="text-xs font-bold text-[#292724] mt-1">
+                Active Classroom: <span className="text-[#E76F51] font-bold">{currentClass.name}</span> ({currentClass.code} • <span className="text-[#292724] font-black underline decoration-[#E76F51]">{currentClass.teacher}</span>)
               </p>
             </div>
 
             {/* Quick Class Selection Dropdown Pill */}
-            <div className="flex items-center gap-1.5 bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0]">
+            <div className="flex items-center gap-1.5 bg-[#F1E8DD] p-1.5 rounded-xl border border-[#E5DCD0]">
               {Object.values(CLASSROOM_DATABASE).map((c) => (
                 <button
                   key={c.id}
                   onClick={() => setSelectedClassId(c.id)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all duration-200 ${
-                    selectedClassId === c.id ? "bg-[#FFF9F1] text-[#E76F51] shadow-2xs border border-[#E5DCD0]" : "text-[#77716A] hover:text-[#292724]"
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
+                    selectedClassId === c.id ? "bg-[#FFF9F1] text-[#E76F51] shadow-2xs border border-[#E5DCD0]" : "text-[#292724] hover:text-[#E76F51]"
                   }`}
                 >
                   {c.code}
@@ -701,7 +715,7 @@ export default function StudentPortal() {
                   <h3 className="text-xl sm:text-2xl font-serif font-bold text-[#292724]">
                     Recursion & Call Stack Visualization
                   </h3>
-                  <p className="text-xs text-[#77716A] font-medium flex items-center gap-2">
+                  <p className="text-xs text-[#292724] font-bold flex items-center gap-2">
                     <Clock className="w-3.5 h-3.5 text-[#E76F51]" /> 18 min recommended session • Master base case termination & stack frames
                   </p>
                 </div>
@@ -714,10 +728,10 @@ export default function StudentPortal() {
                 </Button>
               </div>
 
-              {/* Class Announcement Banner */}
+              {/* Class Notice & Professor Name Visibility Banner */}
               <div className="p-4 bg-[#FFF9F1]/95 backdrop-blur-md border border-[#E5DCD0] rounded-2xl shadow-2xs space-y-1">
-                <p className="text-[11px] font-bold text-[#8B7EC8] uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" /> Class Notice from {currentClass.teacher}
+                <p className="text-[11px] font-bold text-[#292724] uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#E76F51]" /> Class Notice from <span className="font-black text-[#292724]">{currentClass.teacher}</span>
                 </p>
                 <p className="text-xs font-bold text-[#292724]">{currentClass.announcement}</p>
               </div>
@@ -735,13 +749,13 @@ export default function StudentPortal() {
                     {currentClass.chapters.map((chap, idx) => (
                       <div key={idx} className="p-3 bg-[#F1E8DD]/60 rounded-xl border border-[#E5DCD0] text-xs font-bold text-[#292724] flex items-center justify-between hover:bg-[#F1E8DD] transition-colors duration-200">
                         <span>{chap}</span>
-                        <span className="text-[10px] text-[#75B798] bg-[#75B798]/10 px-2 py-0.5 rounded-full border border-[#75B798]/30">Active</span>
+                        <span className="text-[10px] text-[#75B798] bg-[#75B798]/10 px-2 py-0.5 rounded-full border border-[#75B798]/30 font-mono">Active</span>
                       </div>
                     ))}
                   </CardContent>
                 </Card>
 
-                {/* Class Study Materials with Fixed Downloads */}
+                {/* REAL downloadable study materials */}
                 <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
                   <CardHeader className="p-4 border-b border-[#E5DCD0]">
                     <CardTitle className="text-sm font-serif font-bold text-[#292724] flex items-center gap-2">
@@ -751,17 +765,27 @@ export default function StudentPortal() {
                   <CardContent className="p-4 space-y-2">
                     {currentClass.materials.map((mat, idx) => (
                       <div key={idx} className="p-3 bg-white hover:bg-[#F1E8DD]/40 rounded-xl border border-[#E5DCD0] hover:border-[#E76F51]/40 text-xs font-bold text-[#292724] flex items-center justify-between transition-all duration-200 shadow-2xs">
-                        <span className="truncate flex items-center gap-1.5">
-                          <FileText className="w-3.5 h-3.5 text-[#E76F51]" /> {mat}
+                        <span className="truncate flex items-center gap-1.5 text-[#292724]">
+                          <FileText className="w-3.5 h-3.5 text-[#E76F51]" /> {mat.title}
                         </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-[11px] text-[#E76F51] border-[#E5DCD0] hover:bg-[#E76F51] hover:text-white font-bold h-7 px-3 rounded-lg transition-all duration-200"
-                          onClick={() => handleDownloadMaterial(mat)}
-                        >
-                          <Download className="w-3 h-3 mr-1" /> Download
-                        </Button>
+                        <div className="flex items-center space-x-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-[11px] text-[#8B7EC8] border-[#E5DCD0] hover:bg-[#8B7EC8] hover:text-white font-bold h-7 px-2.5 rounded-lg transition-all duration-200"
+                            onClick={() => handleViewMaterial(mat.title, mat.url)}
+                          >
+                            <Eye className="w-3 h-3 mr-1" /> View
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-[11px] text-[#E76F51] border-[#E5DCD0] hover:bg-[#E76F51] hover:text-white font-bold h-7 px-2.5 rounded-lg transition-all duration-200"
+                            onClick={() => handleDownloadMaterial(mat.title, mat.url)}
+                          >
+                            <Download className="w-3 h-3 mr-1" /> Download
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </CardContent>
@@ -772,7 +796,7 @@ export default function StudentPortal() {
               <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
                 <CardHeader>
                   <CardTitle className="text-base font-serif font-bold text-[#292724]">Overall Course Progress ({currentClass.code})</CardTitle>
-                  <CardDescription className="text-[#77716A] text-xs">Real-time completion metrics for {currentClass.name}</CardDescription>
+                  <CardDescription className="text-[#292724] font-semibold text-xs">Real-time completion metrics for {currentClass.name} with <span className="font-bold text-[#292724]">{currentClass.teacher}</span></CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <div className="flex justify-between text-xs font-bold">
@@ -799,7 +823,7 @@ export default function StudentPortal() {
               <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
                 <CardHeader>
                   <CardTitle className="text-[#292724] font-serif font-bold text-base">Active Assignments for {currentClass.name}</CardTitle>
-                  <CardDescription className="text-[#77716A] text-xs">View due tasks and submit completed coursework</CardDescription>
+                  <CardDescription className="text-[#292724] font-semibold text-xs">Instructor: <span className="font-bold text-[#292724]">{currentClass.teacher}</span></CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <ul className="divide-y divide-[#E5DCD0]">
@@ -814,7 +838,7 @@ export default function StudentPortal() {
                             </span>
                             <p className="font-bold text-[#292724] text-sm">{item.title}</p>
                           </div>
-                          <p className="text-xs text-[#77716A] mt-1">{currentClass.name} • Due: {item.dueDate}</p>
+                          <p className="text-xs font-semibold text-[#292724] mt-1">{currentClass.name} • Due: {item.dueDate}</p>
                         </div>
 
                         {item.status === "Pending" ? (
@@ -862,9 +886,9 @@ export default function StudentPortal() {
                     <CardTitle className="text-[#292724] font-serif font-bold text-base flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-[#E76F51]" /> AI Study Tutor Workspace ({currentClass.code})
                     </CardTitle>
-                    <CardDescription className="text-[#77716A] text-xs">Contextual AI tutoring workspace with quick action prompts</CardDescription>
+                    <CardDescription className="text-[#292724] font-semibold text-xs">Contextual AI tutoring for {currentClass.name} with {currentClass.teacher}</CardDescription>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => setAiMessages([])} className="text-xs border-[#E5DCD0] text-[#77716A] hover:bg-[#F1E8DD] rounded-xl">
+                  <Button variant="outline" size="sm" onClick={() => setAiMessages([])} className="text-xs border-[#E5DCD0] text-[#77716A] hover:bg-[#F1E8DD] rounded-xl font-bold">
                     Clear Chat
                   </Button>
                 </CardHeader>
@@ -926,7 +950,7 @@ export default function StudentPortal() {
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
                       placeholder={`Ask your AI tutor about ${currentClass.name}...`}
-                      className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl"
+                      className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl font-medium"
                       onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                     />
                     <Button onClick={() => handleSendMessage()} className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-xl">
@@ -947,7 +971,7 @@ export default function StudentPortal() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <p className="text-xs text-[#77716A]">Test conceptual understanding for {currentClass.name}.</p>
+                    <p className="text-xs font-semibold text-[#292724]">Test conceptual understanding for {currentClass.name}.</p>
                     <Button className="w-full bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-xl" onClick={() => toast.info(`Launching ${currentClass.name} quiz...`)}>
                       <PlayCircle className="w-4 h-4 mr-2" /> Start Quiz
                     </Button>
@@ -961,7 +985,7 @@ export default function StudentPortal() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <p className="text-xs text-[#77716A]">Practice quick recall of key definitions in {currentClass.code}.</p>
+                    <p className="text-xs font-semibold text-[#292724]">Practice quick recall of key definitions in {currentClass.code}.</p>
                     <Button className="w-full bg-[#8B7EC8] hover:bg-[#796bb5] text-white font-bold text-xs shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-xl" onClick={() => toast.info(`Opening ${currentClass.code} flashcard deck...`)}>
                       <PlayCircle className="w-4 h-4 mr-2" /> Review Deck
                     </Button>
@@ -975,7 +999,7 @@ export default function StudentPortal() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <p className="text-xs text-[#77716A]">Simulate exam conditions with a timed mock test.</p>
+                    <p className="text-xs font-semibold text-[#292724]">Simulate exam conditions with a timed mock test.</p>
                     <Button className="w-full bg-[#75B798] hover:bg-[#64a687] text-white font-bold text-xs shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-xl" onClick={() => toast.info("Launching mock assessment...")}>
                       <Trophy className="w-4 h-4 mr-2" /> Take Mock Test
                     </Button>
@@ -984,14 +1008,14 @@ export default function StudentPortal() {
               </div>
             </TabsContent>
 
-            {/* FULLY FUNCTIONAL SETTINGS TAB */}
+            {/* FULLY FUNCTIONAL SETTINGS TAB WITH LOCALSTORAGE PERSISTENCE */}
             <TabsContent value="settings" className="space-y-6 animate-in fade-in-50 duration-200">
               <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
                 <CardHeader>
                   <CardTitle className="text-[#292724] font-serif font-bold text-lg flex items-center gap-2">
                     <User className="w-5 h-5 text-[#E76F51]" /> Student Profile & Learning Preferences
                   </CardTitle>
-                  <CardDescription className="text-[#77716A] text-xs">Manage your student profile, academic major, and study notification reminders</CardDescription>
+                  <CardDescription className="text-[#292724] font-semibold text-xs">Manage your student profile, academic major, and study notification reminders</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Student Profile Form */}
@@ -1002,7 +1026,7 @@ export default function StudentPortal() {
                         id="studName"
                         value={studentName}
                         onChange={(e) => setStudentName(e.target.value)}
-                        className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl"
+                        className="bg-white border-[#E5DCD0] text-[#292724] text-xs font-semibold rounded-xl"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -1012,7 +1036,7 @@ export default function StudentPortal() {
                         type="email"
                         value={studentEmail}
                         onChange={(e) => setStudentEmail(e.target.value)}
-                        className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl"
+                        className="bg-white border-[#E5DCD0] text-[#292724] text-xs font-semibold rounded-xl"
                       />
                     </div>
                   </div>
@@ -1023,7 +1047,7 @@ export default function StudentPortal() {
                       id="studMajor"
                       value={studentMajor}
                       onChange={(e) => setStudentMajor(e.target.value)}
-                      className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl"
+                      className="bg-white border-[#E5DCD0] text-[#292724] text-xs font-semibold rounded-xl"
                     />
                   </div>
 
@@ -1035,7 +1059,7 @@ export default function StudentPortal() {
                     <div className="flex items-center justify-between p-3 bg-white border border-[#E5DCD0] rounded-xl text-xs">
                       <div>
                         <p className="font-bold text-[#292724]">Assignment Due Notifications</p>
-                        <p className="text-[11px] text-[#77716A]">Receive email reminders 24 hours before coursework deadlines</p>
+                        <p className="text-[11px] font-semibold text-[#4A453F]">Receive email reminders 24 hours before coursework deadlines</p>
                       </div>
                       <input
                         type="checkbox"
@@ -1048,7 +1072,7 @@ export default function StudentPortal() {
                     <div className="flex items-center justify-between p-3 bg-white border border-[#E5DCD0] rounded-xl text-xs">
                       <div>
                         <p className="font-bold text-[#292724]">Daily Focus Session Schedule</p>
-                        <p className="text-[11px] text-[#77716A]">Choose your preferred daily study prompt time</p>
+                        <p className="text-[11px] font-semibold text-[#4A453F]">Choose your preferred daily study prompt time</p>
                       </div>
                       <select
                         value={studyReminder}
@@ -1070,15 +1094,15 @@ export default function StudentPortal() {
                     </h4>
                     <div className="grid grid-cols-3 gap-2 text-xs p-3 bg-[#F1E8DD]/60 border border-[#E5DCD0] rounded-xl font-mono">
                       <div>
-                        <span className="text-[#77716A] block text-[10px] font-sans">Role</span>
+                        <span className="text-[#292724] block text-[10px] font-sans font-bold">Role</span>
                         <span className="font-bold text-[#E76F51]">Student</span>
                       </div>
                       <div>
-                        <span className="text-[#77716A] block text-[10px] font-sans">Account ID</span>
+                        <span className="text-[#292724] block text-[10px] font-sans font-bold">Account ID</span>
                         <span className="font-bold text-[#292724]">student-demo</span>
                       </div>
                       <div>
-                        <span className="text-[#77716A] block text-[10px] font-sans">Free AI Queries</span>
+                        <span className="text-[#292724] block text-[10px] font-sans font-bold">Free AI Queries</span>
                         <span className="font-bold text-[#75B798]">{5 - aiQueryCount} left today</span>
                       </div>
                     </div>

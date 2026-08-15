@@ -143,12 +143,12 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-transparent text-[#292724] flex flex-col justify-between relative overflow-x-hidden animate-in fade-in-50 duration-300">
-      {/* Sticky Scroll-Aware Navbar */}
+      {/* 100% Sticky Header with Translucent Blur Transition and Persistent Demo Access */}
       <header
-        className={`px-4 sm:px-8 py-4 flex items-center justify-between sticky top-0 z-50 transition-all duration-300 ${
+        className={`px-4 sm:px-8 py-3.5 flex items-center justify-between fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           isScrolled
             ? 'bg-[#FFF9F1]/95 backdrop-blur-md border-b border-[#E5DCD0] shadow-sm'
-            : 'bg-[#FFF9F1]/70 backdrop-blur-sm border-b border-[#E5DCD0]/40'
+            : 'bg-[#FFF9F1]/80 backdrop-blur-sm border-b border-[#E5DCD0]/40'
         }`}
       >
         <div className="flex items-center space-x-3">
@@ -156,32 +156,32 @@ export default function AuthPage() {
             EB
           </div>
           <div>
-            <h1 className="text-lg font-serif font-bold tracking-tight text-[#292724]">EduMeet.Ai</h1>
-            <p className="text-[10px] text-[#77716A] font-medium tracking-wide hidden sm:block">Intelligent Learning Platform</p>
+            <h1 className="text-lg font-serif font-bold tracking-tight text-[#292724] leading-none">EduMeet.Ai</h1>
+            <p className="text-[10px] text-[#77716A] font-medium tracking-wide hidden sm:block mt-0.5">Intelligent Learning Workspace</p>
           </div>
         </div>
 
-        {/* Top Navbar Actions */}
+        {/* Persistent Demo Access in Sticky Header Across Mobile & Desktop */}
         <div className="flex items-center space-x-2 sm:space-x-3">
           <button
             onClick={() => handleQuickDemo('student')}
-            className="text-xs font-semibold text-[#292724] hover:text-[#E76F51] transition-all duration-200 px-3 py-1.5 rounded-lg hover:bg-[#F1E8DD]/60"
+            className="text-xs font-bold text-[#292724] hover:text-[#E76F51] transition-all duration-200 px-3 py-1.5 rounded-xl hover:bg-[#F1E8DD]/60 border border-transparent hover:border-[#E5DCD0]"
           >
-            Student Workspace
+            <span className="hidden xs:inline">Enter </span>Student<span className="hidden sm:inline"> Workspace</span> →
           </button>
           <Button
             size="sm"
             onClick={() => handleQuickDemo('teacher')}
-            className="text-xs bg-[#E76F51] hover:bg-[#d55e42] text-white font-semibold rounded-xl shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            className="text-xs bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold rounded-xl shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 px-3.5 py-1.5"
           >
-            Teacher Workspace
+            <span className="hidden xs:inline">Enter </span>Teacher<span className="hidden sm:inline"> Workspace</span> →
           </Button>
         </div>
       </header>
 
-      {/* Main Hero Section */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-8 py-10 lg:py-16 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center flex-1 z-10">
-        {/* Left Column: Clean Editorial Hero (Text removed completely as requested) */}
+      {/* Main Hero Section (Padding top added to accommodate fixed header) */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-24 pb-12 lg:pt-32 lg:pb-16 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center flex-1 z-10">
+        {/* Left Column: Clean Editorial Hero */}
         <div className="lg:col-span-6 space-y-8 bg-[#FFF9F1]/85 backdrop-blur-md p-6 sm:p-8 rounded-3xl border border-[#E5DCD0]/80 shadow-lg transition-all duration-300 hover:border-[#E5DCD0]">
           <div className="space-y-4">
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-serif font-bold text-[#292724] leading-[1.12] tracking-tight">
@@ -231,7 +231,7 @@ export default function AuthPage() {
             </div>
           </div>
 
-          {/* Refined Demo Workspace Actions with Hover Micro-Interactions */}
+          {/* Refined Demo Workspace Actions */}
           <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <button
               onClick={() => handleQuickDemo('student')}
@@ -385,7 +385,7 @@ export default function AuthPage() {
       </main>
 
       {/* Editorial Footer */}
-      <footer className="px-8 py-4 border-t border-[#E5DCD0] bg-[#FFF9F1]/80 backdrop-blur-md text-center text-xs text-[#77716A]">
+      <footer className="px-8 py-4 border-t border-[#E5DCD0] bg-[#FFF9F1]/80 backdrop-blur-md text-center text-xs text-[#77716A] z-10">
         <p>© 2026 EduMeet.Ai • One place for the entire learning journey.</p>
       </footer>
     </div>
