@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { handleLogin, handleSignup } from '@/actions/auth/auth'
-import AnimatedLearningBackground from '@/components/animated-learning-background'
 
 interface UserRecord {
   userId?: string
@@ -130,9 +129,6 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-transparent text-[#292724] flex flex-col justify-between relative overflow-hidden">
-      {/* Abstract Atmospheric Background */}
-      <AnimatedLearningBackground />
-
       {/* Header Bar */}
       <header className="px-8 py-5 flex items-center justify-between border-b border-[#E5DCD0] bg-[#FFF9F1]/80 backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center space-x-3">

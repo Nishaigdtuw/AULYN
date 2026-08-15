@@ -15,7 +15,6 @@ import { useRouter } from "next/navigation"
 import { getPresignedUrl } from "@/actions/teacher/s3"
 import NotesAiConverter from "@/components/notes-ai-converter"
 import PricingModal from "@/components/pricing-modal"
-import AnimatedLearningBackground from "@/components/animated-learning-background"
 
 interface CustomClassroom {
   classId: string
@@ -394,9 +393,6 @@ export default function TeacherPortal() {
 
   return (
     <div className="min-h-screen bg-transparent text-[#292724] flex flex-col justify-between relative overflow-hidden">
-      {/* Clean Background */}
-      <AnimatedLearningBackground />
-
       {/* Header Bar */}
       <header className="flex justify-between items-center px-8 py-3.5 bg-[#FFF9F1]/80 backdrop-blur-md border-b border-[#E5DCD0] sticky top-0 z-50">
         <div className="flex items-center space-x-3">

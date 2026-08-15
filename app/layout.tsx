@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Playfair_Display, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
+import AnimatedLearningBackground from "@/components/animated-learning-background";
 
 const playfairDisplay = Playfair_Display({
   subsets: ["latin"],
@@ -34,8 +35,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="light">
       <body
-        className={`${playfairDisplay.variable} ${plusJakartaSans.variable} ${jetbrainsMono.variable} font-sans bg-[#1e1a16] text-[#292724] antialiased selection:bg-[#E76F51] selection:text-white min-h-screen relative`}
+        className={`${playfairDisplay.variable} ${plusJakartaSans.variable} ${jetbrainsMono.variable} font-sans bg-transparent text-[#292724] antialiased selection:bg-[#E76F51] selection:text-white min-h-screen relative`}
       >
+        {/* Global Atmospheric Background Image */}
+        <AnimatedLearningBackground />
         <Toaster richColors position="top-right" theme="light" />
         {children}
       </body>

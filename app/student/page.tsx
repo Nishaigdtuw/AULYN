@@ -16,7 +16,6 @@ import { useRouter } from "next/navigation"
 import CodeVisualizer from "@/components/code-visualizer"
 import NotesAiConverter from "@/components/notes-ai-converter"
 import PricingModal from "@/components/pricing-modal"
-import AnimatedLearningBackground from "@/components/animated-learning-background"
 
 interface AiMessage {
   type: 'ai' | 'user'
@@ -237,9 +236,6 @@ export default function StudentPortal() {
 
   return (
     <div className="min-h-screen bg-transparent text-[#292724] flex flex-col justify-between relative overflow-hidden">
-      {/* Clean Abstract Atmospheric Background */}
-      <AnimatedLearningBackground />
-
       {/* Header Bar */}
       <header className="flex justify-between items-center px-8 py-3.5 bg-[#FFF9F1]/80 backdrop-blur-md border-b border-[#E5DCD0] sticky top-0 z-50">
         <div className="flex items-center space-x-3">
