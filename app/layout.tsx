@@ -23,8 +23,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "EduMeet.Ai | Intelligent Learning Platform",
-  description: "Senior-grade EdTech workspace for Students & Teachers featuring Code Trace Visualizer, AI Notes Summarizer, and Classroom Analytics.",
+  title: "AULYN — Connected Learning Platform",
+  description: "AULYN connects classrooms, teaching, assessment and personalized learning in one intelligent workspace for Students and Teachers.",
 };
 
 export default function RootLayout({

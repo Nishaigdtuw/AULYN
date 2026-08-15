@@ -133,8 +133,8 @@ export default function AuthPage() {
 
   const handleQuickDemo = (demoRole: 'student' | 'teacher') => {
     const mockUser = demoRole === 'teacher'
-      ? { userId: 'teacher-demo', name: 'Prof. Sarah Jenkins', email: 'sarah.jenkins@edumeet.ai', role: 'teacher' }
-      : { userId: 'student-demo', name: 'Alex Rivera', email: 'alex.rivera@edumeet.ai', role: 'student' }
+      ? { userId: 'teacher-demo', name: 'Prof. Sarah Jenkins', email: 'sarah.jenkins@aulyn.edu', role: 'teacher' }
+      : { userId: 'student-demo', name: 'Alex Rivera', email: 'alex.rivera@aulyn.edu', role: 'student' }
 
     localStorage.setItem('user', JSON.stringify(mockUser))
     toast.success(`Entering ${demoRole === 'teacher' ? 'Teacher' : 'Student'} Workspace...`)
@@ -143,7 +143,7 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-transparent text-[#292724] flex flex-col justify-between relative overflow-x-hidden animate-in fade-in-50 duration-300">
-      {/* 100% Sticky Header with Translucent Blur Transition and Persistent Demo Access */}
+      {/* 100% Sticky Header with Translucent Blur Transition and Official AULYN Logo */}
       <header
         className={`px-4 sm:px-8 py-3.5 flex items-center justify-between fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           isScrolled
@@ -152,12 +152,10 @@ export default function AuthPage() {
         }`}
       >
         <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 bg-[#E76F51] rounded-xl flex items-center justify-center text-white font-bold text-base shadow-2xs hover:scale-105 transition-transform">
-            EB
-          </div>
+          <img src="/aulyn-logo.png" alt="AULYN Logo" className="w-9 h-9 object-contain rounded-lg shadow-2xs hover:scale-105 transition-transform" />
           <div>
-            <h1 className="text-lg font-serif font-bold tracking-tight text-[#292724] leading-none">EduMeet.Ai</h1>
-            <p className="text-[10px] text-[#77716A] font-medium tracking-wide hidden sm:block mt-0.5">Intelligent Learning Workspace</p>
+            <h1 className="text-xl font-serif font-black tracking-tight text-[#292724] leading-none">AULYN</h1>
+            <p className="text-[10px] text-[#77716A] font-medium tracking-wide hidden sm:block mt-0.5">Connected Learning Workspace</p>
           </div>
         </div>
 
@@ -179,7 +177,7 @@ export default function AuthPage() {
         </div>
       </header>
 
-      {/* Main Hero Section (Padding top added to accommodate fixed header) */}
+      {/* Main Hero Section */}
       <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-24 pb-12 lg:pt-32 lg:pb-16 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center flex-1 z-10">
         {/* Left Column: Clean Editorial Hero */}
         <div className="lg:col-span-6 space-y-8 bg-[#FFF9F1]/85 backdrop-blur-md p-6 sm:p-8 rounded-3xl border border-[#E5DCD0]/80 shadow-lg transition-all duration-300 hover:border-[#E5DCD0]">
@@ -193,7 +191,7 @@ export default function AuthPage() {
             </p>
 
             <p className="text-[#77716A] text-sm sm:text-base leading-relaxed max-w-lg">
-              EduMeet.Ai connects classrooms, teaching, assessment and personalized learning in one intelligent workspace — giving educators deeper visibility into student progress while giving learners the tools to understand, practice and improve.
+              AULYN connects classrooms, teaching, assessment and personalized learning in one intelligent workspace — giving educators deeper visibility into student progress while giving learners the tools to understand, practice and improve.
             </p>
           </div>
 
@@ -259,8 +257,11 @@ export default function AuthPage() {
         <div className="lg:col-span-6 flex justify-center">
           <Card className="w-full max-w-md bg-[#FFF9F1]/95 backdrop-blur-md border border-[#E5DCD0] shadow-xl rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-300">
             <CardHeader className="space-y-1 pb-4 text-center border-b border-[#E5DCD0] bg-[#F1E8DD]/40">
+              <div className="mx-auto mb-2">
+                <img src="/aulyn-logo.png" alt="AULYN Logo" className="h-10 w-auto mx-auto object-contain" />
+              </div>
               <CardTitle className="text-lg font-serif font-bold text-[#292724] flex items-center justify-center gap-2">
-                <Zap className="w-4 h-4 text-[#E76F51]" /> Access Workspace
+                <Zap className="w-4 h-4 text-[#E76F51]" /> Access AULYN Workspace
               </CardTitle>
               <CardDescription className="text-xs text-[#77716A]">
                 Select your role to sign in or register
@@ -313,8 +314,8 @@ export default function AuthPage() {
                       <Input
                         id="loginEmail"
                         type="email"
-                        placeholder={role === 'teacher' ? 'sarah.jenkins@edumeet.ai' : 'alex.rivera@edumeet.ai'}
-                        className="bg-white border-[#E5DCD0] text-[#292724] text-xs focus:border-[#E76F51] rounded-xl transition-colors duration-200"
+                        placeholder={role === 'teacher' ? 'sarah.jenkins@aulyn.edu' : 'alex.rivera@aulyn.edu'}
+                        className="bg-white border-[#E5DCD0] text-[#292724] text-xs focus:border-[#E76F51] rounded-xl transition-colors duration-200 font-medium"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
                       />
@@ -325,7 +326,7 @@ export default function AuthPage() {
                         id="loginPassword"
                         type="password"
                         placeholder="••••••••"
-                        className="bg-white border-[#E5DCD0] text-[#292724] text-xs focus:border-[#E76F51] rounded-xl transition-colors duration-200"
+                        className="bg-white border-[#E5DCD0] text-[#292724] text-xs focus:border-[#E76F51] rounded-xl transition-colors duration-200 font-medium"
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
                       />
@@ -345,7 +346,7 @@ export default function AuthPage() {
                       <Input
                         id="signupName"
                         placeholder="e.g. Alex Rivera"
-                        className="bg-white border-[#E5DCD0] text-[#292724] text-xs focus:border-[#E76F51] rounded-xl transition-colors duration-200"
+                        className="bg-white border-[#E5DCD0] text-[#292724] text-xs focus:border-[#E76F51] rounded-xl transition-colors duration-200 font-medium"
                         value={signupName}
                         onChange={(e) => setSignupName(e.target.value)}
                       />
@@ -355,8 +356,8 @@ export default function AuthPage() {
                       <Input
                         id="signupEmail"
                         type="email"
-                        placeholder="alex@example.com"
-                        className="bg-white border-[#E5DCD0] text-[#292724] text-xs focus:border-[#E76F51] rounded-xl transition-colors duration-200"
+                        placeholder="alex@aulyn.edu"
+                        className="bg-white border-[#E5DCD0] text-[#292724] text-xs focus:border-[#E76F51] rounded-xl transition-colors duration-200 font-medium"
                         value={signupEmail}
                         onChange={(e) => setSignupEmail(e.target.value)}
                       />
@@ -367,7 +368,7 @@ export default function AuthPage() {
                         id="signupPassword"
                         type="password"
                         placeholder="••••••••"
-                        className="bg-white border-[#E5DCD0] text-[#292724] text-xs focus:border-[#E76F51] rounded-xl transition-colors duration-200"
+                        className="bg-white border-[#E5DCD0] text-[#292724] text-xs focus:border-[#E76F51] rounded-xl transition-colors duration-200 font-medium"
                         value={signupPassword}
                         onChange={(e) => setSignupPassword(e.target.value)}
                       />
@@ -385,8 +386,8 @@ export default function AuthPage() {
       </main>
 
       {/* Editorial Footer */}
-      <footer className="px-8 py-4 border-t border-[#E5DCD0] bg-[#FFF9F1]/80 backdrop-blur-md text-center text-xs text-[#77716A] z-10">
-        <p>© 2026 EduMeet.Ai • One place for the entire learning journey.</p>
+      <footer className="px-8 py-4 border-t border-[#E5DCD0] bg-[#FFF9F1]/80 backdrop-blur-md text-center text-xs text-[#77716A] z-10 font-medium">
+        <p>© 2026 AULYN • One place for the entire learning journey.</p>
       </footer>
     </div>
   )

@@ -61,7 +61,7 @@ export default function TeacherPortal() {
 
   // Settings State
   const [profileName, setProfileName] = useState("Prof. Sarah Jenkins")
-  const [profileEmail, setProfileEmail] = useState("sarah.jenkins@edumeet.ai")
+  const [profileEmail, setProfileEmail] = useState("sarah.jenkins@aulyn.edu")
   const [profileBio, setProfileBio] = useState("Senior Computer Science Lecturer & Algorithm Design Specialist")
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [digestFrequency, setDigestFrequency] = useState("Daily Summary")
@@ -551,12 +551,10 @@ export default function TeacherPortal() {
             </SheetContent>
           </Sheet>
 
-          <div className="w-9 h-9 bg-[#E76F51] rounded-xl flex items-center justify-center text-white font-bold text-base shadow-2xs hover:scale-105 transition-transform">
-            EB
-          </div>
+          <img src="/aulyn-logo.png" alt="AULYN Logo" className="w-9 h-9 object-contain rounded-lg shadow-2xs hover:scale-105 transition-transform" />
           <div>
-            <h1 className="text-base sm:text-lg font-serif font-bold text-[#292724] leading-none">Teacher Command Center</h1>
-            <p className="text-[10px] text-[#77716A] font-medium mt-0.5 hidden sm:block">EduMeet.Ai Educator Suite</p>
+            <h1 className="text-base sm:text-lg font-serif font-black text-[#292724] leading-none tracking-tight">AULYN</h1>
+            <p className="text-[10px] text-[#77716A] font-medium mt-0.5 hidden sm:block">Teacher Command Center</p>
           </div>
         </div>
 

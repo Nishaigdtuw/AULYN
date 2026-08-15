@@ -117,7 +117,7 @@ const CLASSROOM_DATABASE: Record<string, EnrolledClass> = {
 export default function StudentPortal() {
   const router = useRouter()
   const [studentName, setStudentName] = useState("Alex Rivera")
-  const [studentEmail, setStudentEmail] = useState("alex.rivera@edumeet.ai")
+  const [studentEmail, setStudentEmail] = useState("alex.rivera@aulyn.edu")
   const [studentMajor, setStudentMajor] = useState("Computer Science & Engineering")
   const [studyReminder, setStudyReminder] = useState("Daily at 6:00 PM")
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
@@ -523,12 +523,10 @@ export default function StudentPortal() {
             </SheetContent>
           </Sheet>
 
-          <div className="w-9 h-9 bg-[#E76F51] rounded-xl flex items-center justify-center text-white font-bold text-base shadow-2xs hover:scale-105 transition-transform">
-            EB
-          </div>
+          <img src="/aulyn-logo.png" alt="AULYN Logo" className="w-9 h-9 object-contain rounded-lg shadow-2xs hover:scale-105 transition-transform" />
           <div>
-            <h1 className="text-base sm:text-lg font-serif font-bold text-[#292724] leading-none">Student Workspace</h1>
-            <p className="text-[10px] text-[#77716A] font-medium mt-0.5 hidden sm:block">EduMeet.Ai Intelligent Workspace</p>
+            <h1 className="text-base sm:text-lg font-serif font-black text-[#292724] leading-none tracking-tight">AULYN</h1>
+            <p className="text-[10px] text-[#77716A] font-medium mt-0.5 hidden sm:block">Student Workspace</p>
           </div>
         </div>
 

@@ -28,7 +28,7 @@ export default function PricingModal({ open, onOpenChange, userRole = "student" 
             <Crown className="w-5 h-5" />
           </div>
           <DialogTitle className="text-2xl font-serif font-bold text-[#292724]">
-            Upgrade to EduMeet.Ai Pro
+            Upgrade to AULYN Pro
           </DialogTitle>
           <p className="text-xs text-[#77716A] max-w-md mx-auto">
             Unlock 3-Panel Code Trace IDE, Unlimited AI Notes Summarization, and Class Mastery Analytics for {userRole === "teacher" ? "Teachers" : "Students"}.
