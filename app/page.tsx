@@ -129,7 +129,7 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4EFE7] text-[#292724] flex flex-col justify-between relative overflow-hidden">
+    <div className="min-h-screen bg-transparent text-[#292724] flex flex-col justify-between relative overflow-hidden">
       {/* Abstract Atmospheric Background */}
       <AnimatedLearningBackground />
 
@@ -159,7 +159,7 @@ export default function AuthPage() {
       {/* Main Asymmetric Editorial Section */}
       <main className="max-w-7xl mx-auto px-8 py-16 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center flex-1 z-10">
         {/* Left Column: Senior Designer Editorial Headline */}
-        <div className="lg:col-span-6 space-y-8">
+        <div className="lg:col-span-6 space-y-8 bg-[#FFF9F1]/85 backdrop-blur-md p-8 rounded-3xl border border-[#E5DCD0]/80 shadow-lg">
           <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#F1E8DD] border border-[#E5DCD0] text-[#E76F51] text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Hackathon Edition • Premium EdTech Studio</span>

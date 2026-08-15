@@ -34,7 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="light">
       <body
-        className={`${playfairDisplay.variable} ${plusJakartaSans.variable} ${jetbrainsMono.variable} font-sans bg-[#F4EFE7] text-[#292724] antialiased selection:bg-[#E76F51] selection:text-white min-h-screen relative`}
+        className={`${playfairDisplay.variable} ${plusJakartaSans.variable} ${jetbrainsMono.variable} font-sans bg-[#1e1a16] text-[#292724] antialiased selection:bg-[#E76F51] selection:text-white min-h-screen relative`}
       >
         <Toaster richColors position="top-right" theme="light" />
         {children}

@@ -393,7 +393,7 @@ export default function TeacherPortal() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4EFE7] text-[#292724] flex flex-col justify-between relative overflow-hidden">
+    <div className="min-h-screen bg-transparent text-[#292724] flex flex-col justify-between relative overflow-hidden">
       {/* Clean Background */}
       <AnimatedLearningBackground />
 
