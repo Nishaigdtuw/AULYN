@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { handleLogin, handleSignup } from '@/actions/auth/auth'
+import { setAuthenticatedUser } from "@/lib/auth-guard"
 
 interface UserRecord {
   userId?: string
@@ -144,10 +145,10 @@ export default function AuthPage() {
 
   const handleQuickDemo = (demoRole: 'student' | 'teacher') => {
     const mockUser = demoRole === 'teacher'
-      ? { userId: 'teacher-demo', name: 'Prof. Sarah Jenkins', email: 'sarah.jenkins@aulyn.edu', role: 'teacher' }
-      : { userId: 'student-demo', name: 'Alex Rivera', email: 'alex.rivera@aulyn.edu', role: 'student' }
+      ? { userId: 'teacher-demo', name: 'Prof. Sarah Jenkins', email: 'sarah.jenkins@aulyn.edu', role: 'teacher' as const }
+      : { userId: 'student-demo', name: 'Alex Rivera', email: 'alex.rivera@aulyn.edu', role: 'student' as const }
 
-    localStorage.setItem('user', JSON.stringify(mockUser))
+    setAuthenticatedUser(mockUser)
     toast.success(`Entering ${demoRole === 'teacher' ? 'Teacher' : 'Student'} Workspace...`)
     router.push(demoRole === 'teacher' ? '/teacher' : '/student')
   }

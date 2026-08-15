@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useEffect, useState, useCallback } from "react"
-import { FileText, LogOut, Plus, Book, FileCheck, Sparkles, TrendingUp, Crown, Menu, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Download, User, Save, Eye, Send } from "lucide-react"
+import React, { useEffect, useState, useCallback, useRef } from "react"
+import { FileText, LogOut, Plus, Book, FileCheck, Sparkles, TrendingUp, Crown, Menu, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Download, User, Save, Eye, Send, ArrowLeft, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -15,22 +15,24 @@ import NotesAiConverter from "@/components/notes-ai-converter"
 import PricingModal from "@/components/pricing-modal"
 import { CreateAssignmentModal } from "@/components/teacher-assignment-modal"
 import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, AnnouncementData } from "@/lib/data-store"
-import { getAuthenticatedUser, clearAuthenticatedUser } from "@/lib/auth-guard"
+import { getAuthenticatedUser, clearAuthenticatedUser, setAuthenticatedUser } from "@/lib/auth-guard"
 
 export default function TeacherPortal() {
   const router = useRouter()
   const [self, setSelf] = useState<{ userId?: string; name?: string; email?: string; role?: string } | null>(null)
 
-  // Classrooms Data Store
+  // Classrooms Data Store & State
   const [classrooms, setClassrooms] = useState<ClassroomData[]>([])
   const [activeClassroom, setActiveClassroom] = useState<ClassroomData | null>(null)
+  const activeClassroomRef = useRef<ClassroomData | null>(null)
+  activeClassroomRef.current = activeClassroom
 
   // Settings State
   const [profileName, setProfileName] = useState("Prof. Sarah Jenkins")
   const [profileEmail, setProfileEmail] = useState("sarah.jenkins@aulyn.edu")
   const [profileBio, setProfileBio] = useState("Senior Computer Science Lecturer & Algorithm Design Specialist")
 
-  // Workspace state & modals
+  // Workspace state & navigation
   const [activeMainTab, setActiveMainTab] = useState("overview")
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
   const [pricingOpen, setPricingOpen] = useState(false)
@@ -43,7 +45,7 @@ export default function TeacherPortal() {
   const [newAnnouncementTitle, setNewAnnouncementTitle] = useState("")
   const [newAnnouncementContent, setNewAnnouncementContent] = useState("")
 
-  // Sidebar Expandable Submenus
+  // Sidebar Submenus State
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     classes: true,
     assessments: true,
@@ -51,33 +53,38 @@ export default function TeacherPortal() {
     aiTools: true
   })
 
-  // Data Reload Handler
+  // Data Reload Handler - Safe from infinite loop
   const loadTeacherData = useCallback(() => {
-    const list = getStoredClassrooms()
-    setClassrooms(list)
+    try {
+      const list = getStoredClassrooms() || []
+      setClassrooms(list)
 
-    if (list.length > 0) {
-      let target = list[0]
-      if (typeof window !== "undefined") {
-        const params = new URLSearchParams(window.location.search)
-        const classParam = params.get("class")
-        if (classParam) {
-          const found = list.find((c) => c.classId === classParam || c.code.toLowerCase() === classParam.toLowerCase())
-          if (found) target = found
-        } else if (activeClassroom) {
-          const found = list.find((c) => c.classId === activeClassroom.classId)
-          if (found) target = found
+      if (list.length > 0) {
+        let target = list[0]
+        if (typeof window !== "undefined") {
+          const params = new URLSearchParams(window.location.search)
+          const classParam = params.get("class")
+          if (classParam) {
+            const found = list.find((c) => c.classId === classParam || c.code?.toLowerCase() === classParam.toLowerCase())
+            if (found) target = found
+          } else if (activeClassroomRef.current) {
+            const found = list.find((c) => c.classId === activeClassroomRef.current?.classId)
+            if (found) target = found
+          }
         }
+        setActiveClassroom(target)
       }
-      setActiveClassroom(target)
+      setStudentSubmissions(getSubmissions() || [])
+    } catch (err) {
+      console.error("Error loading teacher data:", err)
     }
-    setStudentSubmissions(getSubmissions())
-  }, [activeClassroom])
+  }, [])
 
   useEffect(() => {
     loadTeacherData()
-    window.addEventListener("aulyn-data-update", loadTeacherData)
-    return () => window.removeEventListener("aulyn-data-update", loadTeacherData)
+    const handleDataUpdate = () => loadTeacherData()
+    window.addEventListener("aulyn-data-update", handleDataUpdate)
+    return () => window.removeEventListener("aulyn-data-update", handleDataUpdate)
   }, [loadTeacherData])
 
   // Authenticated Session Check
@@ -101,8 +108,9 @@ export default function TeacherPortal() {
     setExpandedSections((prev) => ({ ...prev, [sec]: !prev[sec] }))
   }
 
-  // Robust Classroom Selection
+  // Classroom Selection Handler
   const handleSelectClassroom = (cls: ClassroomData) => {
+    if (!cls) return
     setActiveClassroom(cls)
     setMobileDrawerOpen(false)
 
@@ -123,7 +131,9 @@ export default function TeacherPortal() {
   const handleViewMaterial = (fileName: string, fileUrl?: string) => {
     const urlToUse = fileUrl || `/materials/${fileName}`
     toast.info(`Opening "${fileName}"...`)
-    window.open(urlToUse, "_blank")
+    if (typeof window !== "undefined") {
+      window.open(urlToUse, "_blank")
+    }
   }
 
   // Material Download Handler
@@ -162,9 +172,10 @@ export default function TeacherPortal() {
       important: true
     }
 
-    const classroomsList = getStoredClassrooms()
+    const classroomsList = getStoredClassrooms() || []
     const cls = classroomsList.find((c) => c.classId === activeClassroom.classId)
     if (cls) {
+      if (!cls.announcements) cls.announcements = []
       cls.announcements.unshift(ann)
       saveStoredClassrooms(classroomsList)
     }
@@ -174,7 +185,7 @@ export default function TeacherPortal() {
     toast.success(`Broadcasted announcement to all students in ${activeClassroom.className}!`)
   }
 
-  // Save Settings
+  // Save Settings & Profile
   const handleSaveSettings = () => {
     const updatedUser = {
       ...(self || {}),
@@ -183,18 +194,30 @@ export default function TeacherPortal() {
       email: profileEmail,
       role: "teacher" as const
     }
-    localStorage.setItem("user", JSON.stringify(updatedUser))
+    setAuthenticatedUser(updatedUser)
     setSelf(updatedUser)
     toast.success("Profile & Educator settings saved successfully!")
   }
 
-  const handleLogout = () => {
+  // Navigation: Exit Demo / Back to Landing
+  const handleExitDemo = () => {
     clearAuthenticatedUser()
-    toast.info("Logged out.")
+    toast.info("Exited Demo Workspace. Returned to AULYN Home.")
     router.replace("/")
   }
 
-  // Sidebar Content Render Component
+  // Navigation: Switch Role to Student Demo
+  const handleSwitchRole = (newRole: 'teacher' | 'student') => {
+    const mockUser = newRole === 'teacher'
+      ? { userId: 'teacher-demo', name: 'Prof. Sarah Jenkins', email: 'sarah.jenkins@aulyn.edu', role: 'teacher' as const }
+      : { userId: 'student-demo', name: 'Alex Rivera', email: 'alex.rivera@aulyn.edu', role: 'student' as const }
+
+    setAuthenticatedUser(mockUser)
+    toast.success(`Switched role to ${newRole === 'teacher' ? 'Teacher' : 'Student'} Workspace`)
+    router.replace(newRole === 'teacher' ? '/teacher' : '/student')
+  }
+
+  // Sidebar Content Component
   const RenderSidebarContent = () => (
     <div className="flex flex-col justify-between h-full space-y-6">
       <div className="space-y-4">
@@ -206,7 +229,7 @@ export default function TeacherPortal() {
           <Plus className="w-4 h-4" /> Create Assignment (AI Assisted)
         </Button>
 
-        {/* Structured Expandable Submenus */}
+        {/* Navigation Items */}
         <nav className="space-y-1 text-xs">
           <button
             onClick={() => { setActiveMainTab("overview"); setMobileDrawerOpen(false) }}
@@ -278,9 +301,23 @@ export default function TeacherPortal() {
         </nav>
       </div>
 
-      <div className="pt-4 border-t border-[#E5DCD0] space-y-3">
-        <Button variant="ghost" className="w-full justify-start text-[#77716A] hover:text-[#E76F51] text-xs font-semibold cursor-pointer" onClick={handleLogout}>
-          <LogOut className="w-4 h-4 mr-2" /> Sign Out
+      <div className="pt-4 border-t border-[#E5DCD0] space-y-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleSwitchRole("student")}
+          className="w-full border-[#E76F51] text-[#E76F51] hover:bg-[#E76F51]/10 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <RefreshCw className="w-3.5 h-3.5" /> Switch to Student Demo
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start text-[#77716A] hover:text-[#E76F51] text-xs font-semibold cursor-pointer"
+          onClick={handleExitDemo}
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" /> ← Back to AULYN / Exit Demo
         </Button>
       </div>
     </div>
@@ -291,7 +328,7 @@ export default function TeacherPortal() {
       {/* Header Bar */}
       <header className="flex justify-between items-center px-4 sm:px-8 py-3.5 bg-[#FFF9F1]/95 backdrop-blur-md border-b border-[#E5DCD0] sticky top-0 z-50 shadow-2xs">
         <div className="flex items-center space-x-3">
-          {/* Mobile Drawer Trigger (< lg screens) */}
+          {/* Mobile Drawer Trigger */}
           <Sheet open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="lg:hidden text-[#292724] hover:bg-[#F1E8DD]/60">
@@ -325,12 +362,21 @@ export default function TeacherPortal() {
             <Crown className="w-3.5 h-3.5 mr-1.5 text-[#E9B949]" /> Pro Educator
           </Button>
 
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleExitDemo}
+            className="text-[#E76F51] hover:bg-[#E76F51]/10 font-bold text-xs rounded-xl hidden sm:flex items-center gap-1 cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Exit Demo
+          </Button>
+
           <div className="text-right hidden sm:block">
             <p className="text-xs font-bold text-[#292724]">{profileName}</p>
             <p className="text-[10px] font-semibold text-[#4A453F]">{profileEmail}</p>
           </div>
 
-          <Button variant="outline" size="sm" onClick={handleLogout} className="text-[#77716A] hover:text-red-600 border-[#E5DCD0] text-xs font-semibold rounded-xl cursor-pointer">
+          <Button variant="outline" size="sm" onClick={handleExitDemo} className="text-[#77716A] hover:text-red-600 border-[#E5DCD0] text-xs font-semibold rounded-xl cursor-pointer">
             <LogOut className="w-4 h-4 mr-1.5" /> Logout
           </Button>
         </div>
@@ -345,7 +391,7 @@ export default function TeacherPortal() {
       />
 
       <div className="flex flex-1 overflow-hidden z-10">
-        {/* Desktop Sidebar (≥ lg screens) */}
+        {/* Desktop Sidebar */}
         <aside className="w-64 border-r border-[#E5DCD0] bg-[#FFF9F1]/85 backdrop-blur-md p-5 hidden lg:flex flex-col justify-between overflow-y-auto">
           <RenderSidebarContent />
         </aside>
@@ -359,7 +405,7 @@ export default function TeacherPortal() {
                 Welcome back, {profileName.split(" ")[1] || profileName}.
               </h2>
               <p className="text-xs font-bold text-[#292724] mt-1">
-                Active Classroom: <span className="text-[#E76F51] font-bold">{activeClassroom?.className}</span> ({activeClassroom?.code})
+                Active Classroom: <span className="text-[#E76F51] font-bold">{activeClassroom?.className || "Loading..."}</span> ({activeClassroom?.code})
               </p>
             </div>
 
@@ -439,7 +485,7 @@ export default function TeacherPortal() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-3xl font-serif font-bold text-[#292724]">
-                      {activeClassroom?.students.length || 0} Active
+                      {activeClassroom?.students?.length || 0} Active
                     </div>
                     <p className="text-xs text-[#75B798] font-bold mt-1 flex items-center">
                       <TrendingUp className="w-3.5 h-3.5 mr-1" /> +2 this week
@@ -453,7 +499,7 @@ export default function TeacherPortal() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-3xl font-serif font-bold text-[#8B7EC8]">
-                      {activeClassroom?.students[0]?.score || 88}%
+                      {activeClassroom?.students?.[0]?.score || 88}%
                     </div>
                     <p className="text-xs text-[#292724] font-semibold mt-1">Synced across real quiz attempts</p>
                   </CardContent>
@@ -480,31 +526,35 @@ export default function TeacherPortal() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 space-y-2">
-                  {activeClassroom?.materials.map((mat) => (
-                    <div key={mat.fileId} className="p-3 bg-white hover:bg-[#F1E8DD]/40 rounded-xl border border-[#E5DCD0] text-xs font-bold text-[#292724] flex items-center justify-between shadow-2xs">
-                      <span className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-[#E76F51]" /> {mat.fileName}
-                      </span>
-                      <div className="flex items-center space-x-1.5">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleViewMaterial(mat.fileName, mat.fileUrl)}
-                          className="text-[11px] text-[#8B7EC8] border-[#E5DCD0] hover:bg-[#8B7EC8] hover:text-white font-bold h-7 px-3 rounded-lg cursor-pointer"
-                        >
-                          <Eye className="w-3 h-3 mr-1" /> View
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDownloadMaterial(mat.fileName, mat.fileUrl)}
-                          className="text-[11px] text-[#E76F51] border-[#E5DCD0] hover:bg-[#E76F51] hover:text-white font-bold h-7 px-3 rounded-lg cursor-pointer"
-                        >
-                          <Download className="w-3 h-3 mr-1" /> Download
-                        </Button>
+                  {activeClassroom?.materials && activeClassroom.materials.length > 0 ? (
+                    activeClassroom.materials.map((mat) => (
+                      <div key={mat.fileId} className="p-3 bg-white hover:bg-[#F1E8DD]/40 rounded-xl border border-[#E5DCD0] text-xs font-bold text-[#292724] flex items-center justify-between shadow-2xs">
+                        <span className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-[#E76F51]" /> {mat.fileName}
+                        </span>
+                        <div className="flex items-center space-x-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewMaterial(mat.fileName, mat.fileUrl)}
+                            className="text-[11px] text-[#8B7EC8] border-[#E5DCD0] hover:bg-[#8B7EC8] hover:text-white font-bold h-7 px-3 rounded-lg cursor-pointer"
+                          >
+                            <Eye className="w-3 h-3 mr-1" /> View
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDownloadMaterial(mat.fileName, mat.fileUrl)}
+                            className="text-[11px] text-[#E76F51] border-[#E5DCD0] hover:bg-[#E76F51] hover:text-white font-bold h-7 px-3 rounded-lg cursor-pointer"
+                          >
+                            <Download className="w-3 h-3 mr-1" /> Download
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-xs text-[#77716A] italic">No course materials uploaded yet.</p>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -528,21 +578,27 @@ export default function TeacherPortal() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {activeClassroom?.students.map((student) => (
-                        <TableRow key={student.id} className="border-[#E5DCD0]">
-                          <TableCell className="font-bold text-xs text-[#292724]">{student.name}</TableCell>
-                          <TableCell className="text-xs font-semibold text-[#292724]">{student.email}</TableCell>
-                          <TableCell>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-[#75B798]/15 text-[#75B798] border-[#75B798]/30">
-                              {student.status}
-                            </span>
-                          </TableCell>
-                          <TableCell className="font-bold text-xs text-[#292724] font-mono">{student.score}%</TableCell>
-                          <TableCell className="text-xs text-red-600 font-semibold">
-                            {student.weakTopics.length > 0 ? student.weakTopics.join(", ") : "None identified"}
-                          </TableCell>
+                      {activeClassroom?.students && activeClassroom.students.length > 0 ? (
+                        activeClassroom.students.map((student) => (
+                          <TableRow key={student.id} className="border-[#E5DCD0]">
+                            <TableCell className="font-bold text-xs text-[#292724]">{student.name}</TableCell>
+                            <TableCell className="text-xs font-semibold text-[#292724]">{student.email}</TableCell>
+                            <TableCell>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-[#75B798]/15 text-[#75B798] border-[#75B798]/30">
+                                {student.status}
+                              </span>
+                            </TableCell>
+                            <TableCell className="font-bold text-xs text-[#292724] font-mono">{student.score}%</TableCell>
+                            <TableCell className="text-xs text-red-600 font-semibold">
+                              {student.weakTopics && student.weakTopics.length > 0 ? student.weakTopics.join(", ") : "None identified"}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-xs text-[#77716A] py-4">No enrolled students in this classroom yet.</TableCell>
                         </TableRow>
-                      ))}
+                      )}
                     </TableBody>
                   </Table>
                 </CardContent>

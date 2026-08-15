@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useEffect, useState, useCallback } from "react"
-import { FileText, Download, ArrowUpRight, Menu, LogOut, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Eye, Send, Bell, User, Save, BookOpen, Sparkles, Award } from "lucide-react"
+import React, { useEffect, useState, useCallback, useRef } from "react"
+import { FileText, Download, ArrowUpRight, Menu, LogOut, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Eye, Send, Bell, User, Save, BookOpen, Sparkles, Award, ArrowLeft, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -15,15 +15,18 @@ import PricingModal from "@/components/pricing-modal"
 import { QuizModal, FlashcardsModal, MockTestModal } from "@/components/practice-modals"
 import { AiTutorDialog } from "@/components/ai-tutor-dialog"
 import { getStoredClassrooms, ClassroomData, saveSubmission, getSubmissions, SubmissionData } from "@/lib/data-store"
-import { getAuthenticatedUser, clearAuthenticatedUser } from "@/lib/auth-guard"
+import { getAuthenticatedUser, clearAuthenticatedUser, setAuthenticatedUser } from "@/lib/auth-guard"
 
 export default function StudentPortal() {
   const router = useRouter()
   const [self, setSelf] = useState<{ userId?: string; name?: string; email?: string; role?: string } | null>(null)
 
-  // Classrooms Data Store
+  // Classrooms Data Store & State
   const [classrooms, setClassrooms] = useState<ClassroomData[]>([])
   const [activeClassroom, setActiveClassroom] = useState<ClassroomData | null>(null)
+  const activeClassroomRef = useRef<ClassroomData | null>(null)
+  activeClassroomRef.current = activeClassroom
+
   const [selectedChapterIdx, setSelectedChapterIdx] = useState<number>(0)
 
   // Settings State
@@ -31,7 +34,7 @@ export default function StudentPortal() {
   const [studentEmail, setStudentEmail] = useState("alex.rivera@aulyn.edu")
   const [studentMajor, setStudentMajor] = useState("Computer Science & Engineering")
 
-  // Workspace tab & sidebar navigation
+  // Workspace tab & navigation
   const [activeMainTab, setActiveMainTab] = useState("overview")
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
   const [pricingOpen, setPricingOpen] = useState(false)
@@ -51,48 +54,53 @@ export default function StudentPortal() {
   const [submissionText, setSubmissionText] = useState("")
   const [userSubmissions, setUserSubmissions] = useState<SubmissionData[]>([])
 
-  // Sidebar Expandable Submenus
+  // Sidebar Submenus State
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     classes: true,
     tools: true,
     practice: true
   })
 
-  // Data Reload Handler with URL search param sync
+  // Data Reload Handler - No dependency loop!
   const loadClassroomData = useCallback(() => {
-    const list = getStoredClassrooms()
-    setClassrooms(list)
+    try {
+      const list = getStoredClassrooms() || []
+      setClassrooms(list)
 
-    if (list.length > 0) {
-      let target = list[0]
-      if (typeof window !== "undefined") {
-        const params = new URLSearchParams(window.location.search)
-        const classParam = params.get("class")
-        if (classParam) {
-          const found = list.find((c) => c.classId === classParam || c.code.toLowerCase() === classParam.toLowerCase())
-          if (found) target = found
-        } else if (activeClassroom) {
-          const found = list.find((c) => c.classId === activeClassroom.classId)
-          if (found) target = found
+      if (list.length > 0) {
+        let target = list[0]
+        if (typeof window !== "undefined") {
+          const params = new URLSearchParams(window.location.search)
+          const classParam = params.get("class")
+          if (classParam) {
+            const found = list.find((c) => c.classId === classParam || c.code?.toLowerCase() === classParam.toLowerCase())
+            if (found) target = found
+          } else if (activeClassroomRef.current) {
+            const found = list.find((c) => c.classId === activeClassroomRef.current?.classId)
+            if (found) target = found
+          }
+        }
+
+        setActiveClassroom(target)
+        const firstChap = target.chapters?.[0]
+        if (firstChap) {
+          setActiveNoteText(firstChap.sourceNoteContent || "")
+          setActiveNoteFile(firstChap.sourceNoteFile || "")
+        } else {
+          setActiveNoteText("")
+          setActiveNoteFile("")
         }
       }
-
-      setActiveClassroom(target)
-      const firstChap = target.chapters[0]
-      if (firstChap) {
-        setActiveNoteText(firstChap.sourceNoteContent)
-        setActiveNoteFile(firstChap.sourceNoteFile)
-      } else {
-        setActiveNoteText("")
-        setActiveNoteFile("")
-      }
+    } catch (err) {
+      console.error("Error loading classroom data:", err)
     }
-  }, [activeClassroom])
+  }, [])
 
   useEffect(() => {
     loadClassroomData()
-    window.addEventListener("aulyn-data-update", loadClassroomData)
-    return () => window.removeEventListener("aulyn-data-update", loadClassroomData)
+    const handleDataUpdate = () => loadClassroomData()
+    window.addEventListener("aulyn-data-update", handleDataUpdate)
+    return () => window.removeEventListener("aulyn-data-update", handleDataUpdate)
   }, [loadClassroomData])
 
   // Authenticated Session Check
@@ -112,28 +120,29 @@ export default function StudentPortal() {
     if (user.email) setStudentEmail(user.email)
 
     // Load Submissions
-    setUserSubmissions(getSubmissions())
+    setUserSubmissions(getSubmissions() || [])
   }, [router])
 
   const toggleSection = (sec: string) => {
     setExpandedSections((prev) => ({ ...prev, [sec]: !prev[sec] }))
   }
 
-  // Robust Classroom Switch Handler
+  // Classroom Switch Handler
   const handleSelectClassroom = (cls: ClassroomData) => {
+    if (!cls) return
     setActiveClassroom(cls)
     setSelectedChapterIdx(0)
-    const firstChap = cls.chapters[0]
+    const firstChap = cls.chapters?.[0]
     if (firstChap) {
-      setActiveNoteText(firstChap.sourceNoteContent)
-      setActiveNoteFile(firstChap.sourceNoteFile)
+      setActiveNoteText(firstChap.sourceNoteContent || "")
+      setActiveNoteFile(firstChap.sourceNoteFile || "")
     } else {
       setActiveNoteText("")
       setActiveNoteFile("")
     }
     setMobileDrawerOpen(false)
 
-    // Sync URL Search Parameter e.g. /student?class=math-101
+    // Sync URL Parameter
     if (typeof window !== "undefined") {
       try {
         const url = new URL(window.location.href)
@@ -144,7 +153,7 @@ export default function StudentPortal() {
       }
     }
 
-    toast.info(`Switched Active Classroom: ${cls.className} (${cls.code})`)
+    toast.info(`Active Class: ${cls.className} (${cls.code})`)
   }
 
   // Functional Load Notes
@@ -154,23 +163,25 @@ export default function StudentPortal() {
     const toastId = toast.loading(`Loading lecture notes for ${activeClassroom.className}...`)
 
     setTimeout(() => {
-      const activeChap = activeClassroom.chapters[selectedChapterIdx] || activeClassroom.chapters[0]
+      const activeChap = activeClassroom.chapters?.[selectedChapterIdx] || activeClassroom.chapters?.[0]
       if (activeChap) {
-        setActiveNoteText(activeChap.sourceNoteContent)
-        setActiveNoteFile(activeChap.sourceNoteFile)
+        setActiveNoteText(activeChap.sourceNoteContent || "")
+        setActiveNoteFile(activeChap.sourceNoteFile || "")
         toast.success(`Notes Loaded: "${activeChap.chapterName}"`, { id: toastId })
       } else {
         toast.error("Notes unavailable for selected chapter", { id: toastId })
       }
       setIsNotesLoading(false)
-    }, 400)
+    }, 300)
   }
 
   // Material View/Open Handler
   const handleViewMaterial = (fileName: string, fileUrl?: string) => {
     const urlToUse = fileUrl || `/materials/${fileName}`
     toast.info(`Opening "${fileName}"...`)
-    window.open(urlToUse, "_blank")
+    if (typeof window !== "undefined") {
+      window.open(urlToUse, "_blank")
+    }
   }
 
   // Material Download Handler
@@ -194,7 +205,7 @@ export default function StudentPortal() {
   // Assignment Submission Handler
   const handleSubmitAssignment = (asgnId: string, asgnTitle: string) => {
     if (!submissionText.trim()) {
-      toast.warning("Please type or attach your solution text before submitting")
+      toast.warning("Please type your solution text before submitting")
       return
     }
 
@@ -211,12 +222,12 @@ export default function StudentPortal() {
     }
 
     saveSubmission(sub)
-    setUserSubmissions(getSubmissions())
+    setUserSubmissions(getSubmissions() || [])
     setSubmissionText("")
-    toast.success(`Assignment "${asgnTitle}" submitted to ${activeClassroom?.instructor}!`)
+    toast.success(`Assignment "${asgnTitle}" submitted!`)
   }
 
-  // Save Settings & Persist Profile
+  // Save Settings & Profile
   const handleSaveSettings = () => {
     const updatedUser = {
       ...(self || {}),
@@ -225,24 +236,36 @@ export default function StudentPortal() {
       email: studentEmail,
       role: "student" as const
     }
-    localStorage.setItem("user", JSON.stringify(updatedUser))
+    setAuthenticatedUser(updatedUser)
     setSelf(updatedUser)
     toast.success("Profile & Preferences saved successfully!")
   }
 
-  const handleLogout = () => {
+  // Navigation: Exit Demo / Back to Landing
+  const handleExitDemo = () => {
     clearAuthenticatedUser()
-    toast.info("Logged out.")
+    toast.info("Exited Demo Workspace. Returned to AULYN Home.")
     router.replace("/")
   }
 
-  const currentChapter = activeClassroom?.chapters[selectedChapterIdx] || activeClassroom?.chapters[0]
+  // Navigation: Switch Role to Teacher Demo
+  const handleSwitchRole = (newRole: 'teacher' | 'student') => {
+    const mockUser = newRole === 'teacher'
+      ? { userId: 'teacher-demo', name: 'Prof. Sarah Jenkins', email: 'sarah.jenkins@aulyn.edu', role: 'teacher' as const }
+      : { userId: 'student-demo', name: 'Alex Rivera', email: 'alex.rivera@aulyn.edu', role: 'student' as const }
 
-  // Sidebar Content Render Component
+    setAuthenticatedUser(mockUser)
+    toast.success(`Switched role to ${newRole === 'teacher' ? 'Teacher' : 'Student'} Workspace`)
+    router.replace(newRole === 'teacher' ? '/teacher' : '/student')
+  }
+
+  const currentChapter = activeClassroom?.chapters?.[selectedChapterIdx] || activeClassroom?.chapters?.[0] || null
+
+  // Sidebar Content Component
   const RenderSidebarContent = () => (
     <div className="flex flex-col justify-between h-full space-y-6">
       <div className="space-y-4">
-        {/* Ask AI Tutor Banner Trigger */}
+        {/* Ask AI Tutor Trigger */}
         <Button
           onClick={() => { setAiTutorOpen(true); setMobileDrawerOpen(false) }}
           className="w-full bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold py-2 rounded-xl shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-xs flex items-center justify-center gap-1.5 cursor-pointer"
@@ -250,7 +273,7 @@ export default function StudentPortal() {
           <Sparkles className="w-4 h-4 text-[#E9B949]" /> Ask AI Tutor (Vision Enabled)
         </Button>
 
-        {/* Structured Expandable Submenus */}
+        {/* Navigation Items */}
         <nav className="space-y-1 text-xs">
           <button
             onClick={() => { setActiveMainTab("overview"); setMobileDrawerOpen(false) }}
@@ -339,9 +362,23 @@ export default function StudentPortal() {
         </nav>
       </div>
 
-      <div className="pt-4 border-t border-[#E5DCD0] space-y-3">
-        <Button variant="ghost" className="w-full justify-start text-[#77716A] hover:text-[#E76F51] text-xs font-semibold cursor-pointer" onClick={handleLogout}>
-          <LogOut className="w-4 h-4 mr-2" /> Sign Out
+      <div className="pt-4 border-t border-[#E5DCD0] space-y-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleSwitchRole("teacher")}
+          className="w-full border-[#8B7EC8] text-[#8B7EC8] hover:bg-[#8B7EC8]/10 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <RefreshCw className="w-3.5 h-3.5" /> Switch to Teacher Demo
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start text-[#77716A] hover:text-[#E76F51] text-xs font-semibold cursor-pointer"
+          onClick={handleExitDemo}
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" /> ← Back to AULYN / Exit Demo
         </Button>
       </div>
     </div>
@@ -352,7 +389,7 @@ export default function StudentPortal() {
       {/* Header Bar */}
       <header className="flex justify-between items-center px-4 sm:px-8 py-3.5 bg-[#FFF9F1]/95 backdrop-blur-md border-b border-[#E5DCD0] sticky top-0 z-50 shadow-2xs">
         <div className="flex items-center space-x-3">
-          {/* Mobile Drawer Trigger (< lg screens) */}
+          {/* Mobile Drawer Trigger */}
           <Sheet open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="lg:hidden text-[#292724] hover:bg-[#F1E8DD]/60">
@@ -376,7 +413,7 @@ export default function StudentPortal() {
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 sm:space-x-3.5">
+        <div className="flex items-center space-x-2 sm:space-x-3">
           <Button
             variant="outline"
             size="sm"
@@ -386,12 +423,21 @@ export default function StudentPortal() {
             Upgrade to Pro
           </Button>
 
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleExitDemo}
+            className="text-[#E76F51] hover:bg-[#E76F51]/10 font-bold text-xs rounded-xl hidden sm:flex items-center gap-1 cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Exit Demo
+          </Button>
+
           <div className="text-right hidden sm:block">
             <p className="text-xs font-bold text-[#292724]">{studentName}</p>
             <p className="text-[10px] font-semibold text-[#4A453F]">{studentEmail}</p>
           </div>
 
-          <Button variant="outline" size="sm" onClick={handleLogout} className="text-[#77716A] hover:text-red-600 border-[#E5DCD0] text-xs font-semibold rounded-xl cursor-pointer">
+          <Button variant="outline" size="sm" onClick={handleExitDemo} className="text-[#77716A] hover:text-red-600 border-[#E5DCD0] text-xs font-semibold rounded-xl cursor-pointer">
             <LogOut className="w-4 h-4 mr-1.5" /> Logout
           </Button>
         </div>
@@ -404,14 +450,14 @@ export default function StudentPortal() {
           <QuizModal
             open={quizModalOpen}
             onOpenChange={setQuizModalOpen}
-            quiz={activeClassroom.quizzes[0] || { quizId: `quiz-${activeClassroom.classId}`, chapterId: "c1", title: `${activeClassroom.code} Practice Quiz`, topic: activeClassroom.subject, timeMinutes: 10, totalMarks: 20, questions: [] }}
+            quiz={activeClassroom.quizzes?.[0] || { quizId: `quiz-${activeClassroom.classId}`, chapterId: "c1", title: `${activeClassroom.code} Quiz`, topic: activeClassroom.subject || "Core", timeMinutes: 10, totalMarks: 20, questions: [] }}
             classroom={activeClassroom}
             studentName={studentName}
           />
           <FlashcardsModal
             open={flashcardsModalOpen}
             onOpenChange={setFlashcardsModalOpen}
-            flashcards={activeClassroom.flashcards}
+            flashcards={activeClassroom.flashcards || []}
             classroom={activeClassroom}
           />
           <MockTestModal
@@ -423,15 +469,15 @@ export default function StudentPortal() {
           <AiTutorDialog
             open={aiTutorOpen}
             onOpenChange={setAiTutorOpen}
-            activeClassName={activeClassroom.className}
-            activeChapterName={currentChapter?.chapterName || "General"}
+            activeClassName={activeClassroom.className || "General Course"}
+            activeChapterName={currentChapter?.chapterName || "Overview"}
             sourceNoteContent={activeNoteText}
           />
         </>
       )}
 
       <div className="flex flex-1 overflow-hidden z-10">
-        {/* Desktop Sidebar (≥ lg screens) */}
+        {/* Desktop Sidebar */}
         <aside className="w-64 border-r border-[#E5DCD0] bg-[#FFF9F1]/85 backdrop-blur-md p-5 hidden lg:flex flex-col justify-between overflow-y-auto">
           <RenderSidebarContent />
         </aside>
@@ -445,7 +491,7 @@ export default function StudentPortal() {
                 Good morning, {studentName.split(" ")[0] || "Alex"}.
               </h2>
               <p className="text-xs font-bold text-[#292724] mt-1">
-                Active Classroom: <span className="text-[#E76F51] font-bold">{activeClassroom?.className}</span> ({activeClassroom?.code}) • Professor: <span className="text-[#8B7EC8] font-bold">{activeClassroom?.instructor}</span>
+                Active Classroom: <span className="text-[#E76F51] font-bold">{activeClassroom?.className || "Loading..."}</span> ({activeClassroom?.code}) • Professor: <span className="text-[#8B7EC8] font-bold">{activeClassroom?.instructor}</span>
               </p>
             </div>
 
@@ -486,7 +532,7 @@ export default function StudentPortal() {
             {/* OVERVIEW TAB */}
             <TabsContent value="overview" className="space-y-6 animate-in fade-in-50 duration-200">
               {/* Classroom Announcement Banner */}
-              {activeClassroom?.announcements && activeClassroom.announcements.length > 0 && (
+              {activeClassroom?.announcements && activeClassroom.announcements.length > 0 ? (
                 <div className="p-4 bg-[#FFF9F1]/95 border-2 border-[#E76F51]/40 rounded-2xl shadow-sm backdrop-blur-md flex items-start space-x-3.5">
                   <div className="w-9 h-9 bg-[#E76F51]/15 text-[#E76F51] border border-[#E76F51]/30 rounded-xl flex items-center justify-center font-bold shrink-0 mt-0.5">
                     <Bell className="w-5 h-5" />
@@ -500,6 +546,10 @@ export default function StudentPortal() {
                     </div>
                     <p className="text-xs text-[#292724] font-semibold mt-0.5">{activeClassroom.announcements[0].content}</p>
                   </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl text-xs text-[#77716A] italic">
+                  No recent announcements for {activeClassroom?.className}.
                 </div>
               )}
 
@@ -562,40 +612,43 @@ export default function StudentPortal() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {activeClassroom?.assignments.map((asgn) => (
-                    <div key={asgn.id} className="p-4 bg-white border border-[#E5DCD0] rounded-xl space-y-3 shadow-2xs">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div>
-                          <h4 className="font-bold text-sm text-[#292724]">{asgn.title}</h4>
-                          <p className="text-xs font-semibold text-[#77716A]">
-                            Format: {asgn.type} • Max Marks: {asgn.totalMarks} • Due: {asgn.dueDate}
-                          </p>
+                  {activeClassroom?.assignments && activeClassroom.assignments.length > 0 ? (
+                    activeClassroom.assignments.map((asgn) => (
+                      <div key={asgn.id} className="p-4 bg-white border border-[#E5DCD0] rounded-xl space-y-3 shadow-2xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div>
+                            <h4 className="font-bold text-sm text-[#292724]">{asgn.title}</h4>
+                            <p className="text-xs font-semibold text-[#77716A]">
+                              Format: {asgn.type} • Max Marks: {asgn.totalMarks} • Due: {asgn.dueDate}
+                            </p>
+                          </div>
+                          <span className="text-[10px] font-bold text-[#E76F51] bg-[#E76F51]/10 px-2.5 py-1 rounded-full border border-[#E76F51]/30 self-start sm:self-auto">
+                            {asgn.difficulty}
+                          </span>
                         </div>
-                        <span className="text-[10px] font-bold text-[#E76F51] bg-[#E76F51]/10 px-2.5 py-1 rounded-full border border-[#E76F51]/30 self-start sm:self-auto">
-                          {asgn.difficulty}
-                        </span>
-                      </div>
-                      <p className="text-xs text-[#292724] font-medium bg-[#F1E8DD]/40 p-2.5 rounded-lg border border-[#E5DCD0]/60">
-                        {asgn.instructions}
-                      </p>
+                        <p className="text-xs text-[#292724] font-medium bg-[#F1E8DD]/40 p-2.5 rounded-lg border border-[#E5DCD0]/60">
+                          {asgn.instructions}
+                        </p>
 
-                      {/* Submission Input Box */}
-                      <div className="space-y-2">
-                        <Input
-                          placeholder="Paste solution text, code link, or notes answer here..."
-                          value={submissionText}
-                          onChange={(e) => setSubmissionText(e.target.value)}
-                          className="bg-white border-[#E5DCD0] text-[#292724] text-xs font-semibold rounded-xl"
-                        />
-                        <Button
-                          onClick={() => handleSubmitAssignment(asgn.id, asgn.title)}
-                          className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs py-2 rounded-xl shadow-2xs cursor-pointer"
-                        >
-                          <Send className="w-3.5 h-3.5 mr-1.5" /> Submit Solution
-                        </Button>
+                        <div className="space-y-2">
+                          <Input
+                            placeholder="Paste solution text, code link, or notes answer here..."
+                            value={submissionText}
+                            onChange={(e) => setSubmissionText(e.target.value)}
+                            className="bg-white border-[#E5DCD0] text-[#292724] text-xs font-semibold rounded-xl"
+                          />
+                          <Button
+                            onClick={() => handleSubmitAssignment(asgn.id, asgn.title)}
+                            className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs py-2 rounded-xl shadow-2xs cursor-pointer"
+                          >
+                            <Send className="w-3.5 h-3.5 mr-1.5" /> Submit Solution
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-xs text-[#77716A] italic">No active assignments for this classroom yet.</p>
+                  )}
                 </CardContent>
               </Card>
 
@@ -633,7 +686,6 @@ export default function StudentPortal() {
                     </CardDescription>
                   </div>
 
-                  {/* Load Notes Trigger Button */}
                   <Button
                     onClick={handleLoadNotes}
                     disabled={isNotesLoading}
@@ -652,15 +704,15 @@ export default function StudentPortal() {
                       onChange={(e) => {
                         const idx = Number(e.target.value)
                         setSelectedChapterIdx(idx)
-                        const ch = activeClassroom?.chapters[idx]
+                        const ch = activeClassroom?.chapters?.[idx]
                         if (ch) {
-                          setActiveNoteText(ch.sourceNoteContent)
-                          setActiveNoteFile(ch.sourceNoteFile)
+                          setActiveNoteText(ch.sourceNoteContent || "")
+                          setActiveNoteFile(ch.sourceNoteFile || "")
                         }
                       }}
                       className="bg-white border border-[#E5DCD0] text-[#292724] font-bold text-xs px-3 py-1.5 rounded-xl cursor-pointer"
                     >
-                      {activeClassroom?.chapters.map((ch, idx) => (
+                      {activeClassroom?.chapters?.map((ch, idx) => (
                         <option key={ch.chapterId} value={idx}>
                           {ch.chapterName}
                         </option>
@@ -668,33 +720,37 @@ export default function StudentPortal() {
                     </select>
                   </div>
 
-                  {/* Real Materials File List */}
+                  {/* Materials File List */}
                   <div className="space-y-2">
-                    {activeClassroom?.materials.map((mat) => (
-                      <div key={mat.fileId} className="p-3.5 bg-white border border-[#E5DCD0] rounded-xl text-xs font-bold text-[#292724] flex items-center justify-between shadow-2xs hover:border-[#E76F51]/40 transition-colors">
-                        <span className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-[#E76F51]" /> {mat.fileName} <span className="text-[10px] text-[#77716A]">({mat.size})</span>
-                        </span>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleViewMaterial(mat.fileName, mat.fileUrl)}
-                            className="text-[11px] text-[#8B7EC8] border-[#E5DCD0] hover:bg-[#8B7EC8] hover:text-white font-bold h-7 px-3 rounded-lg cursor-pointer"
-                          >
-                            <Eye className="w-3 h-3 mr-1" /> View
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDownloadMaterial(mat.fileName, mat.fileUrl)}
-                            className="text-[11px] text-[#E76F51] border-[#E5DCD0] hover:bg-[#E76F51] hover:text-white font-bold h-7 px-3 rounded-lg cursor-pointer"
-                          >
-                            <Download className="w-3 h-3 mr-1" /> Download
-                          </Button>
+                    {activeClassroom?.materials && activeClassroom.materials.length > 0 ? (
+                      activeClassroom.materials.map((mat) => (
+                        <div key={mat.fileId} className="p-3.5 bg-white border border-[#E5DCD0] rounded-xl text-xs font-bold text-[#292724] flex items-center justify-between shadow-2xs hover:border-[#E76F51]/40 transition-colors">
+                          <span className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-[#E76F51]" /> {mat.fileName} <span className="text-[10px] text-[#77716A]">({mat.size})</span>
+                          </span>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleViewMaterial(mat.fileName, mat.fileUrl)}
+                              className="text-[11px] text-[#8B7EC8] border-[#E5DCD0] hover:bg-[#8B7EC8] hover:text-white font-bold h-7 px-3 rounded-lg cursor-pointer"
+                            >
+                              <Eye className="w-3 h-3 mr-1" /> View
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDownloadMaterial(mat.fileName, mat.fileUrl)}
+                              className="text-[11px] text-[#E76F51] border-[#E5DCD0] hover:bg-[#E76F51] hover:text-white font-bold h-7 px-3 rounded-lg cursor-pointer"
+                            >
+                              <Download className="w-3 h-3 mr-1" /> Download
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <p className="text-xs text-[#77716A] italic">No course materials uploaded yet.</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
