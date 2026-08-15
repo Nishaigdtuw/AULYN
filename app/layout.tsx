@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import { Playfair_Display, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
+
+const playfairDisplay = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-serif",
+  weight: ["400", "600", "700", "800", "900"],
+});
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -16,8 +22,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "EduMeet.Ai | Premium AI Educational Platform",
-  description: "Creative AI Learning Studio for Teachers & Students featuring Code Trace Visualizer, AI Notes Summarizer, and Interactive Analytics.",
+  title: "EduMeet.Ai | Intelligent Learning Platform",
+  description: "Senior-grade EdTech workspace for Students & Teachers featuring Code Trace Visualizer, AI Notes Summarizer, and Classroom Analytics.",
 };
 
 export default function RootLayout({
@@ -28,7 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="light">
       <body
-        className={`${plusJakartaSans.variable} ${jetbrainsMono.variable} font-sans bg-[#faf8f5] text-slate-800 antialiased selection:bg-indigo-500 selection:text-white min-h-screen relative`}
+        className={`${playfairDisplay.variable} ${plusJakartaSans.variable} ${jetbrainsMono.variable} font-sans bg-[#F4EFE7] text-[#292724] antialiased selection:bg-[#E76F51] selection:text-white min-h-screen relative`}
       >
         <Toaster richColors position="top-right" theme="light" />
         {children}

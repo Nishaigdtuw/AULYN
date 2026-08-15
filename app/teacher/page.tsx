@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useState, useCallback, useRef } from "react"
-import { FileText, LogOut, Mic, Plus, Upload, Book, Trash2, Check, X, UserPlus, FileCheck, HelpCircle, Volume2, Sparkles, BarChart3, TrendingUp, Award, Code, Crown } from "lucide-react"
+import { FileText, LogOut, Mic, Plus, Upload, Book, Trash2, Check, X, UserPlus, FileCheck, HelpCircle, Volume2, Sparkles, BarChart3, TrendingUp, Award, Code, Crown, AlertTriangle, ArrowUpRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -88,7 +88,7 @@ export default function TeacherPortal() {
   // Students state with analytics score
   const [students, setStudents] = useState<StudentItem[]>([
     { id: 1, name: "Alice Johnson", email: "alice@example.com", status: "Enrolled", score: 94, completion: 90 },
-    { id: 2, name: "Bob Smith", email: "bob@example.com", status: "Pending", score: 78, completion: 60 },
+    { id: 2, name: "Bob Smith", email: "bob@example.com", status: "Pending", score: 58, completion: 45 },
     { id: 3, name: "Charlie Brown", email: "charlie@example.com", status: "Enrolled", score: 88, completion: 85 },
   ])
   const [newStudentName, setNewStudentName] = useState("")
@@ -358,6 +358,18 @@ export default function TeacherPortal() {
     toast.success(`${quizType} "${newAsgn.title}" created!`)
   }
 
+  const handleAutoGenerateRevisionQuiz = () => {
+    const autoQuiz: AssignmentItem = {
+      id: `auto-quiz-${Date.now()}`,
+      title: "Recursion & Trees Revision Quiz (AI Generated)",
+      type: "Coding Quiz",
+      dueDate: "2026-08-18",
+      marks: 30
+    }
+    setAssignments((prev) => [...prev, autoQuiz])
+    toast.success("AI generated revision quiz published for 12 struggling students!")
+  }
+
   const handleShareAnnouncement = () => {
     if (!announcementText.trim()) {
       toast.warning("Please enter announcement message")
@@ -381,19 +393,19 @@ export default function TeacherPortal() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] text-slate-800 flex flex-col justify-between relative overflow-hidden">
+    <div className="min-h-screen bg-[#F4EFE7] text-[#292724] flex flex-col justify-between relative overflow-hidden">
       {/* Clean Background */}
       <AnimatedLearningBackground />
 
-      {/* Header */}
-      <header className="flex justify-between items-center px-8 py-3.5 bg-white/80 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-50">
+      {/* Header Bar */}
+      <header className="flex justify-between items-center px-8 py-3.5 bg-[#FFF9F1]/80 backdrop-blur-md border-b border-[#E5DCD0] sticky top-0 z-50">
         <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 bg-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-xs">
+          <div className="w-9 h-9 bg-[#8B7EC8] rounded-xl flex items-center justify-center text-white font-bold text-base shadow-2xs">
             EB
           </div>
           <div>
-            <h1 className="text-lg font-black text-slate-900 leading-none">Teacher Dashboard</h1>
-            <p className="text-[11px] text-slate-500 font-medium mt-0.5">EduMeet.Ai Educator Control Studio</p>
+            <h1 className="text-lg font-serif font-bold text-[#292724] leading-none">Teacher Command Center</h1>
+            <p className="text-[11px] text-[#77716A] font-medium mt-0.5">EduMeet.Ai Classroom Intelligence Studio</p>
           </div>
         </div>
 
@@ -401,18 +413,18 @@ export default function TeacherPortal() {
           <Button
             variant="outline"
             size="sm"
-            className="border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold text-xs rounded-xl"
+            className="border-[#E5DCD0] bg-[#FFF9F1] text-[#292724] hover:bg-[#F1E8DD] font-bold text-xs rounded-xl"
             onClick={() => setPricingOpen(true)}
           >
-            <Crown className="w-3.5 h-3.5 mr-1.5 text-amber-600" /> Upgrade Pro
+            <Crown className="w-3.5 h-3.5 mr-1.5 text-[#E9B949]" /> Upgrade Pro
           </Button>
 
           <div className="text-right hidden sm:block">
-            <p className="text-xs font-bold text-slate-900">{self?.name || "Teacher"}</p>
-            <p className="text-[10px] text-slate-500">{self?.email || "teacher@edumeet.ai"}</p>
+            <p className="text-xs font-bold text-[#292724]">{self?.name || "Teacher"}</p>
+            <p className="text-[10px] text-[#77716A]">{self?.email || "teacher@edumeet.ai"}</p>
           </div>
 
-          <Button variant="outline" size="sm" onClick={handleLogout} className="text-slate-600 hover:text-red-600 border-slate-200 text-xs font-semibold rounded-xl">
+          <Button variant="outline" size="sm" onClick={handleLogout} className="text-[#77716A] hover:text-red-600 border-[#E5DCD0] text-xs font-semibold rounded-xl">
             <LogOut className="w-4 h-4 mr-1.5" /> Logout
           </Button>
         </div>
@@ -422,39 +434,39 @@ export default function TeacherPortal() {
 
       <div className="flex flex-1 overflow-hidden z-10">
         {/* Sidebar */}
-        <aside className="w-64 border-r border-slate-200/80 bg-white/70 backdrop-blur-md p-5 flex flex-col justify-between overflow-y-auto">
+        <aside className="w-64 border-r border-[#E5DCD0] bg-[#FFF9F1]/70 backdrop-blur-md p-5 flex flex-col justify-between overflow-y-auto">
           <div>
             <Dialog>
               <DialogTrigger asChild>
-                <Button className="w-full mb-6 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-xl shadow-xs text-xs">
+                <Button className="w-full mb-6 bg-[#8B7EC8] hover:bg-[#796bb5] text-white font-bold py-2 rounded-xl shadow-2xs text-xs">
                   <Plus className="w-4 h-4 mr-1.5" /> Create Class
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md bg-white border-slate-200 text-slate-900 rounded-2xl">
+              <DialogContent className="sm:max-w-md bg-[#FFF9F1] border-[#E5DCD0] text-[#292724] rounded-2xl">
                 <DialogHeader>
-                  <DialogTitle className="text-slate-900 font-black">Create Classroom</DialogTitle>
+                  <DialogTitle className="text-[#292724] font-serif font-bold">Create Classroom</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-2">
                   <div className="space-y-2">
-                    <Label htmlFor="className" className="text-slate-700 text-xs font-bold">Class Name</Label>
+                    <Label htmlFor="className" className="text-[#292724] text-xs font-bold">Class Name</Label>
                     <Input
                       id="className"
                       value={newClass}
                       onChange={(e) => setNewClass(e.target.value)}
                       placeholder="e.g. Software Engineering"
-                      className="bg-white border-slate-200 text-slate-900 rounded-xl text-xs"
+                      className="bg-white border-[#E5DCD0] text-[#292724] rounded-xl text-xs"
                     />
                   </div>
                 </div>
                 <DialogClose asChild>
-                  <Button type="button" className="w-full bg-purple-600 text-white font-bold text-xs" onClick={handleCreateClassroom}>
+                  <Button type="button" className="w-full bg-[#8B7EC8] text-white font-bold text-xs" onClick={handleCreateClassroom}>
                     Create Classroom
                   </Button>
                 </DialogClose>
               </DialogContent>
             </Dialog>
 
-            <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 px-1">Your Classrooms</h2>
+            <h2 className="text-[11px] font-bold text-[#77716A] uppercase tracking-wider mb-2.5 px-1">Your Classrooms</h2>
             <ul className="space-y-1">
               {yourClasses.map((cls) => {
                 const isActive = activeClass?.classId === cls.classId
@@ -463,11 +475,11 @@ export default function TeacherPortal() {
                     <Button
                       variant={isActive ? "secondary" : "ghost"}
                       className={`w-full justify-start text-left font-bold rounded-xl px-3 py-2 transition-all text-xs ${
-                        isActive ? "bg-purple-50 text-purple-900 border border-purple-100 font-extrabold shadow-2xs" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        isActive ? "bg-[#F1E8DD] text-[#8B7EC8] border border-[#E5DCD0] font-extrabold shadow-2xs" : "text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724]"
                       }`}
                       onClick={() => setActiveClass(cls)}
                     >
-                      <Book className={`w-4 h-4 mr-2.5 ${isActive ? "text-purple-600" : "text-slate-400"}`} />
+                      <Book className={`w-4 h-4 mr-2.5 ${isActive ? "text-[#8B7EC8]" : "text-[#77716A]"}`} />
                       <span className="truncate">{cls.className}</span>
                     </Button>
                   </li>
@@ -476,129 +488,198 @@ export default function TeacherPortal() {
             </ul>
           </div>
 
-          <div className="mt-8 pt-4 border-t border-slate-200/80">
-            <div className="p-3 bg-purple-50 rounded-xl text-xs border border-purple-100 space-y-1">
-              <p className="font-bold flex items-center text-purple-700">
+          <div className="mt-8 pt-4 border-t border-[#E5DCD0]">
+            <div className="p-3 bg-[#F1E8DD]/70 rounded-xl text-xs border border-[#E5DCD0] space-y-1">
+              <p className="font-bold flex items-center text-[#8B7EC8]">
                 <Sparkles className="w-3.5 h-3.5 mr-1" /> Active Classroom:
               </p>
-              <p className="truncate font-extrabold text-slate-900">{activeClass?.className}</p>
+              <p className="truncate font-extrabold text-[#292724]">{activeClass?.className}</p>
             </div>
           </div>
         </aside>
 
         {/* Main Workspace */}
         <main className="flex-1 p-8 overflow-y-auto">
+          {/* Actionable Top Attention Banner (Prompt Spec) */}
+          <div className="mb-6 p-4 bg-[#E76F51]/10 border border-[#E76F51]/30 rounded-2xl flex items-center justify-between shadow-2xs">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-[#E76F51] text-white rounded-xl flex items-center justify-center font-bold">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-serif font-bold text-sm text-[#292724]">
+                  Your class needs attention in <span className="underline decoration-[#E76F51]">Recursion</span>.
+                </h3>
+                <p className="text-xs text-[#77716A] mt-0.5">
+                  12 students struggled with recursion problem sets this week.
+                </p>
+              </div>
+            </div>
+
+            <Button 
+              size="sm" 
+              className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs rounded-xl shadow-2xs"
+              onClick={handleAutoGenerateRevisionQuiz}
+            >
+              Generate Revision Quiz <ArrowUpRight className="w-3.5 h-3.5 ml-1" />
+            </Button>
+          </div>
+
           <Tabs defaultValue="analytics" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 max-w-2xl bg-slate-100 p-1 rounded-xl border border-slate-200/80 shadow-2xs mb-6">
-              <TabsTrigger value="analytics" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-purple-600 font-bold text-xs data-[state=active]:shadow-2xs">
+            <TabsList className="grid w-full grid-cols-5 max-w-2xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6">
+              <TabsTrigger value="analytics" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#8B7EC8] font-bold text-xs data-[state=active]:shadow-2xs">
                 Analytics
               </TabsTrigger>
-              <TabsTrigger value="assignments" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-purple-600 font-bold text-xs data-[state=active]:shadow-2xs">
+              <TabsTrigger value="assignments" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#8B7EC8] font-bold text-xs data-[state=active]:shadow-2xs">
                 Assignments
               </TabsTrigger>
-              <TabsTrigger value="students" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-purple-600 font-bold text-xs data-[state=active]:shadow-2xs">
+              <TabsTrigger value="students" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#8B7EC8] font-bold text-xs data-[state=active]:shadow-2xs">
                 Students ({students.length})
               </TabsTrigger>
-              <TabsTrigger value="chapters" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-purple-600 font-bold text-xs data-[state=active]:shadow-2xs">
+              <TabsTrigger value="chapters" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#8B7EC8] font-bold text-xs data-[state=active]:shadow-2xs">
                 Chapters & AI
               </TabsTrigger>
-              <TabsTrigger value="content" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-purple-600 font-bold text-xs data-[state=active]:shadow-2xs">
+              <TabsTrigger value="content" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#8B7EC8] font-bold text-xs data-[state=active]:shadow-2xs">
                 Content
               </TabsTrigger>
             </TabsList>
 
-            {/* Analytics Dashboard Tab */}
+            {/* Analytics & Topic Performance Visualization Tab */}
             <TabsContent value="analytics" className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+                <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Total Enrolled</p>
-                      <p className="text-2xl font-black text-slate-900 mt-1">{students.length}</p>
+                      <p className="text-[10px] text-[#77716A] font-bold uppercase tracking-wider">Total Enrolled</p>
+                      <p className="text-2xl font-black text-[#292724] mt-1">{students.length}</p>
                     </div>
-                    <div className="w-10 h-10 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-xl flex items-center justify-center font-bold">
+                    <div className="w-10 h-10 bg-[#F1E8DD] text-[#8B7EC8] border border-[#E5DCD0] rounded-xl flex items-center justify-center font-bold">
                       <UserPlus className="w-5 h-5" />
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+                <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Class Average</p>
-                      <p className="text-2xl font-black text-slate-900 mt-1">86.7%</p>
+                      <p className="text-[10px] text-[#77716A] font-bold uppercase tracking-wider">Class Average</p>
+                      <p className="text-2xl font-black text-[#292724] mt-1">86.7%</p>
                     </div>
-                    <div className="w-10 h-10 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl flex items-center justify-center font-bold">
+                    <div className="w-10 h-10 bg-[#75B798]/15 text-[#75B798] border border-[#75B798]/30 rounded-xl flex items-center justify-center font-bold">
                       <Award className="w-5 h-5" />
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+                <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Completion Rate</p>
-                      <p className="text-2xl font-black text-slate-900 mt-1">78.3%</p>
+                      <p className="text-[10px] text-[#77716A] font-bold uppercase tracking-wider">Completion Rate</p>
+                      <p className="text-2xl font-black text-[#292724] mt-1">78.3%</p>
                     </div>
-                    <div className="w-10 h-10 bg-cyan-50 text-cyan-600 border border-cyan-100 rounded-xl flex items-center justify-center font-bold">
+                    <div className="w-10 h-10 bg-[#F1E8DD] text-[#292724] border border-[#E5DCD0] rounded-xl flex items-center justify-center font-bold">
                       <TrendingUp className="w-5 h-5" />
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+                <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Active Quizzes</p>
-                      <p className="text-2xl font-black text-slate-900 mt-1">{assignments.length}</p>
+                      <p className="text-[10px] text-[#77716A] font-bold uppercase tracking-wider">Active Quizzes</p>
+                      <p className="text-2xl font-black text-[#292724] mt-1">{assignments.length}</p>
                     </div>
-                    <div className="w-10 h-10 bg-amber-50 text-amber-600 border border-amber-100 rounded-xl flex items-center justify-center font-bold">
+                    <div className="w-10 h-10 bg-[#E76F51]/15 text-[#E76F51] border border-[#E76F51]/30 rounded-xl flex items-center justify-center font-bold">
                       <BarChart3 className="w-5 h-5" />
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Student Performance Table */}
-              <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl overflow-hidden">
+              {/* Topic Mastery Performance Visualization (Prompt Spec) */}
+              <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                 <CardHeader>
-                  <CardTitle className="text-base font-black text-slate-900 flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-purple-600" /> Student Roster & Performance Overview
+                  <CardTitle className="text-base font-serif font-bold text-[#292724]">
+                    Class Topic Mastery Breakdown
                   </CardTitle>
-                  <CardDescription className="text-slate-500 text-xs">Individual student scores and course completion status</CardDescription>
+                  <CardDescription className="text-[#77716A] text-xs">
+                    Weak topic areas are highlighted for targeted intervention
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-bold">
+                      <span className="text-[#292724]">Arrays & Hashing</span>
+                      <span className="text-[#75B798] font-mono font-bold">91%</span>
+                    </div>
+                    <Progress value={91} className="h-2 bg-[#F1E8DD]" />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-bold">
+                      <span className="text-[#292724]">Linked Lists & Pointers</span>
+                      <span className="text-[#75B798] font-mono font-bold">84%</span>
+                    </div>
+                    <Progress value={84} className="h-2 bg-[#F1E8DD]" />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-bold">
+                      <span className="text-[#292724]">Recursion & Backtracking (Attention Needed)</span>
+                      <span className="text-[#E76F51] font-mono font-bold">61%</span>
+                    </div>
+                    <Progress value={61} className="h-2 bg-[#F1E8DD]" />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-bold">
+                      <span className="text-[#292724]">Dynamic Programming</span>
+                      <span className="text-[#E76F51] font-mono font-bold">48%</span>
+                    </div>
+                    <Progress value={48} className="h-2 bg-[#F1E8DD]" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Student Performance Roster Overview */}
+              <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl overflow-hidden">
+                <CardHeader>
+                  <CardTitle className="text-base font-serif font-bold text-[#292724] flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-[#8B7EC8]" /> Student Performance & Roster Summary
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-slate-100">
-                        <TableHead className="text-slate-500 font-bold">Student Name</TableHead>
-                        <TableHead className="text-slate-500 font-bold">Avg Score</TableHead>
-                        <TableHead className="text-slate-500 font-bold">Course Completion</TableHead>
-                        <TableHead className="text-slate-500 font-bold">Status</TableHead>
-                        <TableHead className="text-right text-slate-500 font-bold">Performance</TableHead>
+                      <TableRow className="border-[#E5DCD0]">
+                        <TableHead className="text-[#77716A] font-bold">Student Name</TableHead>
+                        <TableHead className="text-[#77716A] font-bold">Avg Score</TableHead>
+                        <TableHead className="text-[#77716A] font-bold">Course Completion</TableHead>
+                        <TableHead className="text-[#77716A] font-bold">Status</TableHead>
+                        <TableHead className="text-right text-[#77716A] font-bold">Performance</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {students.map((student) => (
-                        <TableRow key={student.id} className="border-slate-100 hover:bg-slate-50/80">
-                          <TableCell className="font-bold text-slate-800">{student.name}</TableCell>
-                          <TableCell className="font-bold text-indigo-600">{student.score}%</TableCell>
+                        <TableRow key={student.id} className="border-[#E5DCD0] hover:bg-[#F1E8DD]/40">
+                          <TableCell className="font-bold text-[#292724]">{student.name}</TableCell>
+                          <TableCell className="font-bold text-[#E76F51]">{student.score}%</TableCell>
                           <TableCell className="w-48">
                             <div className="space-y-1">
-                              <Progress value={student.completion} className="h-2 bg-slate-100" />
-                              <span className="text-[10px] text-slate-500 font-mono font-semibold">{student.completion}% completed</span>
+                              <Progress value={student.completion} className="h-2 bg-[#F1E8DD]" />
+                              <span className="text-[10px] text-[#77716A] font-mono font-semibold">{student.completion}% completed</span>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#75B798]/15 text-[#75B798] border border-[#75B798]/30">
                               {student.status}
                             </span>
                           </TableCell>
                           <TableCell className="text-right font-bold text-xs">
                             {student.score >= 85 ? (
-                              <span className="text-emerald-700 font-bold flex items-center justify-end gap-1">Mastered</span>
+                              <span className="text-[#75B798] font-bold flex items-center justify-end gap-1">Mastered</span>
                             ) : (
-                              <span className="text-amber-700 font-bold flex items-center justify-end gap-1">Needs Review</span>
+                              <span className="text-[#E76F51] font-bold flex items-center justify-end gap-1">Needs Practice</span>
                             )}
                           </TableCell>
                         </TableRow>
@@ -609,43 +690,43 @@ export default function TeacherPortal() {
               </Card>
             </TabsContent>
 
-            {/* Assignments & Tools Tab */}
+            {/* Assignments & Quizzes Tab */}
             <TabsContent value="assignments" className="space-y-6">
-              <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+              <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                 <CardHeader>
-                  <CardTitle className="text-slate-900 font-black text-base">Assignment & Quiz Builders</CardTitle>
-                  <CardDescription className="text-slate-500 text-xs">Create Coding Quizzes, Topic MCQs, Short Tests, and Announcements</CardDescription>
+                  <CardTitle className="text-[#292724] font-serif font-bold text-base">Assignment & Quiz Builders</CardTitle>
+                  <CardDescription className="text-[#77716A] text-xs">Create Coding Quizzes, Topic MCQs, Short Tests, and Announcements</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Create Coding / Topic Quiz Modal */}
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button className="w-full justify-start bg-indigo-600 hover:bg-indigo-700 text-white font-bold p-4 h-auto rounded-xl shadow-xs">
-                          <Code className="w-5 h-5 mr-3 text-indigo-200" />
+                        <Button className="w-full justify-start bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold p-4 h-auto rounded-xl shadow-2xs">
+                          <Code className="w-5 h-5 mr-3 text-white" />
                           <div>
                             <div className="font-bold text-left text-sm">Coding & Topic Quiz</div>
-                            <div className="text-xs text-indigo-100 font-normal">Create Coding Quizzes & MCQs</div>
+                            <div className="text-xs text-white/80 font-normal">Create Coding Quizzes & MCQs</div>
                           </div>
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="bg-white border-slate-200 text-slate-900 rounded-2xl">
+                      <DialogContent className="bg-[#FFF9F1] border-[#E5DCD0] text-[#292724] rounded-2xl">
                         <DialogHeader>
-                          <DialogTitle className="text-slate-900 font-black">Create Quiz</DialogTitle>
+                          <DialogTitle className="text-[#292724] font-serif font-bold">Create Quiz</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 py-2">
                           <div className="space-y-2">
-                            <Label className="text-slate-700 text-xs font-bold">Quiz Title</Label>
-                            <Input placeholder="e.g. Binary Search Trees Coding Quiz" value={quizTitle} onChange={(e) => setQuizTitle(e.target.value)} className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl" />
+                            <Label className="text-[#292724] text-xs font-bold">Quiz Title</Label>
+                            <Input placeholder="e.g. Binary Search Trees Coding Quiz" value={quizTitle} onChange={(e) => setQuizTitle(e.target.value)} className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl" />
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="text-slate-700 text-xs font-bold">Quiz Format</Label>
+                            <Label className="text-[#292724] text-xs font-bold">Quiz Format</Label>
                             <div className="grid grid-cols-2 gap-2">
                               <Button
                                 type="button"
                                 variant={quizType === "Coding Quiz" ? "secondary" : "outline"}
-                                className={quizType === "Coding Quiz" ? "bg-indigo-600 text-white font-bold text-xs" : "border-slate-200 text-slate-700 text-xs"}
+                                className={quizType === "Coding Quiz" ? "bg-[#E76F51] text-white font-bold text-xs" : "border-[#E5DCD0] text-[#292724] text-xs"}
                                 onClick={() => setQuizType("Coding Quiz")}
                               >
                                 Coding Quiz
@@ -653,7 +734,7 @@ export default function TeacherPortal() {
                               <Button
                                 type="button"
                                 variant={quizType === "Quiz" ? "secondary" : "outline"}
-                                className={quizType === "Quiz" ? "bg-indigo-600 text-white font-bold text-xs" : "border-slate-200 text-slate-700 text-xs"}
+                                className={quizType === "Quiz" ? "bg-[#E76F51] text-white font-bold text-xs" : "border-[#E5DCD0] text-[#292724] text-xs"}
                                 onClick={() => setQuizType("Quiz")}
                               >
                                 Topic MCQ
@@ -662,12 +743,12 @@ export default function TeacherPortal() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="text-slate-700 text-xs font-bold">Due Date</Label>
-                            <Input type="date" value={quizDueDate} onChange={(e) => setQuizDueDate(e.target.value)} className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl" />
+                            <Label className="text-[#292724] text-xs font-bold">Due Date</Label>
+                            <Input type="date" value={quizDueDate} onChange={(e) => setQuizDueDate(e.target.value)} className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl" />
                           </div>
                         </div>
                         <DialogClose asChild>
-                          <Button className="w-full bg-indigo-600 text-white font-bold text-xs" onClick={handleCreateQuiz}>
+                          <Button className="w-full bg-[#E76F51] text-white font-bold text-xs" onClick={handleCreateQuiz}>
                             Publish Quiz
                           </Button>
                         </DialogClose>
@@ -677,36 +758,36 @@ export default function TeacherPortal() {
                     {/* Create Test Modal */}
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button className="w-full justify-start bg-purple-600 hover:bg-purple-700 text-white font-bold p-4 h-auto rounded-xl shadow-xs">
-                          <Plus className="w-5 h-5 mr-3 text-purple-200" />
+                        <Button className="w-full justify-start bg-[#8B7EC8] hover:bg-[#796bb5] text-white font-bold p-4 h-auto rounded-xl shadow-2xs">
+                          <Plus className="w-5 h-5 mr-3 text-white" />
                           <div>
                             <div className="font-bold text-left text-sm">Create Test</div>
-                            <div className="text-xs text-purple-100 font-normal">Timed assessments</div>
+                            <div className="text-xs text-white/80 font-normal">Timed assessments</div>
                           </div>
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="bg-white border-slate-200 text-slate-900 rounded-2xl">
+                      <DialogContent className="bg-[#FFF9F1] border-[#E5DCD0] text-[#292724] rounded-2xl">
                         <DialogHeader>
-                          <DialogTitle className="text-slate-900 font-black">Create Test</DialogTitle>
+                          <DialogTitle className="text-[#292724] font-serif font-bold">Create Assessment Test</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 py-2">
                           <div className="space-y-2">
-                            <Label className="text-slate-700 text-xs font-bold">Test Title</Label>
-                            <Input placeholder="e.g. Midterm Examination" value={testTitle} onChange={(e) => setTestTitle(e.target.value)} className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl" />
+                            <Label className="text-[#292724] text-xs font-bold">Test Title</Label>
+                            <Input placeholder="e.g. Midterm Examination" value={testTitle} onChange={(e) => setTestTitle(e.target.value)} className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl" />
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label className="text-slate-700 text-xs font-bold">Total Marks</Label>
-                              <Input type="number" value={testMarks} onChange={(e) => setTestMarks(e.target.value)} className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl" />
+                              <Label className="text-[#292724] text-xs font-bold">Total Marks</Label>
+                              <Input type="number" value={testMarks} onChange={(e) => setTestMarks(e.target.value)} className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl" />
                             </div>
                             <div className="space-y-2">
-                              <Label className="text-slate-700 text-xs font-bold">Due Date</Label>
-                              <Input type="date" value={testDueDate} onChange={(e) => setTestDueDate(e.target.value)} className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl" />
+                              <Label className="text-[#292724] text-xs font-bold">Due Date</Label>
+                              <Input type="date" value={testDueDate} onChange={(e) => setTestDueDate(e.target.value)} className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl" />
                             </div>
                           </div>
                         </div>
                         <DialogClose asChild>
-                          <Button className="w-full bg-purple-600 text-white font-bold text-xs" onClick={handleCreateTest}>
+                          <Button className="w-full bg-[#8B7EC8] text-white font-bold text-xs" onClick={handleCreateTest}>
                             Publish Test
                           </Button>
                         </DialogClose>
@@ -716,26 +797,26 @@ export default function TeacherPortal() {
                     {/* Share Announcement Modal */}
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button className="w-full justify-start bg-slate-800 hover:bg-slate-900 text-white font-bold p-4 h-auto rounded-xl shadow-xs">
-                          <FileText className="w-5 h-5 mr-3 text-slate-300" />
+                        <Button className="w-full justify-start bg-[#292724] hover:bg-[#1a1917] text-white font-bold p-4 h-auto rounded-xl shadow-2xs">
+                          <FileText className="w-5 h-5 mr-3 text-white" />
                           <div>
                             <div className="font-bold text-left text-sm">Share Notice</div>
-                            <div className="text-xs text-slate-300 font-normal">Broadcast to class</div>
+                            <div className="text-xs text-[#77716A] font-normal">Broadcast to class</div>
                           </div>
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="bg-white border-slate-200 text-slate-900 rounded-2xl">
+                      <DialogContent className="bg-[#FFF9F1] border-[#E5DCD0] text-[#292724] rounded-2xl">
                         <DialogHeader>
-                          <DialogTitle className="text-slate-900 font-black">Broadcast Notice</DialogTitle>
+                          <DialogTitle className="text-[#292724] font-serif font-bold">Broadcast Notice</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 py-2">
                           <div className="space-y-2">
-                            <Label className="text-slate-700 text-xs font-bold">Announcement Message</Label>
-                            <Input placeholder="e.g. Next class will cover Trees and Graphs." value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl" />
+                            <Label className="text-[#292724] text-xs font-bold">Announcement Message</Label>
+                            <Input placeholder="e.g. Next class will cover Trees and Graphs." value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl" />
                           </div>
                         </div>
                         <DialogClose asChild>
-                          <Button className="w-full bg-slate-800 text-white font-bold text-xs" onClick={handleShareAnnouncement}>
+                          <Button className="w-full bg-[#292724] text-white font-bold text-xs" onClick={handleShareAnnouncement}>
                             Broadcast Notice
                           </Button>
                         </DialogClose>
@@ -746,22 +827,22 @@ export default function TeacherPortal() {
               </Card>
 
               {/* Published Assessments List */}
-              <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+              <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                 <CardHeader>
-                  <CardTitle className="text-slate-900 text-base font-black">Active Assessments</CardTitle>
+                  <CardTitle className="text-[#292724] font-serif font-bold text-base">Active Assessments</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="divide-y divide-slate-100">
+                  <ul className="divide-y divide-[#E5DCD0]">
                     {assignments.map((item) => (
                       <li key={item.id} className="py-3.5 flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                          {item.type === "Coding Quiz" && <Code className="w-5 h-5 text-indigo-600" />}
-                          {item.type === "Test" && <FileCheck className="w-5 h-5 text-purple-600" />}
-                          {item.type === "Quiz" && <HelpCircle className="w-5 h-5 text-indigo-600" />}
-                          {item.type === "Announcement" && <FileText className="w-5 h-5 text-slate-600" />}
+                          {item.type === "Coding Quiz" && <Code className="w-5 h-5 text-[#E76F51]" />}
+                          {item.type === "Test" && <FileCheck className="w-5 h-5 text-[#8B7EC8]" />}
+                          {item.type === "Quiz" && <HelpCircle className="w-5 h-5 text-[#E76F51]" />}
+                          {item.type === "Announcement" && <FileText className="w-5 h-5 text-[#77716A]" />}
                           <div>
-                            <p className="font-bold text-slate-900 text-sm">{item.title}</p>
-                            <p className="text-xs text-slate-500">Format: {item.type} {item.marks ? `• ${item.marks} Marks` : ""} • Due: {item.dueDate}</p>
+                            <p className="font-bold text-[#292724] text-sm">{item.title}</p>
+                            <p className="text-xs text-[#77716A]">Format: {item.type} {item.marks ? `• ${item.marks} Marks` : ""} • Due: {item.dueDate}</p>
                           </div>
                         </div>
                         <Button variant="ghost" size="sm" className="text-xs text-red-600 hover:text-red-800 hover:bg-red-50" onClick={() => setAssignments((prev) => prev.filter((a) => a.id !== item.id))}>
@@ -776,34 +857,34 @@ export default function TeacherPortal() {
 
             {/* Students Management Tab */}
             <TabsContent value="students">
-              <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+              <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle className="text-slate-900 font-black text-base">Student Roster</CardTitle>
-                    <CardDescription className="text-slate-500 text-xs">Manage students enrolled in {activeClass?.className}</CardDescription>
+                    <CardTitle className="text-[#292724] font-serif font-bold text-base">Student Roster</CardTitle>
+                    <CardDescription className="text-[#77716A] text-xs">Manage students enrolled in {activeClass?.className}</CardDescription>
                   </div>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs rounded-xl">
+                      <Button size="sm" className="bg-[#8B7EC8] hover:bg-[#796bb5] text-white font-bold text-xs shadow-2xs rounded-xl">
                         <UserPlus className="w-4 h-4 mr-1.5" /> Add Student
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="bg-white border-slate-200 text-slate-900 rounded-2xl">
+                    <DialogContent className="bg-[#FFF9F1] border-[#E5DCD0] text-[#292724] rounded-2xl">
                       <DialogHeader>
-                        <DialogTitle className="text-slate-900 font-black">Enroll Student</DialogTitle>
+                        <DialogTitle className="text-[#292724] font-serif font-bold">Enroll Student</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4 py-2">
                         <div className="space-y-2">
-                          <Label className="text-slate-700 text-xs font-bold">Student Name</Label>
-                          <Input placeholder="e.g. David Miller" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl" />
+                          <Label className="text-[#292724] text-xs font-bold">Student Name</Label>
+                          <Input placeholder="e.g. David Miller" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl" />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-slate-700 text-xs font-bold">Student Email</Label>
-                          <Input placeholder="david@example.com" value={newStudentEmail} onChange={(e) => setNewStudentEmail(e.target.value)} className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl" />
+                          <Label className="text-[#292724] text-xs font-bold">Student Email</Label>
+                          <Input placeholder="david@example.com" value={newStudentEmail} onChange={(e) => setNewStudentEmail(e.target.value)} className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl" />
                         </div>
                       </div>
                       <DialogClose asChild>
-                        <Button className="w-full bg-purple-600 text-white font-bold text-xs" onClick={handleAddStudent}>
+                        <Button className="w-full bg-[#8B7EC8] text-white font-bold text-xs" onClick={handleAddStudent}>
                           Add Student
                         </Button>
                       </DialogClose>
@@ -813,21 +894,21 @@ export default function TeacherPortal() {
                 <CardContent>
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-slate-100">
-                        <TableHead className="text-slate-500 font-bold">Student Name</TableHead>
-                        <TableHead className="text-slate-500 font-bold">Email</TableHead>
-                        <TableHead className="text-slate-500 font-bold">Status</TableHead>
-                        <TableHead className="text-right text-slate-500 font-bold">Actions</TableHead>
+                      <TableRow className="border-[#E5DCD0]">
+                        <TableHead className="text-[#77716A] font-bold">Student Name</TableHead>
+                        <TableHead className="text-[#77716A] font-bold">Email</TableHead>
+                        <TableHead className="text-[#77716A] font-bold">Status</TableHead>
+                        <TableHead className="text-right text-[#77716A] font-bold">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {students.map((student) => (
-                        <TableRow key={student.id} className="border-slate-100">
-                          <TableCell className="font-bold text-slate-900">{student.name}</TableCell>
-                          <TableCell className="text-slate-500 text-xs font-mono">{student.email}</TableCell>
+                        <TableRow key={student.id} className="border-[#E5DCD0]">
+                          <TableCell className="font-bold text-[#292724]">{student.name}</TableCell>
+                          <TableCell className="text-[#77716A] text-xs font-mono">{student.email}</TableCell>
                           <TableCell>
                             <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
-                              student.status === "Enrolled" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
+                              student.status === "Enrolled" ? "bg-[#75B798]/15 text-[#75B798] border-[#75B798]/30" : "bg-[#E9B949]/15 text-[#E9B949] border-[#E9B949]/30"
                             }`}>
                               {student.status}
                             </span>
@@ -835,7 +916,7 @@ export default function TeacherPortal() {
                           <TableCell className="text-right space-x-2">
                             {student.status === "Pending" ? (
                               <>
-                                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl" onClick={() => handleAcceptStudent(student.id)}>
+                                <Button size="sm" className="bg-[#75B798] hover:bg-[#64a687] text-white font-bold text-xs rounded-xl" onClick={() => handleAcceptStudent(student.id)}>
                                   <Check className="w-3.5 h-3.5 mr-1" /> Accept
                                 </Button>
                                 <Button size="sm" variant="destructive" className="rounded-xl text-xs font-bold" onClick={() => handleRemoveStudent(student.id)}>
@@ -856,38 +937,38 @@ export default function TeacherPortal() {
               </Card>
             </TabsContent>
 
-            {/* Chapters & AI Bullet Summarizer Tab */}
+            {/* Chapters & Audio Lecture Recorder Tab */}
             <TabsContent value="chapters" className="space-y-6">
-              <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+              <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle className="text-slate-900 font-black text-base">Course Chapters & Materials</CardTitle>
-                    <CardDescription className="text-slate-500 text-xs">Upload notes, slides, and voice recordings for {activeClass?.className}</CardDescription>
+                    <CardTitle className="text-[#292724] font-serif font-bold text-base">Course Chapters & Lecture Recording</CardTitle>
+                    <CardDescription className="text-[#77716A] text-xs">Upload materials or record live audio lectures for {activeClass?.className}</CardDescription>
                   </div>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs rounded-xl">
+                      <Button className="bg-[#8B7EC8] hover:bg-[#796bb5] text-white font-bold text-xs shadow-2xs rounded-xl">
                         <Plus className="w-4 h-4 mr-1.5" /> Create Chapter
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="bg-white border-slate-200 text-slate-900 rounded-2xl">
+                    <DialogContent className="bg-[#FFF9F1] border-[#E5DCD0] text-[#292724] rounded-2xl">
                       <DialogHeader>
-                        <DialogTitle className="text-slate-900 font-black">Create Chapter</DialogTitle>
+                        <DialogTitle className="text-[#292724] font-serif font-bold">Create Chapter</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4 py-2">
                         <div className="space-y-2">
-                          <Label htmlFor="chapterName" className="text-slate-700 text-xs font-bold">Chapter Name</Label>
+                          <Label htmlFor="chapterName" className="text-[#292724] text-xs font-bold">Chapter Name</Label>
                           <Input
                             id="chapterName"
                             placeholder="e.g. Chapter 3: Dynamic Programming"
                             value={newChapter}
                             onChange={(e) => setNewChapter(e.target.value)}
-                            className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl"
+                            className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl"
                           />
                         </div>
                       </div>
                       <DialogClose asChild>
-                        <Button className="w-full bg-purple-600 text-white font-bold text-xs" onClick={handleCreateChapter}>
+                        <Button className="w-full bg-[#8B7EC8] text-white font-bold text-xs" onClick={handleCreateChapter}>
                           Create Chapter
                         </Button>
                       </DialogClose>
@@ -903,15 +984,15 @@ export default function TeacherPortal() {
 
                       return (
                         <div key={chap.chapterId} className={`p-5 rounded-2xl border transition-all ${
-                          isSelected ? "border-purple-300 bg-purple-50/40 shadow-2xs" : "border-slate-200 bg-white"
+                          isSelected ? "border-[#8B7EC8] bg-[#F1E8DD]/60 shadow-2xs" : "border-[#E5DCD0] bg-white"
                         }`}>
                           <div className="flex items-center justify-between mb-3">
-                            <h4 className="font-bold text-slate-900 text-sm">{chap.chapterName}</h4>
+                            <h4 className="font-bold text-[#292724] text-sm">{chap.chapterName}</h4>
                             <Button
                               variant={isSelected ? "secondary" : "outline"}
                               size="sm"
                               onClick={() => setSelectedChapter(chap)}
-                              className={`text-xs font-bold rounded-xl ${isSelected ? "bg-purple-600 text-white" : "border-slate-200 text-slate-700"}`}
+                              className={`text-xs font-bold rounded-xl ${isSelected ? "bg-[#8B7EC8] text-white" : "border-[#E5DCD0] text-[#292724]"}`}
                             >
                               {isSelected ? "Selected" : "Select Chapter"}
                             </Button>
@@ -919,9 +1000,9 @@ export default function TeacherPortal() {
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
                             {/* File Upload Box */}
-                            <div className="p-4 border-2 border-dashed border-slate-200 hover:border-purple-300 rounded-xl bg-slate-50 flex flex-col items-center justify-center text-center">
-                              <Upload className="w-5 h-5 text-purple-600 mb-1.5" />
-                              <p className="text-xs font-bold text-slate-700 mb-1">
+                            <div className="p-4 border-2 border-dashed border-[#E5DCD0] hover:border-[#8B7EC8] rounded-xl bg-[#FBF7F0] flex flex-col items-center justify-center text-center">
+                              <Upload className="w-5 h-5 text-[#8B7EC8] mb-1.5" />
+                              <p className="text-xs font-bold text-[#292724] mb-1">
                                 {file && isSelected ? file.name : "Upload PDF / PPT / Document"}
                               </p>
                               <input
@@ -939,47 +1020,59 @@ export default function TeacherPortal() {
                               <div className="flex gap-2 mt-2">
                                 <Label
                                   htmlFor={`fileUpload-${chap.chapterId}`}
-                                  className="cursor-pointer inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 shadow-2xs"
+                                  className="cursor-pointer inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-[#E5DCD0] text-[#292724] hover:bg-[#F1E8DD] shadow-2xs"
                                 >
                                   Browse File
                                 </Label>
                                 {file && isSelected && (
-                                  <Button size="sm" className="bg-purple-600 text-white text-xs h-7 font-bold rounded-xl" onClick={handleFileUpload}>
+                                  <Button size="sm" className="bg-[#8B7EC8] text-white text-xs h-7 font-bold rounded-xl" onClick={handleFileUpload}>
                                     Upload
                                   </Button>
                                 )}
                               </div>
                             </div>
 
-                            {/* Voice Capture Box */}
-                            <div className="p-4 border border-slate-200 rounded-xl bg-slate-50 flex flex-col items-center justify-center text-center">
-                              <Mic className={`w-5 h-5 mb-1.5 ${isRecording ? "text-rose-600 animate-pulse" : "text-indigo-600"}`} />
-                              <p className="text-xs font-bold text-slate-800">
-                                {isRecording ? `Recording Audio... (${recordingTime}s)` : "Voice Lecture Capture"}
+                            {/* Audio Lecture Recorder HUD with Waveform Simulation (Prompt Spec) */}
+                            <div className="p-4 border border-[#E5DCD0] rounded-xl bg-[#FBF7F0] flex flex-col items-center justify-center text-center">
+                              <Mic className={`w-5 h-5 mb-1.5 ${isRecording ? "text-[#E76F51] animate-pulse" : "text-[#E76F51]"}`} />
+                              <p className="text-xs font-bold text-[#292724]">
+                                {isRecording ? `Recording Audio Lecture... (${recordingTime}s)` : "Browser Audio Lecture Recorder"}
                               </p>
-                              <p className="text-[11px] text-slate-500 mb-2">Record audio note from browser</p>
+
+                              {/* Audio Waveform Simulation */}
+                              {isRecording && (
+                                <div className="flex items-center gap-1 my-2">
+                                  <span className="w-1 h-4 bg-[#E76F51] animate-pulse" />
+                                  <span className="w-1 h-6 bg-[#E76F51] animate-pulse" style={{ animationDelay: "150ms" }} />
+                                  <span className="w-1 h-3 bg-[#E76F51] animate-pulse" style={{ animationDelay: "300ms" }} />
+                                  <span className="w-1 h-7 bg-[#E76F51] animate-pulse" style={{ animationDelay: "450ms" }} />
+                                  <span className="w-1 h-4 bg-[#E76F51] animate-pulse" style={{ animationDelay: "600ms" }} />
+                                </div>
+                              )}
+
+                              <p className="text-[11px] text-[#77716A] mb-2">Record & attach audio lecture to chapter</p>
                               <Button
                                 size="sm"
-                                className={isRecording ? "bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl" : "bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs rounded-xl"}
+                                className={isRecording ? "bg-[#E76F51] hover:bg-[#d55e42] text-white text-xs font-bold rounded-xl" : "bg-[#E76F51] hover:bg-[#d55e42] text-white text-xs font-bold shadow-2xs rounded-xl"}
                                 onClick={() => handleVoiceCapture(chap.chapterId)}
                               >
-                                {isRecording ? "Stop & Save" : "Start Voice Capture"}
+                                {isRecording ? "Stop & Attach Recording" : "Start Audio Capture"}
                               </Button>
                             </div>
                           </div>
 
-                          {/* Uploaded Content */}
+                          {/* Uploaded Content List */}
                           {contentList.length > 0 && (
-                            <div className="mt-4 pt-3 border-t border-slate-100">
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Uploaded Materials ({contentList.length})</p>
+                            <div className="mt-4 pt-3 border-t border-[#E5DCD0]">
+                              <p className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider mb-2">Attached Materials ({contentList.length})</p>
                               <ul className="space-y-1">
                                 {contentList.map((item) => (
-                                  <li key={item.fileId} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-xs">
-                                    <span className="font-semibold text-slate-800 flex items-center">
-                                      {item.fileType.includes("audio") ? <Volume2 className="w-3.5 h-3.5 mr-1.5 text-rose-600" /> : <FileText className="w-3.5 h-3.5 mr-1.5 text-purple-600" />}
+                                  <li key={item.fileId} className="flex items-center justify-between p-2 rounded-xl bg-white border border-[#E5DCD0] text-xs">
+                                    <span className="font-semibold text-[#292724] flex items-center">
+                                      {item.fileType.includes("audio") ? <Volume2 className="w-3.5 h-3.5 mr-1.5 text-[#E76F51]" /> : <FileText className="w-3.5 h-3.5 mr-1.5 text-[#8B7EC8]" />}
                                       {item.fileName}
                                     </span>
-                                    <span className="text-[10px] text-slate-400 font-mono">Attached</span>
+                                    <span className="text-[10px] text-[#77716A] font-mono">Attached</span>
                                   </li>
                                 ))}
                               </ul>
@@ -997,33 +1090,33 @@ export default function TeacherPortal() {
 
             {/* Content Management Tab */}
             <TabsContent value="content">
-              <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+              <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                 <CardHeader>
-                  <CardTitle className="text-slate-900 font-black text-base">Course Files & Downloads</CardTitle>
-                  <CardDescription className="text-slate-500 text-xs">View all uploaded class materials</CardDescription>
+                  <CardTitle className="text-[#292724] font-serif font-bold text-base">Classroom Files & Audio Lectures</CardTitle>
+                  <CardDescription className="text-[#77716A] text-xs">View all uploaded materials</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {chapterContent.length === 0 ? (
-                    <p className="text-sm text-slate-500 italic py-4">No content uploaded yet for this class.</p>
+                    <p className="text-sm text-[#77716A] italic py-4">No content uploaded yet for this class.</p>
                   ) : (
                     <Table>
                       <TableHeader>
-                        <TableRow className="border-slate-100">
-                          <TableHead className="text-slate-500 font-bold">File Name</TableHead>
-                          <TableHead className="text-slate-500 font-bold">Type</TableHead>
-                          <TableHead className="text-right text-slate-500 font-bold">Actions</TableHead>
+                        <TableRow className="border-[#E5DCD0]">
+                          <TableHead className="text-[#77716A] font-bold">File Name</TableHead>
+                          <TableHead className="text-[#77716A] font-bold">Type</TableHead>
+                          <TableHead className="text-right text-[#77716A] font-bold">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {chapterContent.map((item) => (
-                          <TableRow key={item.fileId} className="border-slate-100">
-                            <TableCell className="font-bold text-slate-900 flex items-center">
-                              {item.fileType.includes("audio") ? <Volume2 className="w-4 h-4 mr-2 text-rose-600" /> : <FileText className="w-4 h-4 mr-2 text-purple-600" />}
+                          <TableRow key={item.fileId} className="border-[#E5DCD0]">
+                            <TableCell className="font-bold text-[#292724] flex items-center">
+                              {item.fileType.includes("audio") ? <Volume2 className="w-4 h-4 mr-2 text-[#E76F51]" /> : <FileText className="w-4 h-4 mr-2 text-[#8B7EC8]" />}
                               {item.fileName}
                             </TableCell>
-                            <TableCell className="text-xs text-slate-500 uppercase font-mono">{item.fileType.split("/")[1] || "DOCUMENT"}</TableCell>
+                            <TableCell className="text-xs text-[#77716A] uppercase font-mono">{item.fileType.split("/")[1] || "DOCUMENT"}</TableCell>
                             <TableCell className="text-right">
-                              <Button variant="outline" size="sm" className="text-xs border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl" onClick={() => toast.info(`Opening ${item.fileName}...`)}>
+                              <Button variant="outline" size="sm" className="text-xs border-[#E5DCD0] text-[#292724] hover:bg-[#F1E8DD] rounded-xl" onClick={() => toast.info(`Opening ${item.fileName}...`)}>
                                 Download / View
                               </Button>
                             </TableCell>

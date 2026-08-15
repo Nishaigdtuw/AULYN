@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useState } from "react"
-import { Book, BookOpen, LogOut, PenTool, Send, CheckCircle2, Circle, AlertCircle, Plus, Sparkles, Check, FileCheck, PlayCircle, Trophy, Flame, Award, Crown } from "lucide-react"
+import { Book, BookOpen, LogOut, PenTool, Send, CheckCircle2, Circle, AlertCircle, Plus, Sparkles, Check, FileCheck, PlayCircle, Trophy, Flame, Award, Crown, Compass, Clock, ArrowUpRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -48,16 +48,16 @@ export default function StudentPortal() {
   const [pricingOpen, setPricingOpen] = useState(false)
 
   const [aiMessages, setAiMessages] = useState<AiMessage[]>([
-    { type: "ai", content: "Hello! I am your **AI Learning Tutor**. Ask me any question about your courses, code logic, or study topics!" }
+    { type: "ai", content: "Hello Alex! I am your **AI Study Tutor**. Ask me any question or tap a quick prompt chip below to begin." }
   ])
   const [inputMessage, setInputMessage] = useState("")
   const [isAiLoading, setIsAiLoading] = useState(false)
 
   // Enrolled classes state
   const [enrolledClasses, setEnrolledClasses] = useState<EnrolledClass[]>([
-    { id: 1, name: "Data Structures & Algorithms", code: "CS201", icon: <PenTool className="w-4 h-4 text-indigo-600" /> },
-    { id: 2, name: "Operating Systems & Linux", code: "CS302", icon: <Book className="w-4 h-4 text-purple-600" /> },
-    { id: 3, name: "Database & System Design", code: "CS305", icon: <BookOpen className="w-4 h-4 text-cyan-600" /> },
+    { id: 1, name: "Data Structures & Algorithms", code: "CS201", icon: <PenTool className="w-4 h-4 text-[#E76F51]" /> },
+    { id: 2, name: "Operating Systems & Linux", code: "CS302", icon: <Book className="w-4 h-4 text-[#8B7EC8]" /> },
+    { id: 3, name: "Database & System Design", code: "CS305", icon: <BookOpen className="w-4 h-4 text-[#75B798]" /> },
   ])
   const [joinClassCode, setJoinClassCode] = useState("")
 
@@ -125,8 +125,8 @@ export default function StudentPortal() {
     }
   }, [router])
 
-  const handleSendMessage = async () => {
-    const messageToSend = inputMessage.trim()
+  const handleSendMessage = async (customPrompt?: string) => {
+    const messageToSend = customPrompt || inputMessage.trim()
     if (!messageToSend) return
 
     if (aiQueryCount >= 5) {
@@ -136,7 +136,7 @@ export default function StudentPortal() {
     }
 
     setAiMessages((prev) => [...prev, { type: 'user', content: messageToSend }])
-    setInputMessage("")
+    if (!customPrompt) setInputMessage("")
     setAiQueryCount((prev) => prev + 1)
     setIsAiLoading(true)
 
@@ -161,14 +161,16 @@ export default function StudentPortal() {
     }
 
     setTimeout(() => {
-      let aiResponse = `Here is a breakdown for **"${messageToSend}"**:\n\n`
+      let aiResponse = `Here is your requested guidance for **"${messageToSend}"**:\n\n`
       const lower = messageToSend.toLowerCase()
-      if (lower.includes("tree") || lower.includes("dsa") || lower.includes("binary") || lower.includes("search")) {
-        aiResponse += `• **Binary Search Tree Property**: Left child < parent < right child.\n• **Search Time**: \\(O(\\log N)\\) average time complexity.`
-      } else if (lower.includes("os") || lower.includes("process") || lower.includes("memory")) {
-        aiResponse += `• **Process vs Thread**: A process is an independent executing program with its own memory space; threads share process memory.`
+      if (lower.includes("simply") || lower.includes("recursion")) {
+        aiResponse += `• **Recursion Explained Simply**: Recursion is when a function calls itself to solve smaller instances of the same problem, stopping when it hits a **base case**.`
+      } else if (lower.includes("example")) {
+        aiResponse += `• **Factorial Example**: \\(5! = 5 \\times 4! = 5 \\times 4 \\times 3 \\times 2 \\times 1 = 120\\). Base case: \\(0! = 1\\).`
+      } else if (lower.includes("quiz")) {
+        aiResponse += `• **Quick Quiz**: What happens if a recursive function does NOT have a base case?\n*(Answer: Stack Overflow Error)*`
       } else {
-        aiResponse += `Great question! You can trace algorithm execution line-by-line in the **Code Trace** tab or generate study decks in the **Notes AI** tab.`
+        aiResponse += `Great question! Trace recursive algorithm execution step-by-step in the **Code Trace** tab or convert notes in the **Notes AI** tab.`
       }
       setAiMessages((prev) => [...prev, { type: 'ai', content: aiResponse }])
       setIsAiLoading(false)
@@ -184,7 +186,7 @@ export default function StudentPortal() {
       id: Date.now(),
       name: `Class (${joinClassCode.toUpperCase()})`,
       code: joinClassCode.toUpperCase(),
-      icon: <Book className="w-4 h-4 text-indigo-600" />
+      icon: <Book className="w-4 h-4 text-[#E76F51]" />
     }
     setEnrolledClasses((prev) => [...prev, newClass])
     setActiveClass(newClass.id)
@@ -234,19 +236,19 @@ export default function StudentPortal() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] text-slate-800 flex flex-col justify-between relative overflow-hidden">
-      {/* Clean Subtle Background */}
+    <div className="min-h-screen bg-[#F4EFE7] text-[#292724] flex flex-col justify-between relative overflow-hidden">
+      {/* Clean Abstract Atmospheric Background */}
       <AnimatedLearningBackground />
 
-      {/* Header */}
-      <header className="flex justify-between items-center px-8 py-3.5 bg-white/80 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-50">
+      {/* Header Bar */}
+      <header className="flex justify-between items-center px-8 py-3.5 bg-[#FFF9F1]/80 backdrop-blur-md border-b border-[#E5DCD0] sticky top-0 z-50">
         <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-xs">
+          <div className="w-9 h-9 bg-[#E76F51] rounded-xl flex items-center justify-center text-white font-bold text-base shadow-2xs">
             EB
           </div>
           <div>
-            <h1 className="text-lg font-black text-slate-900 leading-none">Student Workspace</h1>
-            <p className="text-[11px] text-slate-500 font-medium mt-0.5">EduMeet.Ai Learning Portal</p>
+            <h1 className="text-lg font-serif font-bold text-[#292724] leading-none">Student Workspace</h1>
+            <p className="text-[11px] text-[#77716A] font-medium mt-0.5">EduMeet.Ai Intelligent Workspace</p>
           </div>
         </div>
 
@@ -254,18 +256,18 @@ export default function StudentPortal() {
           <Button
             variant="outline"
             size="sm"
-            className="border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold text-xs rounded-xl"
+            className="border-[#E5DCD0] bg-[#FFF9F1] text-[#292724] hover:bg-[#F1E8DD] font-bold text-xs rounded-xl"
             onClick={() => setPricingOpen(true)}
           >
-            <Crown className="w-3.5 h-3.5 mr-1.5 text-amber-600" /> Upgrade Pro
+            <Crown className="w-3.5 h-3.5 mr-1.5 text-[#E9B949]" /> Upgrade Pro
           </Button>
 
           <div className="text-right hidden sm:block">
-            <p className="text-xs font-bold text-slate-900">{studentName}</p>
-            <p className="text-[10px] text-slate-500">{studentEmail}</p>
+            <p className="text-xs font-bold text-[#292724]">{studentName}</p>
+            <p className="text-[10px] text-[#77716A]">{studentEmail}</p>
           </div>
 
-          <Button variant="outline" size="sm" onClick={handleLogout} className="text-slate-600 hover:text-red-600 border-slate-200 text-xs font-semibold rounded-xl">
+          <Button variant="outline" size="sm" onClick={handleLogout} className="text-[#77716A] hover:text-red-600 border-[#E5DCD0] text-xs font-semibold rounded-xl">
             <LogOut className="w-4 h-4 mr-1.5" /> Logout
           </Button>
         </div>
@@ -275,39 +277,39 @@ export default function StudentPortal() {
 
       <div className="flex flex-1 overflow-hidden z-10">
         {/* Sidebar */}
-        <aside className="w-64 border-r border-slate-200/80 bg-white/70 backdrop-blur-md p-5 flex flex-col justify-between overflow-y-auto">
+        <aside className="w-64 border-r border-[#E5DCD0] bg-[#FFF9F1]/70 backdrop-blur-md p-5 flex flex-col justify-between overflow-y-auto">
           <div>
             <Dialog>
               <DialogTrigger asChild>
-                <Button className="w-full mb-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl shadow-xs text-xs">
+                <Button className="w-full mb-6 bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold py-2 rounded-xl shadow-2xs text-xs">
                   <Plus className="w-4 h-4 mr-1.5" /> Join Class
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md bg-white border-slate-200 text-slate-900 rounded-2xl">
+              <DialogContent className="sm:max-w-md bg-[#FFF9F1] border-[#E5DCD0] text-[#292724] rounded-2xl">
                 <DialogHeader>
-                  <DialogTitle className="text-slate-900 font-black">Join Classroom</DialogTitle>
+                  <DialogTitle className="text-[#292724] font-serif font-bold">Join Classroom</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-2">
                   <div className="space-y-2">
-                    <Label htmlFor="classCode" className="text-slate-700 text-xs font-bold">Class Code</Label>
+                    <Label htmlFor="classCode" className="text-[#292724] text-xs font-bold">Class Code</Label>
                     <Input
                       id="classCode"
                       placeholder="e.g. CS201 or CODE123"
                       value={joinClassCode}
                       onChange={(e) => setJoinClassCode(e.target.value)}
-                      className="bg-white border-slate-200 text-slate-900 rounded-xl text-xs"
+                      className="bg-white border-[#E5DCD0] text-[#292724] rounded-xl text-xs"
                     />
                   </div>
                 </div>
                 <DialogClose asChild>
-                  <Button className="w-full bg-indigo-600 text-white font-bold text-xs" onClick={handleJoinClass}>
+                  <Button className="w-full bg-[#E76F51] text-white font-bold text-xs" onClick={handleJoinClass}>
                     Join Classroom
                   </Button>
                 </DialogClose>
               </DialogContent>
             </Dialog>
 
-            <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 px-1">Enrolled Courses</h2>
+            <h2 className="text-[11px] font-bold text-[#77716A] uppercase tracking-wider mb-2.5 px-1">Enrolled Courses</h2>
             <ul className="space-y-1">
               {enrolledClasses.map((cls) => {
                 const isActive = activeClass === cls.id
@@ -316,7 +318,7 @@ export default function StudentPortal() {
                     <Button
                       variant={isActive ? "secondary" : "ghost"}
                       className={`w-full justify-start text-left font-bold rounded-xl px-3 py-2 transition-all text-xs ${
-                        isActive ? "bg-indigo-50 text-indigo-900 border border-indigo-100 font-extrabold shadow-2xs" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        isActive ? "bg-[#F1E8DD] text-[#E76F51] border border-[#E5DCD0] font-extrabold shadow-2xs" : "text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724]"
                       }`}
                       onClick={() => setActiveClass(cls.id)}
                     >
@@ -329,123 +331,157 @@ export default function StudentPortal() {
             </ul>
           </div>
 
-          <div className="mt-8 pt-4 border-t border-slate-200/80 space-y-3">
-            {/* Free Tier AI Limit Badge */}
-            <div className="p-3 bg-slate-50 rounded-xl text-xs border border-slate-200/80 space-y-2">
+          <div className="mt-8 pt-4 border-t border-[#E5DCD0] space-y-3">
+            {/* Free Tier AI Query Limit Badge */}
+            <div className="p-3 bg-[#F1E8DD]/70 rounded-xl text-xs border border-[#E5DCD0] space-y-2">
               <div className="flex items-center justify-between font-bold text-[11px]">
-                <span className="flex items-center gap-1 text-indigo-700"><Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Daily AI Limit</span>
-                <span className="text-slate-900 font-mono">{aiQueryCount} / 5</span>
+                <span className="flex items-center gap-1 text-[#E76F51]"><Sparkles className="w-3.5 h-3.5 text-[#E76F51]" /> Daily AI Limit</span>
+                <span className="text-[#292724] font-mono">{aiQueryCount} / 5</span>
               </div>
-              <Progress value={(aiQueryCount / 5) * 100} className="h-1.5 bg-slate-200" />
+              <Progress value={(aiQueryCount / 5) * 100} className="h-1.5 bg-[#E5DCD0]" />
             </div>
           </div>
         </aside>
 
         {/* Main Workspace */}
         <main className="flex-1 p-8 overflow-y-auto">
+          {/* Senior Designer Personal Welcoming Header (Prompt Spec) */}
+          <div className="mb-6 space-y-1">
+            <h2 className="text-3xl font-serif font-bold text-[#292724]">
+              Good morning, {studentName.split(" ")[0]}.
+            </h2>
+            <p className="text-xs font-semibold text-[#77716A]">
+              Ready for your next breakthrough? Here is your study overview.
+            </p>
+          </div>
+
           <Tabs defaultValue="progress" className="w-full h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-6 max-w-3xl bg-slate-100 p-1 rounded-xl border border-slate-200/80 shadow-2xs mb-6">
-              <TabsTrigger value="progress" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-indigo-600 font-bold text-xs data-[state=active]:shadow-2xs">
-                Progress
+            <TabsList className="grid w-full grid-cols-6 max-w-3xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6">
+              <TabsTrigger value="progress" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs">
+                Overview
               </TabsTrigger>
-              <TabsTrigger value="code" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-indigo-600 font-bold text-xs data-[state=active]:shadow-2xs">
+              <TabsTrigger value="code" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs">
                 Code Trace
               </TabsTrigger>
-              <TabsTrigger value="notes" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-indigo-600 font-bold text-xs data-[state=active]:shadow-2xs">
+              <TabsTrigger value="notes" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs">
                 Notes AI
               </TabsTrigger>
-              <TabsTrigger value="assessments" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-indigo-600 font-bold text-xs data-[state=active]:shadow-2xs">
+              <TabsTrigger value="assessments" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs">
                 Assignments
               </TabsTrigger>
-              <TabsTrigger value="qna" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-indigo-600 font-bold text-xs data-[state=active]:shadow-2xs">
+              <TabsTrigger value="qna" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs">
                 AI Tutor
               </TabsTrigger>
-              <TabsTrigger value="prep" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-indigo-600 font-bold text-xs data-[state=active]:shadow-2xs">
+              <TabsTrigger value="prep" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs">
                 Practice
               </TabsTrigger>
             </TabsList>
 
-            {/* Student Progress Tracker Tab */}
+            {/* Overview / Student Dashboard Tab */}
             <TabsContent value="progress" className="space-y-6">
+              {/* PRIMARY FOCUS CARD (Prompt Spec: "Today's Focus: Recursion — 18 min recommended") */}
+              <div className="p-6 bg-gradient-to-r from-[#FFF9F1] to-[#F1E8DD] border-2 border-[#E76F51] rounded-2xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-[#E76F51]/10 text-[#E76F51] text-xs font-bold border border-[#E76F51]/20">
+                    <Compass className="w-3.5 h-3.5" />
+                    <span>Today&apos;s Primary Focus</span>
+                  </div>
+                  <h3 className="text-2xl font-serif font-bold text-[#292724]">
+                    Recursion & Call Stack Visualization
+                  </h3>
+                  <p className="text-xs text-[#77716A] font-medium flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-[#E76F51]" /> 18 min recommended session • Master base case termination & stack frames
+                  </p>
+                </div>
+
+                <Button 
+                  className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs py-3 px-5 rounded-xl shadow-xs self-start md:self-center"
+                  onClick={() => toast.info("Opening Recursion study session...")}
+                >
+                  Start Focus Session <ArrowUpRight className="w-4 h-4 ml-1.5" />
+                </Button>
+              </div>
+
+              {/* Stat Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+                <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Course Completion</p>
-                      <p className="text-2xl font-black text-slate-900 mt-1">76%</p>
+                      <p className="text-[10px] text-[#77716A] font-bold uppercase tracking-wider">Course Progress</p>
+                      <p className="text-2xl font-black text-[#292724] mt-1">76%</p>
                     </div>
-                    <div className="w-10 h-10 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-xl flex items-center justify-center font-bold">
+                    <div className="w-10 h-10 bg-[#F1E8DD] text-[#E76F51] border border-[#E5DCD0] rounded-xl flex items-center justify-center font-bold">
                       <Trophy className="w-5 h-5" />
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+                <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Study Streak</p>
-                      <p className="text-2xl font-black text-slate-900 mt-1">5 Days 🔥</p>
+                      <p className="text-[10px] text-[#77716A] font-bold uppercase tracking-wider">Study Streak</p>
+                      <p className="text-2xl font-black text-[#292724] mt-1">5 Days 🔥</p>
                     </div>
-                    <div className="w-10 h-10 bg-amber-50 text-amber-600 border border-amber-100 rounded-xl flex items-center justify-center font-bold">
+                    <div className="w-10 h-10 bg-[#E9B949]/15 text-[#E9B949] border border-[#E9B949]/30 rounded-xl flex items-center justify-center font-bold">
                       <Flame className="w-5 h-5" />
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+                <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Quiz Accuracy</p>
-                      <p className="text-2xl font-black text-slate-900 mt-1">92%</p>
+                      <p className="text-[10px] text-[#77716A] font-bold uppercase tracking-wider">Quiz Accuracy</p>
+                      <p className="text-2xl font-black text-[#292724] mt-1">92%</p>
                     </div>
-                    <div className="w-10 h-10 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl flex items-center justify-center font-bold">
+                    <div className="w-10 h-10 bg-[#75B798]/15 text-[#75B798] border border-[#75B798]/30 rounded-xl flex items-center justify-center font-bold">
                       <Award className="w-5 h-5" />
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+                <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Completed Tasks</p>
-                      <p className="text-2xl font-black text-slate-900 mt-1">12 / 15</p>
+                      <p className="text-[10px] text-[#77716A] font-bold uppercase tracking-wider">Completed Tasks</p>
+                      <p className="text-2xl font-black text-[#292724] mt-1">12 / 15</p>
                     </div>
-                    <div className="w-10 h-10 bg-purple-50 text-purple-600 border border-purple-100 rounded-xl flex items-center justify-center font-bold">
+                    <div className="w-10 h-10 bg-[#8B7EC8]/15 text-[#8B7EC8] border border-[#8B7EC8]/30 rounded-xl flex items-center justify-center font-bold">
                       <FileCheck className="w-5 h-5" />
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Subject Mastery */}
-              <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+              {/* Subject Completion Progress Bar */}
+              <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                 <CardHeader>
-                  <CardTitle className="text-base font-black text-slate-900">Enrolled Courses Progress</CardTitle>
-                  <CardDescription className="text-slate-500 text-xs">Real-time completion across active study modules</CardDescription>
+                  <CardTitle className="text-base font-serif font-bold text-[#292724]">Enrolled Courses Mastery</CardTitle>
+                  <CardDescription className="text-[#77716A] text-xs">Real-time completion across active study modules</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-xs font-bold">
-                      <span className="text-slate-800">Data Structures & Algorithms</span>
-                      <span className="text-indigo-600 font-mono">85%</span>
+                      <span className="text-[#292724]">Data Structures & Algorithms</span>
+                      <span className="text-[#E76F51] font-mono">85%</span>
                     </div>
-                    <Progress value={85} className="h-2 bg-slate-100" />
+                    <Progress value={85} className="h-2 bg-[#F1E8DD]" />
                   </div>
 
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-xs font-bold">
-                      <span className="text-slate-800">Operating Systems & Linux</span>
-                      <span className="text-purple-600 font-mono">70%</span>
+                      <span className="text-[#292724]">Operating Systems & Linux</span>
+                      <span className="text-[#8B7EC8] font-mono">70%</span>
                     </div>
-                    <Progress value={70} className="h-2 bg-slate-100" />
+                    <Progress value={70} className="h-2 bg-[#F1E8DD]" />
                   </div>
 
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-xs font-bold">
-                      <span className="text-slate-800">Database & System Design</span>
-                      <span className="text-cyan-600 font-mono">65%</span>
+                      <span className="text-[#292724]">Database & System Design</span>
+                      <span className="text-[#75B798] font-mono">65%</span>
                     </div>
-                    <Progress value={65} className="h-2 bg-slate-100" />
+                    <Progress value={65} className="h-2 bg-[#F1E8DD]" />
                   </div>
                 </CardContent>
               </Card>
@@ -463,54 +499,54 @@ export default function StudentPortal() {
 
             {/* Assignments Tab */}
             <TabsContent value="assessments" className="space-y-6">
-              <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+              <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                 <CardHeader>
-                  <CardTitle className="text-slate-900 text-base font-black">Active Assignments</CardTitle>
-                  <CardDescription className="text-slate-500 text-xs">View due tasks and submit completed coursework</CardDescription>
+                  <CardTitle className="text-[#292724] font-serif font-bold text-base">Active Assignments</CardTitle>
+                  <CardDescription className="text-[#77716A] text-xs">View due tasks and submit completed coursework</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <ul className="divide-y divide-slate-100">
+                  <ul className="divide-y divide-[#E5DCD0]">
                     {assessments.map((item) => (
                       <li key={item.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                           <div className="flex items-center space-x-2">
                             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                              item.status === "Submitted" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
+                              item.status === "Submitted" ? "bg-[#75B798]/15 text-[#75B798] border-[#75B798]/30" : "bg-[#E9B949]/15 text-[#E9B949] border-[#E9B949]/30"
                             }`}>
                               {item.status}
                             </span>
-                            <p className="font-bold text-slate-900 text-sm">{item.title}</p>
+                            <p className="font-bold text-[#292724] text-sm">{item.title}</p>
                           </div>
-                          <p className="text-xs text-slate-500 mt-1">{item.subject} • Due: {item.dueDate}</p>
+                          <p className="text-xs text-[#77716A] mt-1">{item.subject} • Due: {item.dueDate}</p>
                         </div>
 
                         {item.status === "Pending" ? (
                           <Dialog open={submittingId === item.id} onOpenChange={(open) => setSubmittingId(open ? item.id : null)}>
                             <DialogTrigger asChild>
-                              <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs rounded-xl">
+                              <Button size="sm" className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs shadow-2xs rounded-xl">
                                 Submit Work
                               </Button>
                             </DialogTrigger>
-                            <DialogContent className="sm:max-w-md bg-white border-slate-200 text-slate-900 rounded-2xl">
+                            <DialogContent className="sm:max-w-md bg-[#FFF9F1] border-[#E5DCD0] text-[#292724] rounded-2xl">
                               <DialogHeader>
-                                <DialogTitle className="text-slate-900 font-black">Submit Assignment</DialogTitle>
+                                <DialogTitle className="text-[#292724] font-serif font-bold">Submit Assignment</DialogTitle>
                               </DialogHeader>
                               <div className="space-y-3 py-2">
-                                <Label className="text-slate-700 text-xs font-bold">Submission Details / Drive Link</Label>
+                                <Label className="text-[#292724] text-xs font-bold">Submission Details / Drive Link</Label>
                                 <Input
                                   placeholder="Paste document link or summary..."
                                   value={submissionText}
                                   onChange={(e) => setSubmissionText(e.target.value)}
-                                  className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl"
+                                  className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl"
                                 />
                               </div>
-                              <Button className="w-full bg-indigo-600 text-white font-bold text-xs" onClick={() => handleSubmitAssignment(item.id)}>
+                              <Button className="w-full bg-[#E76F51] text-white font-bold text-xs" onClick={() => handleSubmitAssignment(item.id)}>
                                 Confirm Submission
                               </Button>
                             </DialogContent>
                           </Dialog>
                         ) : (
-                          <span className="text-xs font-bold text-emerald-700 flex items-center">
+                          <span className="text-xs font-bold text-[#75B798] flex items-center">
                             <Check className="w-4 h-4 mr-1" /> Submitted
                           </span>
                         )}
@@ -521,30 +557,58 @@ export default function StudentPortal() {
               </Card>
             </TabsContent>
 
-            {/* QNA & AI Assistant Tab */}
+            {/* AI STUDY TUTOR TAB WITH PROMPT ACTION CHIPS (Prompt Spec) */}
             <TabsContent value="qna" className="flex-1 flex flex-col">
-              <Card className="flex-1 flex flex-col bg-white border border-slate-200/80 shadow-xs rounded-2xl">
-                <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-slate-100">
+              <Card className="flex-1 flex flex-col bg-[#FFF9F1] border border-[#E5DCD0] shadow-2xs rounded-2xl">
+                <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-[#E5DCD0]">
                   <div>
-                    <CardTitle className="text-slate-900 font-black text-base flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-indigo-600" /> AI Study Assistant
+                    <CardTitle className="text-[#292724] font-serif font-bold text-base flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[#E76F51]" /> AI Study Tutor Workspace
                     </CardTitle>
-                    <CardDescription className="text-slate-500 text-xs">Ask questions, request explanations, or get step-by-step help</CardDescription>
+                    <CardDescription className="text-[#77716A] text-xs">Contextual AI tutoring workspace with quick action prompts</CardDescription>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => setAiMessages([])} className="text-xs border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl">
+                  <Button variant="outline" size="sm" onClick={() => setAiMessages([])} className="text-xs border-[#E5DCD0] text-[#77716A] hover:bg-[#F1E8DD] rounded-xl">
                     Clear Chat
                   </Button>
                 </CardHeader>
 
                 <CardContent className="flex-1 flex flex-col p-4 justify-between min-h-[450px]">
-                  <ScrollArea className="flex-1 pr-4 max-h-[460px] overflow-y-auto">
+                  {/* Contextual Action Chips (Prompt Spec: "Explain this simply", "Give me an example", "Quiz me on this", "Explain step-by-step") */}
+                  <div className="flex flex-wrap gap-2 pb-3 border-b border-[#E5DCD0]">
+                    <button 
+                      onClick={() => handleSendMessage("Explain Recursion simply")}
+                      className="px-3 py-1 bg-[#F1E8DD] border border-[#E5DCD0] hover:border-[#E76F51] rounded-full text-xs font-bold text-[#292724] transition-colors"
+                    >
+                      💡 Explain this simply
+                    </button>
+                    <button 
+                      onClick={() => handleSendMessage("Give me a code example of Recursion")}
+                      className="px-3 py-1 bg-[#F1E8DD] border border-[#E5DCD0] hover:border-[#E76F51] rounded-full text-xs font-bold text-[#292724] transition-colors"
+                    >
+                      💻 Give me an example
+                    </button>
+                    <button 
+                      onClick={() => handleSendMessage("Quiz me on Recursion and Call Stacks")}
+                      className="px-3 py-1 bg-[#F1E8DD] border border-[#E5DCD0] hover:border-[#E76F51] rounded-full text-xs font-bold text-[#292724] transition-colors"
+                    >
+                      🎯 Quiz me on this
+                    </button>
+                    <button 
+                      onClick={() => handleSendMessage("Explain Binary Search step-by-step")}
+                      className="px-3 py-1 bg-[#F1E8DD] border border-[#E5DCD0] hover:border-[#E76F51] rounded-full text-xs font-bold text-[#292724] transition-colors"
+                    >
+                      🔍 Explain step-by-step
+                    </button>
+                  </div>
+
+                  <ScrollArea className="flex-1 pr-4 py-4 max-h-[380px] overflow-y-auto">
                     <div className="space-y-4">
                       {aiMessages.map((msg, index) => (
                         <div key={index} className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}>
                           <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-xs shadow-2xs leading-relaxed ${
                             msg.type === "user"
-                              ? "bg-indigo-600 text-white rounded-br-none font-semibold"
-                              : "bg-slate-50 text-slate-800 border border-slate-200/80 rounded-bl-none font-normal"
+                              ? "bg-[#E76F51] text-white rounded-br-none font-semibold"
+                              : "bg-[#F1E8DD]/80 text-[#292724] border border-[#E5DCD0] rounded-bl-none font-normal"
                           }`}>
                             <Markdown>{msg.content}</Markdown>
                           </div>
@@ -552,23 +616,23 @@ export default function StudentPortal() {
                       ))}
                       {isAiLoading && (
                         <div className="flex justify-start">
-                          <div className="bg-slate-100 border border-slate-200 text-slate-500 text-xs px-4 py-2 rounded-2xl animate-pulse">
-                            AI is thinking...
+                          <div className="bg-[#F1E8DD] border border-[#E5DCD0] text-[#77716A] text-xs px-4 py-2 rounded-2xl animate-pulse">
+                            AI Tutor is processing...
                           </div>
                         </div>
                       )}
                     </div>
                   </ScrollArea>
 
-                  <div className="flex items-center space-x-2 pt-4 border-t border-slate-100 mt-2">
+                  <div className="flex items-center space-x-2 pt-4 border-t border-[#E5DCD0]">
                     <Input
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
-                      placeholder="Ask any study question..."
-                      className="bg-white border-slate-200 text-slate-900 text-xs rounded-xl"
+                      placeholder="Ask your AI tutor anything..."
+                      className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl"
                       onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                     />
-                    <Button onClick={handleSendMessage} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs rounded-xl">
+                    <Button onClick={() => handleSendMessage()} className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs shadow-2xs rounded-xl">
                       <Send className="w-4 h-4 mr-1.5" /> Send
                     </Button>
                   </div>
@@ -576,49 +640,49 @@ export default function StudentPortal() {
               </Card>
             </TabsContent>
 
-            {/* Prep & Practice Tab */}
+            {/* Practice & Mock Test Tab */}
             <TabsContent value="prep" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* MCQ Card */}
-                <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+                <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                   <CardHeader>
-                    <CardTitle className="flex items-center text-slate-900 text-base font-black">
-                      <CheckCircle2 className="w-4 h-4 mr-2 text-indigo-600" /> Multiple Choice Quizzes
+                    <CardTitle className="flex items-center text-[#292724] text-base font-serif font-bold">
+                      <CheckCircle2 className="w-4 h-4 mr-2 text-[#E76F51]" /> Multiple Choice Quizzes
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <p className="text-xs text-slate-600">Test your conceptual understanding with topic MCQs.</p>
-                    <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs rounded-xl" onClick={resetMcq}>
+                    <p className="text-xs text-[#77716A]">Test your conceptual understanding with topic MCQs.</p>
+                    <Button className="w-full bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs shadow-2xs rounded-xl" onClick={resetMcq}>
                       <PlayCircle className="w-4 h-4 mr-2" /> Start Quiz
                     </Button>
                   </CardContent>
                 </Card>
 
-                {/* One Word Card */}
-                <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+                {/* One Word Flashcards Card */}
+                <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                   <CardHeader>
-                    <CardTitle className="flex items-center text-slate-900 text-base font-black">
-                      <Circle className="w-4 h-4 mr-2 text-purple-600" /> One-Word Flashcards
+                    <CardTitle className="flex items-center text-[#292724] text-base font-serif font-bold">
+                      <Circle className="w-4 h-4 mr-2 text-[#8B7EC8]" /> Tactile Flashcards
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <p className="text-xs text-slate-600">Practice quick recall of key technical definitions.</p>
-                    <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs rounded-xl" onClick={() => setOneWordOpen(true)}>
+                    <p className="text-xs text-[#77716A]">Practice quick recall of key technical definitions.</p>
+                    <Button className="w-full bg-[#8B7EC8] hover:bg-[#796bb5] text-white font-bold text-xs shadow-2xs rounded-xl" onClick={() => setOneWordOpen(true)}>
                       <PlayCircle className="w-4 h-4 mr-2" /> Practice Flashcards
                     </Button>
                   </CardContent>
                 </Card>
 
                 {/* Mock Test Card */}
-                <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+                <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-2xl">
                   <CardHeader>
-                    <CardTitle className="flex items-center text-slate-900 text-base font-black">
-                      <AlertCircle className="w-4 h-4 mr-2 text-cyan-600" /> Timed Assessment
+                    <CardTitle className="flex items-center text-[#292724] text-base font-serif font-bold">
+                      <AlertCircle className="w-4 h-4 mr-2 text-[#75B798]" /> Timed Assessment
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <p className="text-xs text-slate-600">Simulate exam conditions with a timed mock test.</p>
-                    <Button className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs shadow-xs rounded-xl" onClick={() => { setMockTestOpen(true); setMockTestFinished(false) }}>
+                    <p className="text-xs text-[#77716A]">Simulate exam conditions with a timed mock test.</p>
+                    <Button className="w-full bg-[#75B798] hover:bg-[#64a687] text-white font-bold text-xs shadow-2xs rounded-xl" onClick={() => { setMockTestOpen(true); setMockTestFinished(false) }}>
                       <Trophy className="w-4 h-4 mr-2" /> Take Mock Test
                     </Button>
                   </CardContent>
@@ -627,36 +691,36 @@ export default function StudentPortal() {
 
               {/* MCQ Quiz Dialog */}
               <Dialog open={mcqModalOpen} onOpenChange={setMcqModalOpen}>
-                <DialogContent className="sm:max-w-lg bg-white border-slate-200 text-slate-900 rounded-2xl">
+                <DialogContent className="sm:max-w-lg bg-[#FFF9F1] border-[#E5DCD0] text-[#292724] rounded-2xl">
                   <DialogHeader>
-                    <DialogTitle className="text-slate-900 font-black">Topic Quiz</DialogTitle>
+                    <DialogTitle className="text-[#292724] font-serif font-bold">Topic Quiz</DialogTitle>
                   </DialogHeader>
                   {!quizFinished ? (
                     <div className="space-y-4 py-2">
-                      <p className="text-xs font-bold text-slate-500">Question {currentQuestionIdx + 1} of {mcqQuestions.length}</p>
-                      <p className="font-bold text-slate-900 text-sm">{mcqQuestions[currentQuestionIdx].question}</p>
+                      <p className="text-xs font-bold text-[#77716A]">Question {currentQuestionIdx + 1} of {mcqQuestions.length}</p>
+                      <p className="font-bold text-[#292724] text-sm">{mcqQuestions[currentQuestionIdx].question}</p>
 
                       <RadioGroup value={selectedOption !== null ? selectedOption.toString() : ""} onValueChange={(v) => setSelectedOption(parseInt(v))}>
                         <div className="space-y-2">
                           {mcqQuestions[currentQuestionIdx].options.map((opt, idx) => (
-                            <div key={idx} className="flex items-center space-x-2 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer text-xs font-medium">
+                            <div key={idx} className="flex items-center space-x-2 p-3 border border-[#E5DCD0] rounded-xl hover:bg-[#F1E8DD]/50 cursor-pointer text-xs font-medium">
                               <RadioGroupItem value={idx.toString()} id={`opt-${idx}`} />
-                              <Label htmlFor={`opt-${idx}`} className="cursor-pointer font-semibold text-slate-700 w-full">{opt}</Label>
+                              <Label htmlFor={`opt-${idx}`} className="cursor-pointer font-semibold text-[#292724] w-full">{opt}</Label>
                             </div>
                           ))}
                         </div>
                       </RadioGroup>
 
-                      <Button className="w-full bg-indigo-600 text-white font-bold text-xs mt-4" onClick={handleNextMcq}>
+                      <Button className="w-full bg-[#E76F51] text-white font-bold text-xs mt-4" onClick={handleNextMcq}>
                         {currentQuestionIdx + 1 === mcqQuestions.length ? "Finish Quiz" : "Next Question"}
                       </Button>
                     </div>
                   ) : (
                     <div className="py-6 text-center space-y-4">
-                      <Trophy className="w-12 h-12 text-amber-500 mx-auto" />
-                      <h3 className="text-xl font-black text-slate-900">Quiz Completed!</h3>
-                      <p className="text-slate-600 text-xs font-semibold">You scored <strong>{mcqScore}</strong> out of <strong>{mcqQuestions.length}</strong>.</p>
-                      <Button className="bg-indigo-600 text-white font-bold text-xs" onClick={() => setMcqModalOpen(false)}>
+                      <Trophy className="w-12 h-12 text-[#E9B949] mx-auto" />
+                      <h3 className="text-xl font-serif font-bold text-[#292724]">Quiz Completed!</h3>
+                      <p className="text-[#77716A] text-xs font-semibold">You scored <strong>{mcqScore}</strong> out of <strong>{mcqQuestions.length}</strong>.</p>
+                      <Button className="bg-[#E76F51] text-white font-bold text-xs" onClick={() => setMcqModalOpen(false)}>
                         Close & Save Result
                       </Button>
                     </div>
@@ -664,22 +728,22 @@ export default function StudentPortal() {
                 </DialogContent>
               </Dialog>
 
-              {/* One Word Questions Dialog */}
+              {/* One Word Flashcards Dialog */}
               <Dialog open={oneWordOpen} onOpenChange={setOneWordOpen}>
-                <DialogContent className="sm:max-w-md bg-white border-slate-200 text-slate-900 rounded-2xl">
+                <DialogContent className="sm:max-w-md bg-[#FFF9F1] border-[#E5DCD0] text-[#292724] rounded-2xl">
                   <DialogHeader>
-                    <DialogTitle className="text-purple-600 font-black">Revision Flashcard</DialogTitle>
+                    <DialogTitle className="text-[#292724] font-serif font-bold">Revision Flashcard</DialogTitle>
                   </DialogHeader>
                   <div className="py-4 space-y-4 text-center">
-                    <p className="text-xs font-bold text-slate-500">Card {oneWordIdx + 1} of {oneWordQA.length}</p>
-                    <p className="font-bold text-slate-900 text-base">{oneWordQA[oneWordIdx].question}</p>
+                    <p className="text-xs font-bold text-[#77716A]">Card {oneWordIdx + 1} of {oneWordQA.length}</p>
+                    <p className="font-bold text-[#292724] text-base">{oneWordQA[oneWordIdx].question}</p>
 
                     {showOneWordAnswer ? (
-                      <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl text-purple-900 font-bold text-sm">
+                      <div className="p-4 bg-[#F1E8DD] border border-[#E5DCD0] rounded-xl text-[#8B7EC8] font-bold text-sm">
                         Answer: {oneWordQA[oneWordIdx].answer}
                       </div>
                     ) : (
-                      <Button variant="outline" size="sm" className="border-slate-200 text-slate-700 text-xs font-bold" onClick={() => setShowOneWordAnswer(true)}>
+                      <Button variant="outline" size="sm" className="border-[#E5DCD0] text-[#292724] text-xs font-bold" onClick={() => setShowOneWordAnswer(true)}>
                         Reveal Answer
                       </Button>
                     )}
@@ -689,14 +753,14 @@ export default function StudentPortal() {
                         variant="ghost"
                         size="sm"
                         disabled={oneWordIdx === 0}
-                        className="text-slate-500 text-xs font-bold"
+                        className="text-[#77716A] text-xs font-bold"
                         onClick={() => { setOneWordIdx((prev) => prev - 1); setShowOneWordAnswer(false) }}
                       >
                         Previous
                       </Button>
                       <Button
                         size="sm"
-                        className="bg-purple-600 text-white font-bold text-xs"
+                        className="bg-[#8B7EC8] text-white font-bold text-xs"
                         onClick={() => {
                           if (oneWordIdx + 1 < oneWordQA.length) {
                             setOneWordIdx((prev) => prev + 1)
@@ -716,28 +780,28 @@ export default function StudentPortal() {
 
               {/* Mock Test Dialog */}
               <Dialog open={mockTestOpen} onOpenChange={setMockTestOpen}>
-                <DialogContent className="sm:max-w-md bg-white border-slate-200 text-slate-900 rounded-2xl">
+                <DialogContent className="sm:max-w-md bg-[#FFF9F1] border-[#E5DCD0] text-[#292724] rounded-2xl">
                   <DialogHeader>
-                    <DialogTitle className="text-cyan-600 font-black">Timed Mock Assessment</DialogTitle>
+                    <DialogTitle className="text-[#292724] font-serif font-bold">Timed Mock Assessment</DialogTitle>
                   </DialogHeader>
                   {!mockTestFinished ? (
                     <div className="py-4 space-y-4">
-                      <div className="p-3 bg-cyan-50 border border-cyan-200 rounded-xl text-xs font-bold text-cyan-900">
+                      <div className="p-3 bg-[#F1E8DD] border border-[#E5DCD0] rounded-xl text-xs font-bold text-[#292724]">
                         ⏱️ Timed Session: 15 Minutes • 20 Total Questions
                       </div>
-                      <p className="text-xs text-slate-600 font-medium">
+                      <p className="text-xs text-[#77716A] font-medium">
                         This test simulates full exam conditions. Click below when ready to submit.
                       </p>
-                      <Button className="w-full bg-cyan-600 text-white font-bold text-xs" onClick={() => { setMockTestFinished(true); toast.success("Mock test submitted!") }}>
+                      <Button className="w-full bg-[#75B798] text-white font-bold text-xs" onClick={() => { setMockTestFinished(true); toast.success("Mock test submitted!") }}>
                         Submit Mock Exam
                       </Button>
                     </div>
                   ) : (
                     <div className="py-6 text-center space-y-3">
-                      <FileCheck className="w-12 h-12 text-emerald-600 mx-auto" />
-                      <h4 className="font-bold text-slate-900 text-base">Mock Exam Submitted</h4>
-                      <p className="text-xs text-slate-500">Your score report has been saved to your student progress profile.</p>
-                      <Button size="sm" className="bg-slate-800 text-white text-xs font-bold" onClick={() => setMockTestOpen(false)}>Close</Button>
+                      <FileCheck className="w-12 h-12 text-[#75B798] mx-auto" />
+                      <h4 className="font-bold text-[#292724] text-base">Mock Exam Submitted</h4>
+                      <p className="text-xs text-[#77716A]">Your score report has been saved to your student progress profile.</p>
+                      <Button size="sm" className="bg-[#292724] text-white text-xs font-bold" onClick={() => setMockTestOpen(false)}>Close</Button>
                     </div>
                   )}
                 </DialogContent>
