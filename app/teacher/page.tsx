@@ -55,13 +55,21 @@ export default function TeacherPortal() {
   const loadTeacherData = useCallback(() => {
     const list = getStoredClassrooms()
     setClassrooms(list)
+
     if (list.length > 0) {
-      if (!activeClassroom) {
-        setActiveClassroom(list[0])
-      } else {
-        const found = list.find((c) => c.classId === activeClassroom.classId)
-        if (found) setActiveClassroom(found)
+      let target = list[0]
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search)
+        const classParam = params.get("class")
+        if (classParam) {
+          const found = list.find((c) => c.classId === classParam || c.code.toLowerCase() === classParam.toLowerCase())
+          if (found) target = found
+        } else if (activeClassroom) {
+          const found = list.find((c) => c.classId === activeClassroom.classId)
+          if (found) target = found
+        }
       }
+      setActiveClassroom(target)
     }
     setStudentSubmissions(getSubmissions())
   }, [activeClassroom])
@@ -91,6 +99,24 @@ export default function TeacherPortal() {
 
   const toggleSection = (sec: string) => {
     setExpandedSections((prev) => ({ ...prev, [sec]: !prev[sec] }))
+  }
+
+  // Robust Classroom Selection
+  const handleSelectClassroom = (cls: ClassroomData) => {
+    setActiveClassroom(cls)
+    setMobileDrawerOpen(false)
+
+    if (typeof window !== "undefined") {
+      try {
+        const url = new URL(window.location.href)
+        url.searchParams.set("class", cls.classId)
+        window.history.pushState({}, "", url.toString())
+      } catch {
+        // Safe catch
+      }
+    }
+
+    toast.info(`Active Class: ${cls.className} (${cls.code})`)
   }
 
   // Material View/Open Handler
@@ -175,7 +201,7 @@ export default function TeacherPortal() {
         {/* Create Assignment Trigger */}
         <Button
           onClick={() => { setCreateAssignmentOpen(true); setMobileDrawerOpen(false) }}
-          className="w-full bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold py-2 rounded-xl shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-xs flex items-center justify-center gap-1.5"
+          className="w-full bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold py-2 rounded-xl shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-xs flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <Plus className="w-4 h-4" /> Create Assignment (AI Assisted)
         </Button>
@@ -184,7 +210,7 @@ export default function TeacherPortal() {
         <nav className="space-y-1 text-xs">
           <button
             onClick={() => { setActiveMainTab("overview"); setMobileDrawerOpen(false) }}
-            className={`w-full flex items-center px-3 py-2 rounded-xl font-bold transition-all duration-200 ${
+            className={`w-full flex items-center px-3 py-2 rounded-xl font-bold transition-all duration-200 cursor-pointer ${
               activeMainTab === "overview" ? "bg-[#F1E8DD] text-[#E76F51] shadow-2xs" : "text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724]"
             }`}
           >
@@ -195,7 +221,7 @@ export default function TeacherPortal() {
           <div>
             <button
               onClick={() => toggleSection("classes")}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724] transition-all duration-200"
+              className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724] transition-all duration-200 cursor-pointer"
             >
               <span className="flex items-center">
                 <Book className="w-4 h-4 mr-2.5 text-[#E76F51]" /> Managed Classrooms
@@ -208,8 +234,8 @@ export default function TeacherPortal() {
                 {classrooms.map((cls) => (
                   <button
                     key={cls.classId}
-                    onClick={() => { setActiveClassroom(cls); setActiveMainTab("overview"); setMobileDrawerOpen(false) }}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold truncate transition-all duration-200 ${
+                    onClick={() => handleSelectClassroom(cls)}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold truncate transition-all duration-200 cursor-pointer ${
                       activeClassroom?.classId === cls.classId ? "bg-[#FFF9F1] text-[#E76F51] font-bold shadow-2xs border border-[#E5DCD0]" : "text-[#77716A] hover:text-[#292724]"
                     }`}
                   >
@@ -223,7 +249,7 @@ export default function TeacherPortal() {
           {/* Assessments & Submissions */}
           <button
             onClick={() => { setActiveMainTab("students"); setMobileDrawerOpen(false) }}
-            className={`w-full flex items-center px-3 py-2 rounded-xl font-bold transition-all duration-200 ${
+            className={`w-full flex items-center px-3 py-2 rounded-xl font-bold transition-all duration-200 cursor-pointer ${
               activeMainTab === "students" ? "bg-[#F1E8DD] text-[#8B7EC8] shadow-2xs" : "text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724]"
             }`}
           >
@@ -233,7 +259,7 @@ export default function TeacherPortal() {
           {/* AI Tools */}
           <button
             onClick={() => { setActiveMainTab("notes"); setMobileDrawerOpen(false) }}
-            className={`w-full flex items-center px-3 py-2 rounded-xl font-bold transition-all duration-200 ${
+            className={`w-full flex items-center px-3 py-2 rounded-xl font-bold transition-all duration-200 cursor-pointer ${
               activeMainTab === "notes" ? "bg-[#F1E8DD] text-[#E9B949] shadow-2xs" : "text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724]"
             }`}
           >
@@ -243,7 +269,7 @@ export default function TeacherPortal() {
           {/* Settings */}
           <button
             onClick={() => { setActiveMainTab("settings"); setMobileDrawerOpen(false) }}
-            className={`w-full flex items-center px-3 py-2 rounded-xl font-bold transition-all duration-200 ${
+            className={`w-full flex items-center px-3 py-2 rounded-xl font-bold transition-all duration-200 cursor-pointer ${
               activeMainTab === "settings" ? "bg-[#F1E8DD] text-[#E76F51] shadow-2xs" : "text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724]"
             }`}
           >
@@ -253,7 +279,7 @@ export default function TeacherPortal() {
       </div>
 
       <div className="pt-4 border-t border-[#E5DCD0] space-y-3">
-        <Button variant="ghost" className="w-full justify-start text-[#77716A] hover:text-[#E76F51] text-xs font-semibold" onClick={handleLogout}>
+        <Button variant="ghost" className="w-full justify-start text-[#77716A] hover:text-[#E76F51] text-xs font-semibold cursor-pointer" onClick={handleLogout}>
           <LogOut className="w-4 h-4 mr-2" /> Sign Out
         </Button>
       </div>
@@ -293,7 +319,7 @@ export default function TeacherPortal() {
           <Button
             variant="outline"
             size="sm"
-            className="border-[#E5DCD0] bg-[#FFF9F1] text-[#292724] hover:bg-[#F1E8DD] font-bold text-xs rounded-xl hover:-translate-y-0.5 transition-all duration-200"
+            className="border-[#E5DCD0] bg-[#FFF9F1] text-[#292724] hover:bg-[#F1E8DD] font-bold text-xs rounded-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
             onClick={() => setPricingOpen(true)}
           >
             <Crown className="w-3.5 h-3.5 mr-1.5 text-[#E9B949]" /> Pro Educator
@@ -304,7 +330,7 @@ export default function TeacherPortal() {
             <p className="text-[10px] font-semibold text-[#4A453F]">{profileEmail}</p>
           </div>
 
-          <Button variant="outline" size="sm" onClick={handleLogout} className="text-[#77716A] hover:text-red-600 border-[#E5DCD0] text-xs font-semibold rounded-xl">
+          <Button variant="outline" size="sm" onClick={handleLogout} className="text-[#77716A] hover:text-red-600 border-[#E5DCD0] text-xs font-semibold rounded-xl cursor-pointer">
             <LogOut className="w-4 h-4 mr-1.5" /> Logout
           </Button>
         </div>
@@ -342,8 +368,8 @@ export default function TeacherPortal() {
               {classrooms.map((cls) => (
                 <button
                   key={cls.classId}
-                  onClick={() => setActiveClassroom(cls)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 shrink-0 ${
+                  onClick={() => handleSelectClassroom(cls)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer ${
                     activeClassroom?.classId === cls.classId
                       ? "bg-[#E76F51] text-white shadow-2xs"
                       : "bg-[#F1E8DD] text-[#292724] hover:bg-[#E5DCD0]"
@@ -357,16 +383,16 @@ export default function TeacherPortal() {
 
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full flex flex-col">
             <TabsList className="grid w-full grid-cols-4 max-w-xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6">
-              <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200">
+              <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Overview
               </TabsTrigger>
-              <TabsTrigger value="students" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#8B7EC8] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200">
+              <TabsTrigger value="students" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#8B7EC8] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Student Roster
               </TabsTrigger>
-              <TabsTrigger value="notes" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E9B949] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200">
+              <TabsTrigger value="notes" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E9B949] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Notes AI
               </TabsTrigger>
-              <TabsTrigger value="settings" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200">
+              <TabsTrigger value="settings" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Settings
               </TabsTrigger>
             </TabsList>
@@ -398,7 +424,7 @@ export default function TeacherPortal() {
                   />
                   <Button
                     onClick={handlePublishAnnouncement}
-                    className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs py-2 px-4 rounded-xl shadow-2xs"
+                    className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs py-2 px-4 rounded-xl shadow-2xs cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5 mr-1.5" /> Publish Announcement
                   </Button>
@@ -464,7 +490,7 @@ export default function TeacherPortal() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleViewMaterial(mat.fileName, mat.fileUrl)}
-                          className="text-[11px] text-[#8B7EC8] border-[#E5DCD0] hover:bg-[#8B7EC8] hover:text-white font-bold h-7 px-3 rounded-lg"
+                          className="text-[11px] text-[#8B7EC8] border-[#E5DCD0] hover:bg-[#8B7EC8] hover:text-white font-bold h-7 px-3 rounded-lg cursor-pointer"
                         >
                           <Eye className="w-3 h-3 mr-1" /> View
                         </Button>
@@ -472,7 +498,7 @@ export default function TeacherPortal() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleDownloadMaterial(mat.fileName, mat.fileUrl)}
-                          className="text-[11px] text-[#E76F51] border-[#E5DCD0] hover:bg-[#E76F51] hover:text-white font-bold h-7 px-3 rounded-lg"
+                          className="text-[11px] text-[#E76F51] border-[#E5DCD0] hover:bg-[#E76F51] hover:text-white font-bold h-7 px-3 rounded-lg cursor-pointer"
                         >
                           <Download className="w-3 h-3 mr-1" /> Download
                         </Button>
@@ -526,18 +552,18 @@ export default function TeacherPortal() {
               <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
                 <CardHeader>
                   <CardTitle className="text-[#292724] font-serif font-bold text-base flex items-center gap-2">
-                    <FileCheck className="w-4 h-4 text-[#8B7EC8]" /> Live Student Submissions
+                    <FileCheck className="w-4 h-4 text-[#8B7EC8]" /> Live Student Submissions ({activeClassroom?.code})
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {studentSubmissions.length === 0 ? (
-                    <p className="text-xs text-[#77716A] italic">No submissions received yet. When students submit solutions in Student Workspace, they will appear here.</p>
+                  {studentSubmissions.filter((s) => s.classId === activeClassroom?.classId).length === 0 ? (
+                    <p className="text-xs text-[#77716A] italic">No submissions received for {activeClassroom?.className} yet. When students submit solutions in Student Workspace, they will appear here.</p>
                   ) : (
-                    studentSubmissions.map((sub) => (
+                    studentSubmissions.filter((s) => s.classId === activeClassroom?.classId).map((sub) => (
                       <div key={sub.submissionId} className="p-3 bg-white border border-[#E5DCD0] rounded-xl text-xs space-y-1 font-bold">
                         <div className="flex items-center justify-between">
                           <span className="text-[#292724]">{sub.studentName} — {sub.assignmentTitle}</span>
-                          <span className="text-[10px] text-[#75B798] bg-[#75B798]/10 border border-[#75B798]/30 px-2 py-0.5 rounded-full">
+                          <span className="text-[10px] text-[#75B798] bg-[#75B798]/10 border border-[#75B798]/30 px-2 py-0.5 rounded-full font-mono">
                             {sub.submittedAt}
                           </span>
                         </div>
@@ -593,7 +619,7 @@ export default function TeacherPortal() {
 
                   <Button
                     onClick={handleSaveSettings}
-                    className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-2xs"
+                    className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-2xs cursor-pointer"
                   >
                     <Save className="w-4 h-4 mr-1.5" /> Save Settings
                   </Button>

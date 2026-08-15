@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback } from "react"
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { Check, ArrowRight, RotateCcw, Clock, Award } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
@@ -24,7 +24,38 @@ export function QuizModal({ open, onOpenChange, quiz, classroom, studentName }: 
   const [userAnswers, setUserAnswers] = useState<number[]>([])
   const [showResult, setShowResult] = useState(false)
 
-  const currentQ = quiz.questions[currentIdx] || quiz.questions[0]
+  // Reset state on modal open or class switch
+  useEffect(() => {
+    if (open) {
+      setCurrentIdx(0)
+      setSelectedOption(null)
+      setIsSubmitted(false)
+      setUserAnswers([])
+      setShowResult(false)
+    }
+  }, [open, classroom.classId, quiz.quizId])
+
+  const activeQuestions = useMemo(() => {
+    if (quiz && quiz.questions && quiz.questions.length > 0) return quiz.questions
+    return [
+      {
+        id: "gen-q1",
+        question: `In ${classroom.className}, what primary principle governs optimal problem formulation?`,
+        options: ["Foundational Decomposition", "Random Approximation", "Static Bound Allocation", "Linear Reduction"],
+        correctAnswer: 0,
+        explanation: "Foundational Decomposition breaks down complex systems into verifiable steps."
+      },
+      {
+        id: "gen-q2",
+        question: `Which approach ensures maximum efficiency in ${classroom.code}?`,
+        options: ["Iterative Verification", "Unbounded Traversal", "Manual Memory Reset", "Ignore Base Cases"],
+        correctAnswer: 0,
+        explanation: "Iterative verification validates system constraints at each execution step."
+      }
+    ]
+  }, [quiz, classroom])
+
+  const currentQ = activeQuestions[currentIdx] || activeQuestions[0]
 
   const handleSelectOption = (idx: number) => {
     if (isSubmitted) return
@@ -42,13 +73,13 @@ export function QuizModal({ open, onOpenChange, quiz, classroom, studentName }: 
     setSelectedOption(null)
     setIsSubmitted(false)
 
-    if (currentIdx + 1 < quiz.questions.length) {
+    if (currentIdx + 1 < activeQuestions.length) {
       setCurrentIdx(currentIdx + 1)
     } else {
       // Finished quiz! Calculate score
       let correct = 0
       const weak: string[] = []
-      quiz.questions.forEach((q, i) => {
+      activeQuestions.forEach((q, i) => {
         if (updatedAnswers[i] === q.correctAnswer) {
           correct += 1
         } else {
@@ -56,16 +87,17 @@ export function QuizModal({ open, onOpenChange, quiz, classroom, studentName }: 
         }
       })
 
-      const percentage = Math.round((correct / quiz.questions.length) * 100)
+      const totalMarks = quiz?.totalMarks || 30
+      const percentage = Math.round((correct / activeQuestions.length) * 100)
       const attempt: QuizAttemptData = {
         attemptId: `att-${Date.now()}`,
-        quizId: quiz.quizId,
-        quizTitle: quiz.title,
+        quizId: quiz?.quizId || `quiz-${classroom.classId}`,
+        quizTitle: quiz?.title || `${classroom.code} Concept Quiz`,
         studentId: "student-demo",
         studentName: studentName || "Alex Rivera",
         classId: classroom.classId,
-        score: correct * Math.round(quiz.totalMarks / quiz.questions.length),
-        totalMarks: quiz.totalMarks,
+        score: Math.round((correct / activeQuestions.length) * totalMarks),
+        totalMarks: totalMarks,
         percentage,
         completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         weakTopics: weak
@@ -94,21 +126,21 @@ export function QuizModal({ open, onOpenChange, quiz, classroom, studentName }: 
               {classroom.code} • Quiz
             </span>
             <span className="text-xs font-semibold text-[#77716A]">
-              Question {currentIdx + 1} of {quiz.questions.length}
+              Question {currentIdx + 1} of {activeQuestions.length}
             </span>
           </div>
           <DialogTitle className="text-lg font-serif font-bold text-[#292724] mt-1">
-            {quiz.title}
+            {quiz?.title || `${classroom.className} Mastery Quiz`}
           </DialogTitle>
           <DialogDescription className="text-xs text-[#77716A]">
-            {classroom.className} ({quiz.topic})
+            {classroom.className} ({quiz?.topic || "Core Syllabus"})
           </DialogDescription>
         </DialogHeader>
 
         {!showResult ? (
           <div className="space-y-5 pt-3">
             {/* Progress Bar */}
-            <Progress value={((currentIdx + 1) / quiz.questions.length) * 100} className="h-1.5 bg-[#E5DCD0]" />
+            <Progress value={((currentIdx + 1) / activeQuestions.length) * 100} className="h-1.5 bg-[#E5DCD0]" />
 
             {/* Question Text */}
             <div className="p-4 bg-white border border-[#E5DCD0] rounded-xl shadow-2xs">
@@ -125,7 +157,7 @@ export function QuizModal({ open, onOpenChange, quiz, classroom, studentName }: 
                   <button
                     key={idx}
                     onClick={() => handleSelectOption(idx)}
-                    className={`w-full text-left p-3.5 rounded-xl border text-xs font-bold transition-all duration-200 flex items-center justify-between ${
+                    className={`w-full text-left p-3.5 rounded-xl border text-xs font-bold transition-all duration-200 flex items-center justify-between cursor-pointer ${
                       isSelected
                         ? "border-[#E76F51] bg-[#E76F51]/10 text-[#E76F51] shadow-2xs"
                         : "border-[#E5DCD0] bg-white text-[#292724] hover:bg-[#F1E8DD]/50"
@@ -148,7 +180,7 @@ export function QuizModal({ open, onOpenChange, quiz, classroom, studentName }: 
               disabled={selectedOption === null}
               className="w-full bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs py-2.5 rounded-xl shadow-2xs hover:shadow-md transition-all duration-200"
             >
-              {currentIdx + 1 === quiz.questions.length ? "Submit Quiz & Calculate Score" : "Next Question"} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+              {currentIdx + 1 === activeQuestions.length ? "Submit Quiz & Calculate Score" : "Next Question"} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
             </Button>
           </div>
         ) : (
@@ -166,13 +198,13 @@ export function QuizModal({ open, onOpenChange, quiz, classroom, studentName }: 
               <div>
                 <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block">Score</span>
                 <span className="text-2xl font-bold font-mono text-[#E76F51]">
-                  {userAnswers.filter((ans, i) => ans === quiz.questions[i]?.correctAnswer).length} / {quiz.questions.length}
+                  {userAnswers.filter((ans, i) => ans === activeQuestions[i]?.correctAnswer).length} / {activeQuestions.length}
                 </span>
               </div>
               <div>
                 <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block">Mastery Level</span>
                 <span className="text-2xl font-bold font-mono text-[#75B798]">
-                  {Math.round((userAnswers.filter((ans, i) => ans === quiz.questions[i]?.correctAnswer).length / quiz.questions.length) * 100)}%
+                  {Math.round((userAnswers.filter((ans, i) => ans === activeQuestions[i]?.correctAnswer).length / activeQuestions.length) * 100)}%
                 </span>
               </div>
             </div>
@@ -205,9 +237,34 @@ export function FlashcardsModal({ open, onOpenChange, flashcards, classroom }: F
   const [isFlipped, setIsFlipped] = useState(false)
   const [knownCount, setKnownCount] = useState(0)
 
-  const cards = flashcards.length > 0 ? flashcards : [
-    { id: "fc-def", chapterId: "chap-1", front: "What is a Binary Search Tree?", back: "A tree where left child < parent < right child.", category: "Core" }
-  ]
+  useEffect(() => {
+    if (open) {
+      setCurrentIdx(0)
+      setIsFlipped(false)
+      setKnownCount(0)
+    }
+  }, [open, classroom.classId])
+
+  const cards = useMemo(() => {
+    if (flashcards && flashcards.length > 0) return flashcards
+    return [
+      {
+        id: `fc-${classroom.classId}-1`,
+        chapterId: "chap-1",
+        front: `What is the core objective of ${classroom.className}?`,
+        back: `To establish mathematical, algorithmic, or physical principles in ${classroom.subject}.`,
+        category: "Core Concept"
+      },
+      {
+        id: `fc-${classroom.classId}-2`,
+        chapterId: "chap-1",
+        front: `What is the key formula or theorem in ${classroom.code}?`,
+        back: `Refer to course lecture notes uploaded by ${classroom.instructor}.`,
+        category: "Theorem"
+      }
+    ]
+  }, [flashcards, classroom])
+
   const card = cards[currentIdx] || cards[0]
 
   const handleNextCard = (known: boolean) => {
@@ -288,11 +345,19 @@ export function MockTestModal({ open, onOpenChange, classroom, studentName }: Mo
   const [isFinished, setIsFinished] = useState(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
-  const testQuestions = [
+  useEffect(() => {
+    if (open) {
+      setAnswers({})
+      setIsFinished(false)
+      setTimeLeft(300)
+    }
+  }, [open, classroom.classId])
+
+  const testQuestions = useMemo(() => [
     { id: 1, q: `In ${classroom.className}, what primary law governs structural reduction?`, opts: ["First Principle Theorem", "Second Law of Conservation", "Chain Rule / Iteration", "Standard Base Condition"], ans: 0 },
     { id: 2, q: `Which metric determines standard execution efficiency in ${classroom.code}?`, opts: ["Memory Latency", "Asymptotic Time Complexity O(N)", "Line Count", "File Size"], ans: 1 },
     { id: 3, q: `What condition prevents infinite regression or unhandled exceptions?`, opts: ["Static Typing", "Base Case Termination", "Manual Heap Allocation", "Garbage Collection"], ans: 1 }
-  ]
+  ], [classroom.className, classroom.code])
 
   const handleAutoSubmit = useCallback(() => {
     setIsFinished(true)
@@ -369,7 +434,7 @@ export function MockTestModal({ open, onOpenChange, classroom, studentName }: Mo
                     <button
                       key={oIdx}
                       onClick={() => setAnswers({ ...answers, [qIdx]: oIdx })}
-                      className={`p-2 rounded-lg text-left text-[11px] font-bold border transition-colors ${
+                      className={`p-2 rounded-lg text-left text-[11px] font-bold border transition-colors cursor-pointer ${
                         answers[qIdx] === oIdx ? "border-[#E76F51] bg-[#E76F51]/10 text-[#E76F51]" : "border-[#E5DCD0] text-[#77716A]"
                       }`}
                     >
