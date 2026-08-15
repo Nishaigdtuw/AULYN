@@ -25,6 +25,8 @@ import { DoubtThreadsModal } from "@/components/doubt-threads-modal"
 import { StudentGroupsModal } from "@/components/student-groups-modal"
 import { PeerStudyRoomModal } from "@/components/peer-study-room-modal"
 import { NotificationsDrawer } from "@/components/notifications-drawer"
+import { StudentReportModal } from "@/components/student-report-modal"
+
 
 import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, NotificationItem, AssignmentData } from "@/lib/data-store"
 import { getAuthenticatedUser, clearAuthenticatedUser, setAuthenticatedUser } from "@/lib/auth-guard"
@@ -64,6 +66,8 @@ export default function StudentPortal() {
   const [studentGroupsOpen, setStudentGroupsOpen] = useState(false)
   const [peerStudyOpen, setPeerStudyOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [studentReportOpen, setStudentReportOpen] = useState(false)
+
 
   // Active Selection for Submission Modal
   const [selectedAsgn, setSelectedAsgn] = useState<AssignmentData | null>(null)
@@ -503,6 +507,16 @@ export default function StudentPortal() {
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* Evaluation Report & Graphs Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setStudentReportOpen(true)}
+            className="border-[#75B798] bg-[#FFF9F1] text-[#75B798] hover:bg-[#75B798]/10 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-2xs"
+          >
+            <Award className="w-4 h-4 text-[#75B798]" /> Evaluation Report & Graphs
+          </Button>
+
           {/* AI Assistant Help Button */}
           <Button
             variant="outline"
@@ -512,6 +526,7 @@ export default function StudentPortal() {
           >
             <HelpCircle className="w-4 h-4 text-[#8B7EC8]" /> AI Assistant & Help
           </Button>
+
 
           {/* Notifications Drawer Trigger */}
           <Button
@@ -565,6 +580,8 @@ export default function StudentPortal() {
           <DoubtThreadsModal open={doubtThreadsOpen} onOpenChange={setDoubtThreadsOpen} classId={activeClassroom.classId} className={activeClassroom.className} userRole="student" studentName={studentName} />
           <StudentGroupsModal open={studentGroupsOpen} onOpenChange={setStudentGroupsOpen} classId={activeClassroom.classId} className={activeClassroom.className} userRole="student" studentName={studentName} />
           <PeerStudyRoomModal open={peerStudyOpen} onOpenChange={setPeerStudyOpen} classId={activeClassroom.classId} className={activeClassroom.className} studentName={studentName} />
+          <StudentReportModal open={studentReportOpen} onOpenChange={setStudentReportOpen} studentId="student-demo" studentName={studentName} />
+
 
           {selectedAsgn && (
             <AssignmentSubmissionModal open={asgnSubmissionOpen} onOpenChange={setAsgnSubmissionOpen} assignment={selectedAsgn} userRole="student" studentName={studentName} onStartViva={() => setAiVivaOpen(true)} />
