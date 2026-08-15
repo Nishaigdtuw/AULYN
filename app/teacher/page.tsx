@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback, useRef } from "react"
-import { FileText, LogOut, Plus, Book, FileCheck, Sparkles, TrendingUp, Crown, Menu, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Download, User, Save, Eye, Send, ArrowLeft, RefreshCw } from "lucide-react"
+import { FileText, LogOut, Plus, Book, FileCheck, Sparkles, TrendingUp, Crown, Menu, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Download, User, Save, Eye, Send, ArrowLeft, RefreshCw, Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -11,10 +11,19 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+
+// Ecosystem Components
 import NotesAiConverter from "@/components/notes-ai-converter"
 import PricingModal from "@/components/pricing-modal"
 import { CreateAssignmentModal } from "@/components/teacher-assignment-modal"
-import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, AnnouncementData } from "@/lib/data-store"
+import { LiveSessionModal } from "@/components/live-session-modal"
+import { EvidenceAnalytics } from "@/components/evidence-analytics"
+import { AssignmentSubmissionModal } from "@/components/assignment-submission-modal"
+import { DoubtThreadsModal } from "@/components/doubt-threads-modal"
+import { StudentGroupsModal } from "@/components/student-groups-modal"
+import { NotificationsDrawer } from "@/components/notifications-drawer"
+
+import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, AnnouncementData, NotificationItem, AssignmentData } from "@/lib/data-store"
 import { getAuthenticatedUser, clearAuthenticatedUser, setAuthenticatedUser } from "@/lib/auth-guard"
 
 export default function TeacherPortal() {
@@ -38,6 +47,14 @@ export default function TeacherPortal() {
   const [pricingOpen, setPricingOpen] = useState(false)
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false)
 
+  // Ecosystem Modals
+  const [liveSessionOpen, setLiveSessionOpen] = useState(false)
+  const [doubtThreadsOpen, setDoubtThreadsOpen] = useState(false)
+  const [studentGroupsOpen, setStudentGroupsOpen] = useState(false)
+  const [asgnSubmissionOpen, setAsgnSubmissionOpen] = useState(false)
+  const [selectedAsgn, setSelectedAsgn] = useState<AssignmentData | null>(null)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+
   // Submissions state
   const [studentSubmissions, setStudentSubmissions] = useState<SubmissionData[]>([])
 
@@ -45,15 +62,20 @@ export default function TeacherPortal() {
   const [newAnnouncementTitle, setNewAnnouncementTitle] = useState("")
   const [newAnnouncementContent, setNewAnnouncementContent] = useState("")
 
+  // Notifications List
+  const [notifications] = useState<NotificationItem[]>([
+    { id: "tn1", recipientRole: "teacher", title: "Confusion Spike Detected", message: "68% of recent signals occurred during Tree Traversal.", timestamp: "5 mins ago", read: false },
+    { id: "tn2", recipientRole: "teacher", title: "New Assignment Submission", message: "Alex Rivera submitted solution for BST Implementation Lab.", timestamp: "30 mins ago", read: false }
+  ])
+
   // Sidebar Submenus State
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     classes: true,
-    assessments: true,
-    content: true,
-    aiTools: true
+    ecosystem: true,
+    content: true
   })
 
-  // Data Reload Handler - Safe from infinite loop
+  // Data Reload Handler - Safe from loop
   const loadTeacherData = useCallback(() => {
     try {
       const list = getStoredClassrooms() || []
@@ -169,7 +191,8 @@ export default function TeacherPortal() {
       title: newAnnouncementTitle.trim(),
       content: newAnnouncementContent.trim(),
       date: new Date().toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
-      important: true
+      important: true,
+      acknowledgements: []
     }
 
     const classroomsList = getStoredClassrooms() || []
@@ -199,7 +222,7 @@ export default function TeacherPortal() {
     toast.success("Profile & Educator settings saved successfully!")
   }
 
-  // Navigation: Exit Demo / Back to Landing
+  // Navigation: Exit Demo
   const handleExitDemo = () => {
     clearAuthenticatedUser()
     toast.info("Exited Demo Workspace. Returned to AULYN Home.")
@@ -221,10 +244,19 @@ export default function TeacherPortal() {
   const RenderSidebarContent = () => (
     <div className="flex flex-col justify-between h-full space-y-6">
       <div className="space-y-4">
+        {/* Start Live Session Trigger */}
+        <Button
+          onClick={() => { setLiveSessionOpen(true); setMobileDrawerOpen(false) }}
+          className="w-full bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold py-2 rounded-xl shadow-2xs hover:shadow-md transition-all duration-200 text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <span className="w-2.5 h-2.5 bg-white rounded-full animate-ping" />
+          🔴 Start Live Classroom Session
+        </Button>
+
         {/* Create Assignment Trigger */}
         <Button
           onClick={() => { setCreateAssignmentOpen(true); setMobileDrawerOpen(false) }}
-          className="w-full bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold py-2 rounded-xl shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+          className="w-full bg-[#8B7EC8] hover:bg-[#7a6db7] text-white font-bold py-2 rounded-xl shadow-2xs hover:shadow-md transition-all duration-200 text-xs flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <Plus className="w-4 h-4" /> Create Assignment (AI Assisted)
         </Button>
@@ -269,6 +301,33 @@ export default function TeacherPortal() {
             )}
           </div>
 
+          {/* Intelligent Ecosystem Submenu */}
+          <div>
+            <button
+              onClick={() => toggleSection("ecosystem")}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724] transition-all duration-200 cursor-pointer"
+            >
+              <span className="flex items-center">
+                <Sparkles className="w-4 h-4 mr-2.5 text-[#8B7EC8]" /> Intelligent Tools
+              </span>
+              {expandedSections.ecosystem ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            </button>
+
+            {expandedSections.ecosystem && (
+              <div className="ml-4 pl-2 border-l border-[#E5DCD0] space-y-1 mt-1">
+                <button onClick={() => { setActiveMainTab("analytics"); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
+                  📊 Evidence Analytics
+                </button>
+                <button onClick={() => { setDoubtThreadsOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
+                  ❓ Doubt Threads & Bounties
+                </button>
+                <button onClick={() => { setStudentGroupsOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
+                  👥 Group Assignment Workspaces
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Assessments & Submissions */}
           <button
             onClick={() => { setActiveMainTab("students"); setMobileDrawerOpen(false) }}
@@ -276,10 +335,10 @@ export default function TeacherPortal() {
               activeMainTab === "students" ? "bg-[#F1E8DD] text-[#8B7EC8] shadow-2xs" : "text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724]"
             }`}
           >
-            <FileCheck className="w-4 h-4 mr-2.5 text-[#8B7EC8]" /> Student Submissions & Roster
+            <FileCheck className="w-4 h-4 mr-2.5 text-[#8B7EC8]" /> Student Roster & Submissions
           </button>
 
-          {/* AI Tools */}
+          {/* AI Notes Converter */}
           <button
             onClick={() => { setActiveMainTab("notes"); setMobileDrawerOpen(false) }}
             className={`w-full flex items-center px-3 py-2 rounded-xl font-bold transition-all duration-200 cursor-pointer ${
@@ -353,6 +412,17 @@ export default function TeacherPortal() {
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* Notifications Drawer Trigger */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setNotificationsOpen(true)}
+            className="relative text-[#292724] hover:bg-[#F1E8DD]/60 cursor-pointer"
+          >
+            <Bell className="w-5 h-5" />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-[#E76F51] rounded-full animate-ping" />
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -382,13 +452,22 @@ export default function TeacherPortal() {
         </div>
       </header>
 
-      {/* Pricing & Create Assignment Modals */}
+      {/* ECOSYSTEM MODALS & DRAWERS */}
       <PricingModal open={pricingOpen} onOpenChange={setPricingOpen} userRole="teacher" />
-      <CreateAssignmentModal
-        open={createAssignmentOpen}
-        onOpenChange={setCreateAssignmentOpen}
-        activeClass={activeClassroom}
-      />
+      <NotificationsDrawer open={notificationsOpen} onOpenChange={setNotificationsOpen} userRole="teacher" notifications={notifications} />
+
+      {activeClassroom && (
+        <>
+          <LiveSessionModal open={liveSessionOpen} onOpenChange={setLiveSessionOpen} classroom={activeClassroom} userRole="teacher" />
+          <CreateAssignmentModal open={createAssignmentOpen} onOpenChange={setCreateAssignmentOpen} activeClass={activeClassroom} />
+          <DoubtThreadsModal open={doubtThreadsOpen} onOpenChange={setDoubtThreadsOpen} classId={activeClassroom.classId} className={activeClassroom.className} userRole="teacher" />
+          <StudentGroupsModal open={studentGroupsOpen} onOpenChange={setStudentGroupsOpen} classId={activeClassroom.classId} className={activeClassroom.className} userRole="teacher" />
+
+          {selectedAsgn && (
+            <AssignmentSubmissionModal open={asgnSubmissionOpen} onOpenChange={setAsgnSubmissionOpen} assignment={selectedAsgn} userRole="teacher" />
+          )}
+        </>
+      )}
 
       <div className="flex flex-1 overflow-hidden z-10">
         {/* Desktop Sidebar */}
@@ -428,12 +507,15 @@ export default function TeacherPortal() {
           </div>
 
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-4 max-w-xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6">
+            <TabsList className="grid w-full grid-cols-5 max-w-2xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6">
               <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Overview
               </TabsTrigger>
+              <TabsTrigger value="analytics" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#75B798] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
+                Evidence Analytics
+              </TabsTrigger>
               <TabsTrigger value="students" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#8B7EC8] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
-                Student Roster
+                Roster
               </TabsTrigger>
               <TabsTrigger value="notes" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E9B949] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Notes AI
@@ -474,6 +556,16 @@ export default function TeacherPortal() {
                   >
                     <Send className="w-3.5 h-3.5 mr-1.5" /> Publish Announcement
                   </Button>
+
+                  {/* Announcement Acknowledgement Status Audit */}
+                  {activeClassroom?.announcements && activeClassroom.announcements.length > 0 && (
+                    <div className="pt-2 border-t border-[#E5DCD0] flex items-center justify-between text-xs font-semibold text-[#77716A]">
+                      <span>Latest Announcement Acknowledged:</span>
+                      <span className="font-bold text-[#292724] bg-[#F1E8DD] px-2.5 py-0.5 rounded-full">
+                        {activeClassroom.announcements[0].acknowledgements?.length || 1} / {activeClassroom.students.length} Students Acknowledged
+                      </span>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -559,6 +651,11 @@ export default function TeacherPortal() {
               </Card>
             </TabsContent>
 
+            {/* EVIDENCE ANALYTICS TAB */}
+            <TabsContent value="analytics" className="animate-in fade-in-50 duration-200">
+              <EvidenceAnalytics classId={activeClassroom?.classId} />
+            </TabsContent>
+
             {/* STUDENT ROSTER & SUBMISSIONS TAB */}
             <TabsContent value="students" className="space-y-6 animate-in fade-in-50 duration-200">
               <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
@@ -613,17 +710,37 @@ export default function TeacherPortal() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {studentSubmissions.filter((s) => s.classId === activeClassroom?.classId).length === 0 ? (
-                    <p className="text-xs text-[#77716A] italic">No submissions received for {activeClassroom?.className} yet. When students submit solutions in Student Workspace, they will appear here.</p>
+                    <p className="text-xs text-[#77716A] italic">No submissions received for {activeClassroom?.className} yet.</p>
                   ) : (
                     studentSubmissions.filter((s) => s.classId === activeClassroom?.classId).map((sub) => (
-                      <div key={sub.submissionId} className="p-3 bg-white border border-[#E5DCD0] rounded-xl text-xs space-y-1 font-bold">
+                      <div key={sub.submissionId} className="p-3.5 bg-white border border-[#E5DCD0] rounded-xl text-xs space-y-2 font-bold shadow-2xs">
                         <div className="flex items-center justify-between">
                           <span className="text-[#292724]">{sub.studentName} — {sub.assignmentTitle}</span>
-                          <span className="text-[10px] text-[#75B798] bg-[#75B798]/10 border border-[#75B798]/30 px-2 py-0.5 rounded-full font-mono">
-                            {sub.submittedAt}
-                          </span>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              const targetAsgn: AssignmentData = activeClassroom?.assignments?.find((a) => a.id === sub.assignmentId) || {
+                                id: sub.assignmentId,
+                                classId: sub.classId,
+                                chapterId: "c1",
+                                title: sub.assignmentTitle,
+                                type: "Coding",
+                                difficulty: "Intermediate",
+                                dueDate: "2026-08-25",
+                                totalMarks: 50,
+                                instructions: "Review student code submission.",
+                                published: true,
+                                submissionsCount: 1
+                              }
+                              setSelectedAsgn(targetAsgn)
+                              setAsgnSubmissionOpen(true)
+                            }}
+                            className="bg-[#8B7EC8] hover:bg-[#7a6db7] text-white font-bold text-[11px] h-7 rounded-lg cursor-pointer"
+                          >
+                            Inspect Submission & Thread
+                          </Button>
                         </div>
-                        <p className="text-[11px] font-normal text-[#77716A] bg-[#F1E8DD]/40 p-2 rounded-lg">{sub.content}</p>
+                        <p className="text-[11px] font-mono text-[#77716A] bg-[#FFF9F1] p-2.5 rounded-lg border border-[#E5DCD0]">{sub.content}</p>
                       </div>
                     ))
                   )}

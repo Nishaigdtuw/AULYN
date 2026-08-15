@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback, useRef } from "react"
-import { FileText, Download, ArrowUpRight, Menu, LogOut, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Eye, Send, Bell, User, Save, BookOpen, Sparkles, Award, ArrowLeft, RefreshCw } from "lucide-react"
+import { FileText, Download, ArrowUpRight, Menu, LogOut, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Eye, Bell, User, Save, BookOpen, Sparkles, Award, ArrowLeft, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -10,11 +10,23 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+
+// Ecosystem Components
 import CodeVisualizer from "@/components/code-visualizer"
 import PricingModal from "@/components/pricing-modal"
 import { QuizModal, FlashcardsModal, MockTestModal } from "@/components/practice-modals"
 import { AiTutorDialog } from "@/components/ai-tutor-dialog"
-import { getStoredClassrooms, ClassroomData, saveSubmission, getSubmissions, SubmissionData } from "@/lib/data-store"
+import { KnowledgeGraph } from "@/components/knowledge-graph"
+import { LiveSessionModal } from "@/components/live-session-modal"
+import { AdaptiveQuizModal } from "@/components/adaptive-quiz-modal"
+import { AiVivaModal } from "@/components/ai-viva-modal"
+import { AssignmentSubmissionModal } from "@/components/assignment-submission-modal"
+import { DoubtThreadsModal } from "@/components/doubt-threads-modal"
+import { StudentGroupsModal } from "@/components/student-groups-modal"
+import { PeerStudyRoomModal } from "@/components/peer-study-room-modal"
+import { NotificationsDrawer } from "@/components/notifications-drawer"
+
+import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, NotificationItem, AssignmentData } from "@/lib/data-store"
 import { getAuthenticatedUser, clearAuthenticatedUser, setAuthenticatedUser } from "@/lib/auth-guard"
 
 export default function StudentPortal() {
@@ -39,11 +51,28 @@ export default function StudentPortal() {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
   const [pricingOpen, setPricingOpen] = useState(false)
 
-  // Modals state
+  // Ecosystem Modals state
   const [quizModalOpen, setQuizModalOpen] = useState(false)
   const [flashcardsModalOpen, setFlashcardsModalOpen] = useState(false)
   const [mockTestModalOpen, setMockTestModalOpen] = useState(false)
   const [aiTutorOpen, setAiTutorOpen] = useState(false)
+  const [liveSessionOpen, setLiveSessionOpen] = useState(false)
+  const [adaptiveQuizOpen, setAdaptiveQuizOpen] = useState(false)
+  const [aiVivaOpen, setAiVivaOpen] = useState(false)
+  const [asgnSubmissionOpen, setAsgnSubmissionOpen] = useState(false)
+  const [doubtThreadsOpen, setDoubtThreadsOpen] = useState(false)
+  const [studentGroupsOpen, setStudentGroupsOpen] = useState(false)
+  const [peerStudyOpen, setPeerStudyOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+
+  // Active Selection for Submission Modal
+  const [selectedAsgn, setSelectedAsgn] = useState<AssignmentData | null>(null)
+
+  // Notifications List
+  const [notifications] = useState<NotificationItem[]>([
+    { id: "n1", recipientRole: "student", title: "Live Session Started", message: "Prof. Jenkins started live lecture: Trees & Tree Traversal.", timestamp: "10 mins ago", read: false },
+    { id: "n2", recipientRole: "student", title: "Assignment Feedback", message: "Prof. Jenkins commented on your BST Implementation submission.", timestamp: "1 hour ago", read: false }
+  ])
 
   // Loaded Notes state
   const [isNotesLoading, setIsNotesLoading] = useState(false)
@@ -51,17 +80,16 @@ export default function StudentPortal() {
   const [activeNoteFile, setActiveNoteFile] = useState<string>("Trees_Lecture_Notes.pdf")
 
   // Submission Form State
-  const [submissionText, setSubmissionText] = useState("")
-  const [userSubmissions, setUserSubmissions] = useState<SubmissionData[]>([])
+  const [, setUserSubmissions] = useState<SubmissionData[]>([])
 
   // Sidebar Submenus State
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     classes: true,
-    tools: true,
+    ecosystem: true,
     practice: true
   })
 
-  // Data Reload Handler - No dependency loop!
+  // Data Reload Handler - Safe from loops
   const loadClassroomData = useCallback(() => {
     try {
       const list = getStoredClassrooms() || []
@@ -119,7 +147,6 @@ export default function StudentPortal() {
     if (user.name) setStudentName(user.name)
     if (user.email) setStudentEmail(user.email)
 
-    // Load Submissions
     setUserSubmissions(getSubmissions() || [])
   }, [router])
 
@@ -142,7 +169,6 @@ export default function StudentPortal() {
     }
     setMobileDrawerOpen(false)
 
-    // Sync URL Parameter
     if (typeof window !== "undefined") {
       try {
         const url = new URL(window.location.href)
@@ -154,6 +180,32 @@ export default function StudentPortal() {
     }
 
     toast.info(`Active Class: ${cls.className} (${cls.code})`)
+  }
+
+  // Acknowledge Announcement Handler
+  const handleAcknowledgeAnnouncement = (annId: string) => {
+    if (!activeClassroom) return
+    const classroomsList = getStoredClassrooms() || []
+    const cls = classroomsList.find((c) => c.classId === activeClassroom.classId)
+    if (cls && cls.announcements) {
+      const targetAnn = cls.announcements.find((a) => a.id === annId)
+      if (targetAnn) {
+        if (!targetAnn.acknowledgements) targetAnn.acknowledgements = []
+        const already = targetAnn.acknowledgements.find((ack) => ack.studentId === "student-demo")
+        if (!already) {
+          targetAnn.acknowledgements.push({
+            announcementId: annId,
+            studentId: "student-demo",
+            studentName,
+            acknowledgedAt: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+          })
+          saveStoredClassrooms(classroomsList)
+          toast.success("Announcement acknowledged!")
+        } else {
+          toast.info("Announcement already acknowledged.")
+        }
+      }
+    }
   }
 
   // Functional Load Notes
@@ -202,31 +254,6 @@ export default function StudentPortal() {
     }
   }
 
-  // Assignment Submission Handler
-  const handleSubmitAssignment = (asgnId: string, asgnTitle: string) => {
-    if (!submissionText.trim()) {
-      toast.warning("Please type your solution text before submitting")
-      return
-    }
-
-    const sub: SubmissionData = {
-      submissionId: `sub-${Date.now()}`,
-      assignmentId: asgnId,
-      assignmentTitle: asgnTitle,
-      studentId: self?.userId || "student-demo",
-      studentName: studentName,
-      classId: activeClassroom?.classId || "dsa-2026",
-      submittedAt: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      content: submissionText.trim(),
-      status: "Submitted"
-    }
-
-    saveSubmission(sub)
-    setUserSubmissions(getSubmissions() || [])
-    setSubmissionText("")
-    toast.success(`Assignment "${asgnTitle}" submitted!`)
-  }
-
   // Save Settings & Profile
   const handleSaveSettings = () => {
     const updatedUser = {
@@ -241,7 +268,7 @@ export default function StudentPortal() {
     toast.success("Profile & Preferences saved successfully!")
   }
 
-  // Navigation: Exit Demo / Back to Landing
+  // Navigation: Exit Demo
   const handleExitDemo = () => {
     clearAuthenticatedUser()
     toast.info("Exited Demo Workspace. Returned to AULYN Home.")
@@ -265,12 +292,13 @@ export default function StudentPortal() {
   const RenderSidebarContent = () => (
     <div className="flex flex-col justify-between h-full space-y-6">
       <div className="space-y-4">
-        {/* Ask AI Tutor Trigger */}
+        {/* Live Session Banner Trigger */}
         <Button
-          onClick={() => { setAiTutorOpen(true); setMobileDrawerOpen(false) }}
-          className="w-full bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold py-2 rounded-xl shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+          onClick={() => { setLiveSessionOpen(true); setMobileDrawerOpen(false) }}
+          className="w-full bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold py-2.5 rounded-xl shadow-2xs hover:shadow-md transition-all duration-200 text-xs flex items-center justify-center gap-2 cursor-pointer"
         >
-          <Sparkles className="w-4 h-4 text-[#E9B949]" /> Ask AI Tutor (Vision Enabled)
+          <span className="w-2.5 h-2.5 bg-white rounded-full animate-ping" />
+          🔴 Join Live Classroom Session
         </Button>
 
         {/* Navigation Items */}
@@ -313,6 +341,42 @@ export default function StudentPortal() {
             )}
           </div>
 
+          {/* Intelligent Ecosystem Workflows Submenu */}
+          <div>
+            <button
+              onClick={() => toggleSection("ecosystem")}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724] transition-all duration-200 cursor-pointer"
+            >
+              <span className="flex items-center">
+                <Sparkles className="w-4 h-4 mr-2.5 text-[#8B7EC8]" /> Intelligent Ecosystem
+              </span>
+              {expandedSections.ecosystem ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            </button>
+
+            {expandedSections.ecosystem && (
+              <div className="ml-4 pl-2 border-l border-[#E5DCD0] space-y-1 mt-1">
+                <button onClick={() => { setAiTutorOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
+                  🤖 AI Tutor (Vision Enabled)
+                </button>
+                <button onClick={() => { setAdaptiveQuizOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
+                  ⚡ Take Adaptive Quiz
+                </button>
+                <button onClick={() => { setAiVivaOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
+                  🎙️ AI Oral Viva Defense
+                </button>
+                <button onClick={() => { setDoubtThreadsOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
+                  ❓ Contextual Doubt Threads
+                </button>
+                <button onClick={() => { setPeerStudyOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
+                  🔥 Peer Study Room & Streaks
+                </button>
+                <button onClick={() => { setStudentGroupsOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
+                  👥 Group Collaborations
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Practice Workflows */}
           <div>
             <button
@@ -320,7 +384,7 @@ export default function StudentPortal() {
               className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724] transition-all duration-200 cursor-pointer"
             >
               <span className="flex items-center">
-                <Award className="w-4 h-4 mr-2.5 text-[#75B798]" /> Practice & Mock Tests
+                <Award className="w-4 h-4 mr-2.5 text-[#75B798]" /> Practice Assessment
               </span>
               {expandedSections.practice ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             </button>
@@ -328,13 +392,13 @@ export default function StudentPortal() {
             {expandedSections.practice && (
               <div className="ml-4 pl-2 border-l border-[#E5DCD0] space-y-1 mt-1">
                 <button onClick={() => { setQuizModalOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer">
-                  🎯 Start Chapter Quiz
+                  🎯 Chapter Quiz MCQs
                 </button>
                 <button onClick={() => { setFlashcardsModalOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer">
-                  🃏 Review Flashcard Deck
+                  🃏 3D Flip Flashcards
                 </button>
                 <button onClick={() => { setMockTestModalOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer">
-                  ⏱️ Take Timed Mock Test
+                  ⏱️ Timed Mock Examination
                 </button>
               </div>
             )}
@@ -409,11 +473,22 @@ export default function StudentPortal() {
           <img src="/aulyn-logo.png" alt="AULYN Logo" className="w-9 h-9 object-contain rounded-lg shadow-2xs hover:scale-105 transition-transform" />
           <div>
             <h1 className="text-base sm:text-lg font-serif font-black text-[#292724] leading-none tracking-tight">AULYN</h1>
-            <p className="text-[10px] text-[#77716A] font-medium mt-0.5 hidden sm:block">Student Workspace</p>
+            <p className="text-[10px] text-[#77716A] font-medium mt-0.5 hidden sm:block">Adaptive Learning System</p>
           </div>
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* Notifications Drawer Trigger */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setNotificationsOpen(true)}
+            className="relative text-[#292724] hover:bg-[#F1E8DD]/60 cursor-pointer"
+          >
+            <Bell className="w-5 h-5" />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-[#E76F51] rounded-full animate-ping" />
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -443,36 +518,27 @@ export default function StudentPortal() {
         </div>
       </header>
 
-      {/* Pricing & Practice Modals */}
+      {/* ECOSYSTEM MODALS & DRAWERS */}
       <PricingModal open={pricingOpen} onOpenChange={setPricingOpen} userRole="student" />
+      <NotificationsDrawer open={notificationsOpen} onOpenChange={setNotificationsOpen} userRole="student" notifications={notifications} />
+
       {activeClassroom && (
         <>
-          <QuizModal
-            open={quizModalOpen}
-            onOpenChange={setQuizModalOpen}
-            quiz={activeClassroom.quizzes?.[0] || { quizId: `quiz-${activeClassroom.classId}`, chapterId: "c1", title: `${activeClassroom.code} Quiz`, topic: activeClassroom.subject || "Core", timeMinutes: 10, totalMarks: 20, questions: [] }}
-            classroom={activeClassroom}
-            studentName={studentName}
-          />
-          <FlashcardsModal
-            open={flashcardsModalOpen}
-            onOpenChange={setFlashcardsModalOpen}
-            flashcards={activeClassroom.flashcards || []}
-            classroom={activeClassroom}
-          />
-          <MockTestModal
-            open={mockTestModalOpen}
-            onOpenChange={setMockTestModalOpen}
-            classroom={activeClassroom}
-            studentName={studentName}
-          />
-          <AiTutorDialog
-            open={aiTutorOpen}
-            onOpenChange={setAiTutorOpen}
-            activeClassName={activeClassroom.className || "General Course"}
-            activeChapterName={currentChapter?.chapterName || "Overview"}
-            sourceNoteContent={activeNoteText}
-          />
+          <LiveSessionModal open={liveSessionOpen} onOpenChange={setLiveSessionOpen} classroom={activeClassroom} userRole="student" studentName={studentName} />
+          <AdaptiveQuizModal open={adaptiveQuizOpen} onOpenChange={setAdaptiveQuizOpen} classroom={activeClassroom} studentName={studentName} />
+          <AiVivaModal open={aiVivaOpen} onOpenChange={setAiVivaOpen} classId={activeClassroom.classId} studentName={studentName} />
+          <DoubtThreadsModal open={doubtThreadsOpen} onOpenChange={setDoubtThreadsOpen} classId={activeClassroom.classId} className={activeClassroom.className} userRole="student" studentName={studentName} />
+          <StudentGroupsModal open={studentGroupsOpen} onOpenChange={setStudentGroupsOpen} classId={activeClassroom.classId} className={activeClassroom.className} userRole="student" studentName={studentName} />
+          <PeerStudyRoomModal open={peerStudyOpen} onOpenChange={setPeerStudyOpen} classId={activeClassroom.classId} className={activeClassroom.className} studentName={studentName} />
+
+          {selectedAsgn && (
+            <AssignmentSubmissionModal open={asgnSubmissionOpen} onOpenChange={setAsgnSubmissionOpen} assignment={selectedAsgn} userRole="student" studentName={studentName} onStartViva={() => setAiVivaOpen(true)} />
+          )}
+
+          <QuizModal open={quizModalOpen} onOpenChange={setQuizModalOpen} quiz={activeClassroom.quizzes?.[0] || { quizId: `quiz-${activeClassroom.classId}`, chapterId: "c1", title: `${activeClassroom.code} Quiz`, topic: activeClassroom.subject || "Core", timeMinutes: 10, totalMarks: 20, questions: [] }} classroom={activeClassroom} studentName={studentName} />
+          <FlashcardsModal open={flashcardsModalOpen} onOpenChange={setFlashcardsModalOpen} flashcards={activeClassroom.flashcards || []} classroom={activeClassroom} />
+          <MockTestModal open={mockTestModalOpen} onOpenChange={setMockTestModalOpen} classroom={activeClassroom} studentName={studentName} />
+          <AiTutorDialog open={aiTutorOpen} onOpenChange={setAiTutorOpen} activeClassName={activeClassroom.className || "General Course"} activeChapterName={currentChapter?.chapterName || "Overview"} sourceNoteContent={activeNoteText} />
         </>
       )}
 
@@ -513,6 +579,25 @@ export default function StudentPortal() {
             </div>
           </div>
 
+          {/* LIVE SESSION ACTIVE NOTIFICATION BANNER */}
+          <div className="p-4 bg-gradient-to-r from-red-50 to-amber-50 border-2 border-red-300 rounded-2xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center space-x-3">
+              <span className="w-3.5 h-3.5 bg-red-500 rounded-full animate-ping shrink-0" />
+              <div>
+                <h4 className="text-xs font-serif font-bold text-red-900 uppercase tracking-wider">Live Lecture Active Now</h4>
+                <p className="text-xs text-[#292724] font-semibold mt-0.5">
+                  Prof. Sarah Jenkins is conducting <strong>Trees & Tree Traversal</strong> in {activeClassroom?.className}.
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => setLiveSessionOpen(true)}
+              className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-2 px-4 rounded-xl shadow-2xs shrink-0 cursor-pointer"
+            >
+              Join Live Session & Confusion Signal
+            </Button>
+          </div>
+
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full flex flex-col">
             <TabsList className="grid w-full grid-cols-4 max-w-xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6">
               <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
@@ -531,72 +616,88 @@ export default function StudentPortal() {
 
             {/* OVERVIEW TAB */}
             <TabsContent value="overview" className="space-y-6 animate-in fade-in-50 duration-200">
-              {/* Classroom Announcement Banner */}
-              {activeClassroom?.announcements && activeClassroom.announcements.length > 0 ? (
-                <div className="p-4 bg-[#FFF9F1]/95 border-2 border-[#E76F51]/40 rounded-2xl shadow-sm backdrop-blur-md flex items-start space-x-3.5">
-                  <div className="w-9 h-9 bg-[#E76F51]/15 text-[#E76F51] border border-[#E76F51]/30 rounded-xl flex items-center justify-center font-bold shrink-0 mt-0.5">
-                    <Bell className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <h4 className="text-sm font-serif font-bold text-[#292724]">{activeClassroom.announcements[0].title}</h4>
-                      <span className="text-[10px] font-bold text-[#E76F51] bg-[#E76F51]/10 px-2 py-0.5 rounded-full">
-                        {activeClassroom.announcements[0].author}
-                      </span>
-                    </div>
-                    <p className="text-xs text-[#292724] font-semibold mt-0.5">{activeClassroom.announcements[0].content}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-3 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl text-xs text-[#77716A] italic">
-                  No recent announcements for {activeClassroom?.className}.
-                </div>
-              )}
+              {/* PERSONALIZED STUDENT KNOWLEDGE GRAPH */}
+              <KnowledgeGraph
+                classId={activeClassroom?.classId}
+                studentId="student-demo"
+                onSelectAction={(action) => {
+                  if (action === "tutor") setAiTutorOpen(true)
+                  if (action === "quiz") setAdaptiveQuizOpen(true)
+                }}
+              />
 
-              {/* Quick Practice Modules Trigger Row */}
+              {/* Classroom Announcement Banner with Acknowledge Button */}
+              {activeClassroom?.announcements && activeClassroom.announcements.length > 0 ? (
+                <div className="p-4 bg-[#FFF9F1]/95 border-2 border-[#E76F51]/40 rounded-2xl shadow-sm backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start space-x-3.5">
+                    <div className="w-9 h-9 bg-[#E76F51]/15 text-[#E76F51] border border-[#E76F51]/30 rounded-xl flex items-center justify-center font-bold shrink-0 mt-0.5">
+                      <Bell className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <h4 className="text-sm font-serif font-bold text-[#292724]">{activeClassroom.announcements[0].title}</h4>
+                        <span className="text-[10px] font-bold text-[#E76F51] bg-[#E76F51]/10 px-2 py-0.5 rounded-full">
+                          {activeClassroom.announcements[0].author}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#292724] font-semibold mt-0.5">{activeClassroom.announcements[0].content}</p>
+                    </div>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    onClick={() => handleAcknowledgeAnnouncement(activeClassroom.announcements[0].id)}
+                    className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs rounded-xl shadow-2xs cursor-pointer shrink-0"
+                  >
+                    Acknowledge
+                  </Button>
+                </div>
+              ) : null}
+
+              {/* Ecosystem Quick Actions Row */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card
-                  onClick={() => setQuizModalOpen(true)}
+                  onClick={() => setAdaptiveQuizOpen(true)}
                   className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl cursor-pointer group"
                 >
                   <CardHeader className="pb-2">
                     <CardTitle className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center justify-between">
-                      Start Chapter Quiz <ArrowUpRight className="w-4 h-4 text-[#E76F51] group-hover:translate-x-0.5 transition-transform" />
+                      Take Adaptive Quiz <ArrowUpRight className="w-4 h-4 text-[#E76F51] group-hover:translate-x-0.5 transition-transform" />
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-xl font-serif font-bold text-[#E76F51]">Interactive MCQs</div>
-                    <p className="text-xs text-[#77716A] font-semibold mt-1">Test mastery on {activeClassroom?.code}</p>
+                    <div className="text-xl font-serif font-bold text-[#E76F51]">Dynamic Difficulty</div>
+                    <p className="text-xs text-[#77716A] font-semibold mt-1">Adapts to your mastery level</p>
                   </CardContent>
                 </Card>
 
                 <Card
-                  onClick={() => setFlashcardsModalOpen(true)}
+                  onClick={() => setAiVivaOpen(true)}
                   className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl cursor-pointer group"
                 >
                   <CardHeader className="pb-2">
                     <CardTitle className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center justify-between">
-                      Review Flashcard Deck <ArrowUpRight className="w-4 h-4 text-[#8B7EC8] group-hover:translate-x-0.5 transition-transform" />
+                      AI Oral Viva Defense <ArrowUpRight className="w-4 h-4 text-[#8B7EC8] group-hover:translate-x-0.5 transition-transform" />
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-xl font-serif font-bold text-[#8B7EC8]">3D Flip Cards</div>
-                    <p className="text-xs text-[#77716A] font-semibold mt-1">Active recall for key definitions</p>
+                    <div className="text-xl font-serif font-bold text-[#8B7EC8]">Conceptual Oral Q&A</div>
+                    <p className="text-xs text-[#77716A] font-semibold mt-1">Defend your assignment logic</p>
                   </CardContent>
                 </Card>
 
                 <Card
-                  onClick={() => setMockTestModalOpen(true)}
+                  onClick={() => setDoubtThreadsOpen(true)}
                   className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl cursor-pointer group"
                 >
                   <CardHeader className="pb-2">
                     <CardTitle className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center justify-between">
-                      Take Timed Mock Test <ArrowUpRight className="w-4 h-4 text-[#75B798] group-hover:translate-x-0.5 transition-transform" />
+                      Contextual Doubt Threads <ArrowUpRight className="w-4 h-4 text-[#75B798] group-hover:translate-x-0.5 transition-transform" />
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-xl font-serif font-bold text-[#75B798]">Timed Examination</div>
-                    <p className="text-xs text-[#77716A] font-semibold mt-1">Simulate exam under pressure</p>
+                    <div className="text-xl font-serif font-bold text-[#75B798]">Doubt Bounty (+10 Pts)</div>
+                    <p className="text-xs text-[#77716A] font-semibold mt-1">Ask questions & earn points</p>
                   </CardContent>
                 </Card>
               </div>
@@ -607,9 +708,6 @@ export default function StudentPortal() {
                   <CardTitle className="text-[#292724] font-serif font-bold text-base flex items-center gap-2">
                     <FileText className="w-4 h-4 text-[#E76F51]" /> Active Assignments ({activeClassroom?.className})
                   </CardTitle>
-                  <CardDescription className="text-[#292724] font-semibold text-xs">
-                    Submit solutions before the deadline for {activeClassroom?.instructor}
-                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {activeClassroom?.assignments && activeClassroom.assignments.length > 0 ? (
@@ -622,26 +720,15 @@ export default function StudentPortal() {
                               Format: {asgn.type} • Max Marks: {asgn.totalMarks} • Due: {asgn.dueDate}
                             </p>
                           </div>
-                          <span className="text-[10px] font-bold text-[#E76F51] bg-[#E76F51]/10 px-2.5 py-1 rounded-full border border-[#E76F51]/30 self-start sm:self-auto">
-                            {asgn.difficulty}
-                          </span>
-                        </div>
-                        <p className="text-xs text-[#292724] font-medium bg-[#F1E8DD]/40 p-2.5 rounded-lg border border-[#E5DCD0]/60">
-                          {asgn.instructions}
-                        </p>
-
-                        <div className="space-y-2">
-                          <Input
-                            placeholder="Paste solution text, code link, or notes answer here..."
-                            value={submissionText}
-                            onChange={(e) => setSubmissionText(e.target.value)}
-                            className="bg-white border-[#E5DCD0] text-[#292724] text-xs font-semibold rounded-xl"
-                          />
                           <Button
-                            onClick={() => handleSubmitAssignment(asgn.id, asgn.title)}
-                            className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs py-2 rounded-xl shadow-2xs cursor-pointer"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedAsgn(asgn)
+                              setAsgnSubmissionOpen(true)
+                            }}
+                            className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs rounded-xl shadow-2xs cursor-pointer self-start sm:self-auto"
                           >
-                            <Send className="w-3.5 h-3.5 mr-1.5" /> Submit Solution
+                            Open Submission & Discussion Thread
                           </Button>
                         </div>
                       </div>
@@ -651,28 +738,6 @@ export default function StudentPortal() {
                   )}
                 </CardContent>
               </Card>
-
-              {/* Submissions Tracker History */}
-              {userSubmissions.filter((s) => s.classId === activeClassroom?.classId).length > 0 && (
-                <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
-                  <CardHeader>
-                    <CardTitle className="text-[#292724] font-serif font-bold text-base">Submissions History ({activeClassroom?.code})</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {userSubmissions.filter((s) => s.classId === activeClassroom?.classId).map((sub) => (
-                      <div key={sub.submissionId} className="p-3 bg-white border border-[#E5DCD0] rounded-xl text-xs flex items-center justify-between font-bold">
-                        <div>
-                          <p className="text-[#292724]">{sub.assignmentTitle}</p>
-                          <p className="text-[10px] text-[#77716A]">Submitted: {sub.submittedAt}</p>
-                        </div>
-                        <span className="text-[10px] text-[#75B798] bg-[#75B798]/10 border border-[#75B798]/30 px-2.5 py-0.5 rounded-full font-mono">
-                          {sub.status}
-                        </span>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
             </TabsContent>
 
             {/* MATERIALS & NOTES TAB */}
@@ -680,7 +745,7 @@ export default function StudentPortal() {
               <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle className="text-[#292724] font-serif font-bold text-base">Course Materials & Lecture Notes</CardTitle>
+                    <CardTitle className="text-[#292724] font-serif font-bold text-base">Course Materials & Published Lecture Notes</CardTitle>
                     <CardDescription className="text-[#292724] font-semibold text-xs">
                       Official lecture slides and study documents for {activeClassroom?.className}
                     </CardDescription>
@@ -696,9 +761,8 @@ export default function StudentPortal() {
                 </CardHeader>
 
                 <CardContent className="space-y-4">
-                  {/* Chapter Selector */}
                   <div className="flex items-center space-x-2">
-                    <Label className="text-xs font-bold text-[#292724]">Select Chapter:</Label>
+                    <Label className="text-xs font-bold text-[#292724]">Select Chapter / Live Note:</Label>
                     <select
                       value={selectedChapterIdx}
                       onChange={(e) => {
@@ -720,7 +784,6 @@ export default function StudentPortal() {
                     </select>
                   </div>
 
-                  {/* Materials File List */}
                   <div className="space-y-2">
                     {activeClassroom?.materials && activeClassroom.materials.length > 0 ? (
                       activeClassroom.materials.map((mat) => (
