@@ -134,6 +134,9 @@ export default function CodeVisualizer() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [speedMs, setSpeedMs] = useState(900)
   const [consoleLogs, setConsoleLogs] = useState<string[]>([])
+  
+  // Mobile Tab State
+  const [mobileTab, setMobileTab] = useState<"code" | "visualize" | "explain">("code")
 
   const currentPreset = PRESET_EXAMPLES[selectedPreset]
   const currentStep: ExecutionStep = currentPreset.steps[currentStepIdx] || currentPreset.steps[0]
@@ -196,11 +199,11 @@ export default function CodeVisualizer() {
   }
 
   return (
-    <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-xl rounded-2xl overflow-hidden">
+    <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-xl rounded-2xl overflow-hidden">
       {/* Header Bar */}
-      <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-[#E5DCD0] bg-[#F1E8DD]/40">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-[#E5DCD0] bg-[#F1E8DD]/40 gap-4">
         <div>
-          <CardTitle className="text-xl font-serif font-bold text-[#292724] flex items-center gap-2">
+          <CardTitle className="text-lg sm:text-xl font-serif font-bold text-[#292724] flex items-center gap-2">
             <Cpu className="w-5 h-5 text-[#E76F51]" /> 3-Area Interactive Code Visualizer
           </CardTitle>
           <CardDescription className="text-[#77716A] text-xs mt-0.5">
@@ -227,7 +230,7 @@ export default function CodeVisualizer() {
         </div>
       </CardHeader>
 
-      <CardContent className="p-6 space-y-6">
+      <CardContent className="p-4 sm:p-6 space-y-6">
         {/* Playback Control Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 p-3 bg-[#F1E8DD] border border-[#E5DCD0] rounded-xl shadow-2xs">
           <div className="flex items-center space-x-2">
@@ -249,28 +252,56 @@ export default function CodeVisualizer() {
           <div className="flex items-center space-x-4 text-xs">
             <div className="flex items-center space-x-2">
               <Sliders className="w-3.5 h-3.5 text-[#77716A]" />
-              <span className="text-[#77716A] font-semibold">Speed:</span>
+              <span className="text-[#77716A] font-semibold hidden sm:inline">Speed:</span>
               <button 
                 onClick={() => setSpeedMs(speedMs === 900 ? 400 : 900)}
                 className="px-2 py-0.5 rounded-md bg-[#FFF9F1] border border-[#E5DCD0] font-mono text-[11px] font-bold text-[#292724]"
               >
-                {speedMs === 900 ? "1x (Normal)" : "2x (Fast)"}
+                {speedMs === 900 ? "1x" : "2x"}
               </button>
             </div>
 
-            <span className="bg-[#E76F51] text-white px-3 py-1 rounded-full font-mono font-bold shadow-2xs">
+            <span className="bg-[#E76F51] text-white px-2.5 py-0.5 rounded-full font-mono font-bold text-xs">
               Line {currentStep.line}
             </span>
-            <span className="text-[#77716A] font-medium">
-              Step {currentStepIdx + 1} of {currentPreset.steps.length}
+            <span className="text-[#77716A] font-medium text-xs">
+              Step {currentStepIdx + 1}/{currentPreset.steps.length}
             </span>
           </div>
         </div>
 
-        {/* 3-Area Workspace Architecture */}
+        {/* Mobile Tab Selector (< lg screens) */}
+        <div className="flex lg:hidden bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0]">
+          <button
+            onClick={() => setMobileTab("code")}
+            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              mobileTab === "code" ? "bg-[#FFF9F1] text-[#E76F51] shadow-2xs" : "text-[#77716A]"
+            }`}
+          >
+            Code
+          </button>
+          <button
+            onClick={() => setMobileTab("visualize")}
+            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              mobileTab === "visualize" ? "bg-[#FFF9F1] text-[#8B7EC8] shadow-2xs" : "text-[#77716A]"
+            }`}
+          >
+            Visualize
+          </button>
+          <button
+            onClick={() => setMobileTab("explain")}
+            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              mobileTab === "explain" ? "bg-[#FFF9F1] text-[#75B798] shadow-2xs" : "text-[#77716A]"
+            }`}
+          >
+            Explain
+          </button>
+        </div>
+
+        {/* Workspace Architecture (Adaptive Grid: Desktop 3-Area, Mobile Tabbed) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* AREA 1: Code Editor Workspace */}
-          <div className="lg:col-span-5 bg-[#FBF7F0] text-[#292724] rounded-xl p-4 font-mono text-xs border border-[#E5DCD0] shadow-2xs overflow-x-auto">
+          <div className={`${mobileTab === "code" ? "block" : "hidden lg:block"} lg:col-span-5 bg-[#FBF7F0] text-[#292724] rounded-xl p-4 font-mono text-xs border border-[#E5DCD0] shadow-2xs overflow-x-auto`}>
             <div className="flex items-center justify-between pb-2 mb-3 border-b border-[#E5DCD0] text-xs text-[#77716A]">
               <span className="flex items-center gap-1.5 font-bold text-[#292724]">
                 <Code2 className="w-4 h-4 text-[#E76F51]" /> {currentPreset.title}
@@ -302,7 +333,7 @@ export default function CodeVisualizer() {
           </div>
 
           {/* AREA 2: Program Execution Visualization */}
-          <div className="lg:col-span-4 space-y-4">
+          <div className={`${mobileTab === "visualize" ? "block" : "hidden lg:block"} lg:col-span-4 space-y-4`}>
             {/* Array / Pointer Graphic Visualizer */}
             {currentStep.arrayState && (
               <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-xl">
@@ -329,7 +360,7 @@ export default function CodeVisualizer() {
                           </div>
 
                           {/* Element Cell */}
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-mono font-bold text-sm border transition-all ${
+                          <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-mono font-bold text-xs sm:text-sm border transition-all ${
                             isActive
                               ? "bg-[#E76F51] text-white border-[#E76F51] shadow-md scale-105"
                               : "bg-[#F1E8DD] text-[#292724] border-[#E5DCD0]"
@@ -388,7 +419,7 @@ export default function CodeVisualizer() {
           </div>
 
           {/* AREA 3: Real-Time AI Step Explanation */}
-          <div className="lg:col-span-3 space-y-4">
+          <div className={`${mobileTab === "explain" ? "block" : "hidden lg:block"} lg:col-span-3 space-y-4`}>
             <div className="p-4 bg-[#F1E8DD] border border-[#E5DCD0] rounded-xl shadow-2xs space-y-2">
               <div className="text-[11px] font-bold uppercase tracking-wider text-[#E76F51] flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-[#E76F51]" /> AI Step Explanation

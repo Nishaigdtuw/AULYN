@@ -1,6 +1,6 @@
 'use client'
-import React, { useState } from 'react'
-import { ArrowRight, ShieldCheck, UserCheck, GraduationCap, School, Zap, Sparkles, CheckCircle2 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { ArrowRight, ShieldCheck, UserCheck, GraduationCap, School, Zap, Sparkles } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -33,6 +33,20 @@ export default function AuthPage() {
   const [signupPassword, setSignupPassword] = useState('')
 
   const [isLoading, setIsLoading] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
+
+  // Scroll listener for sticky navbar translucency effect
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 20) {
+        setIsScrolled(true)
+      } else {
+        setIsScrolled(false)
+      }
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const handleSignInSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -123,110 +137,132 @@ export default function AuthPage() {
       : { userId: 'student-demo', name: 'Alex Rivera', email: 'alex.rivera@edumeet.ai', role: 'student' }
 
     localStorage.setItem('user', JSON.stringify(mockUser))
-    toast.success(`Logged in as ${mockUser.name}`)
+    toast.success(`Entering ${demoRole === 'teacher' ? 'Teacher' : 'Student'} Workspace...`)
     router.push(demoRole === 'teacher' ? '/teacher' : '/student')
   }
 
   return (
-    <div className="min-h-screen bg-transparent text-[#292724] flex flex-col justify-between relative overflow-hidden">
-      {/* Header Bar */}
-      <header className="px-8 py-5 flex items-center justify-between border-b border-[#E5DCD0] bg-[#FFF9F1]/80 backdrop-blur-md sticky top-0 z-50">
+    <div className="min-h-screen bg-transparent text-[#292724] flex flex-col justify-between relative overflow-x-hidden">
+      {/* Sticky Scroll-Aware Navbar */}
+      <header
+        className={`px-4 sm:px-8 py-4 flex items-center justify-between sticky top-0 z-50 transition-all duration-300 ${
+          isScrolled
+            ? 'bg-[#FFF9F1]/95 backdrop-blur-md border-b border-[#E5DCD0] shadow-sm'
+            : 'bg-[#FFF9F1]/70 backdrop-blur-sm border-b border-[#E5DCD0]/40'
+        }`}
+      >
         <div className="flex items-center space-x-3">
           <div className="w-9 h-9 bg-[#E76F51] rounded-xl flex items-center justify-center text-white font-bold text-base shadow-xs">
             EB
           </div>
           <div>
-            <h1 className="text-xl font-serif font-bold tracking-tight text-[#292724]">EduMeet.Ai</h1>
-            <p className="text-[11px] text-[#77716A] font-medium tracking-wide">Intelligent Learning Ecosystem</p>
+            <h1 className="text-lg font-serif font-bold tracking-tight text-[#292724]">EduMeet.Ai</h1>
+            <p className="text-[10px] text-[#77716A] font-medium tracking-wide hidden sm:block">Intelligent Learning Platform</p>
           </div>
         </div>
 
-        {/* Hackathon Judging 1-Click Demo Buttons */}
-        <div className="flex items-center space-x-3">
-          <Button variant="outline" size="sm" onClick={() => handleQuickDemo('student')} className="text-xs border-[#E5DCD0] bg-[#FFF9F1] hover:bg-[#F1E8DD] text-[#292724] font-semibold rounded-xl">
-            Demo Student
-          </Button>
-          <Button size="sm" onClick={() => handleQuickDemo('teacher')} className="text-xs bg-[#E76F51] hover:bg-[#d55e42] text-white font-semibold rounded-xl shadow-xs">
-            Demo Teacher
+        {/* Top Navbar Actions */}
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          <button
+            onClick={() => handleQuickDemo('student')}
+            className="text-xs font-semibold text-[#292724] hover:text-[#E76F51] transition-colors px-3 py-1.5 rounded-lg hover:bg-[#F1E8DD]/60"
+          >
+            Student Workspace
+          </button>
+          <Button
+            size="sm"
+            onClick={() => handleQuickDemo('teacher')}
+            className="text-xs bg-[#E76F51] hover:bg-[#d55e42] text-white font-semibold rounded-xl shadow-xs"
+          >
+            Teacher Workspace
           </Button>
         </div>
       </header>
 
-      {/* Main Asymmetric Editorial Section */}
-      <main className="max-w-7xl mx-auto px-8 py-16 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center flex-1 z-10">
-        {/* Left Column: Senior Designer Editorial Headline */}
-        <div className="lg:col-span-6 space-y-8 bg-[#FFF9F1]/85 backdrop-blur-md p-8 rounded-3xl border border-[#E5DCD0]/80 shadow-lg">
-          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#F1E8DD] border border-[#E5DCD0] text-[#E76F51] text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Hackathon Edition • Premium EdTech Studio</span>
+      {/* Main Hero Section */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 py-10 lg:py-16 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center flex-1 z-10">
+        {/* Left Column: Senior Product Vision Editorial Hero */}
+        <div className="lg:col-span-6 space-y-8 bg-[#FFF9F1]/85 backdrop-blur-md p-6 sm:p-8 rounded-3xl border border-[#E5DCD0]/80 shadow-lg">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#F1E8DD] border border-[#E5DCD0] text-[#77716A] text-[11px] font-bold uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5 text-[#E76F51]" />
+            <span>Product Vision • Intelligent Learning Platform</span>
           </div>
 
           <div className="space-y-4">
-            <h2 className="text-5xl sm:text-6xl font-serif font-bold text-[#292724] leading-[1.1] tracking-tight">
-              Learn smarter. <br />
-              Teach better. <br />
-              <span className="italic text-[#E76F51] font-normal">Understand deeper.</span>
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-serif font-bold text-[#292724] leading-[1.12] tracking-tight">
+              One place for the entire <br className="hidden sm:block" />
+              <span className="italic text-[#E76F51] font-normal">learning journey.</span>
             </h2>
+            <p className="text-xs sm:text-sm font-semibold text-[#8B7EC8]">
+              Built around how students actually learn.
+            </p>
 
-            <p className="text-[#77716A] text-base leading-relaxed max-w-lg">
-              EduMeet.Ai brings interactive code trace visualization, real-time classroom analytics, automated AI notes conversion, and lecture audio capture into one calm, intelligent workspace.
+            <p className="text-[#77716A] text-sm sm:text-base leading-relaxed max-w-lg">
+              EduMeet.Ai connects classrooms, teaching, assessment and personalized learning in one intelligent workspace — giving educators deeper visibility into student progress while giving learners the tools to understand, practice and improve.
             </p>
           </div>
 
-          {/* 1-Click Judge Access Panels */}
-          <div className="pt-2 space-y-3">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[#77716A]">1-Click Demo Portals</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Student Portal Trigger */}
-              <div
-                onClick={() => handleQuickDemo('student')}
-                className="bg-[#FFF9F1] border border-[#E5DCD0] p-4 rounded-2xl cursor-pointer hover:border-[#E76F51] hover:shadow-md transition-all flex items-center space-x-3.5 group"
-              >
-                <div className="w-10 h-10 rounded-xl bg-[#F1E8DD] text-[#E76F51] border border-[#E5DCD0] flex items-center justify-center group-hover:bg-[#E76F51] group-hover:text-white transition-colors">
-                  <GraduationCap className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-[#292724] text-sm group-hover:text-[#E76F51] transition-colors">Student Workspace</h4>
-                  <p className="text-xs text-[#77716A]">Code trace, notes & study tools</p>
-                </div>
+          {/* Minimal Capability Flow (Teach → Assess → Understand → Improve) */}
+          <div className="pt-2 border-t border-[#E5DCD0]">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#77716A] mb-3">Core Learning Architecture</p>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="p-2.5 rounded-xl bg-[#F1E8DD]/50 border border-[#E5DCD0]/60 space-y-0.5">
+                <span className="font-bold text-[#292724] flex items-center gap-1 text-xs">
+                  <span className="w-2 h-2 rounded-full bg-[#E76F51]" /> Teach
+                </span>
+                <p className="text-[11px] text-[#77716A]">Manage classes & material</p>
               </div>
 
-              {/* Teacher Portal Trigger */}
-              <div
-                onClick={() => handleQuickDemo('teacher')}
-                className="bg-[#FFF9F1] border border-[#E5DCD0] p-4 rounded-2xl cursor-pointer hover:border-[#8B7EC8] hover:shadow-md transition-all flex items-center space-x-3.5 group"
-              >
-                <div className="w-10 h-10 rounded-xl bg-[#F1E8DD] text-[#8B7EC8] border border-[#E5DCD0] flex items-center justify-center group-hover:bg-[#8B7EC8] group-hover:text-white transition-colors">
-                  <School className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-[#292724] text-sm group-hover:text-[#8B7EC8] transition-colors">Teacher Command Center</h4>
-                  <p className="text-xs text-[#77716A]">Class mastery & voice capture</p>
-                </div>
+              <div className="p-2.5 rounded-xl bg-[#F1E8DD]/50 border border-[#E5DCD0]/60 space-y-0.5">
+                <span className="font-bold text-[#292724] flex items-center gap-1 text-xs">
+                  <span className="w-2 h-2 rounded-full bg-[#8B7EC8]" /> Assess
+                </span>
+                <p className="text-[11px] text-[#77716A]">Assignments, quizzes & tests</p>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-[#F1E8DD]/50 border border-[#E5DCD0]/60 space-y-0.5">
+                <span className="font-bold text-[#292724] flex items-center gap-1 text-xs">
+                  <span className="w-2 h-2 rounded-full bg-[#75B798]" /> Understand
+                </span>
+                <p className="text-[11px] text-[#77716A]">AI Tutor & Code Visualizer</p>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-[#F1E8DD]/50 border border-[#E5DCD0]/60 space-y-0.5">
+                <span className="font-bold text-[#292724] flex items-center gap-1 text-xs">
+                  <span className="w-2 h-2 rounded-full bg-[#E9B949]" /> Improve
+                </span>
+                <p className="text-[11px] text-[#77716A]">Progress & topic mastery</p>
               </div>
             </div>
           </div>
 
-          {/* Key Platform Highlights */}
-          <div className="grid grid-cols-2 gap-3 pt-4 border-t border-[#E5DCD0] text-xs text-[#77716A] font-medium">
-            <div className="flex items-center space-x-2">
-              <CheckCircle2 className="w-4 h-4 text-[#75B798]" /> <span>3-Panel Code Trace IDE</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <CheckCircle2 className="w-4 h-4 text-[#75B798]" /> <span>Notes → Quiz Generator</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <CheckCircle2 className="w-4 h-4 text-[#75B798]" /> <span>Class Mastery Analytics</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <CheckCircle2 className="w-4 h-4 text-[#75B798]" /> <span>Browser Lecture Recorder</span>
-            </div>
+          {/* Refined Demo Workspace Actions */}
+          <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <button
+              onClick={() => handleQuickDemo('student')}
+              className="group inline-flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#FFF9F1] border border-[#E5DCD0] hover:border-[#E76F51] text-xs font-bold text-[#292724] hover:text-[#E76F51] transition-all shadow-2xs"
+            >
+              <span className="flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-[#E76F51]" /> Enter Student Workspace
+              </span>
+              <ArrowRight className="w-3.5 h-3.5 ml-2 group-hover:translate-x-1 transition-transform text-[#E76F51]" />
+            </button>
+
+            <button
+              onClick={() => handleQuickDemo('teacher')}
+              className="group inline-flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#FFF9F1] border border-[#E5DCD0] hover:border-[#8B7EC8] text-xs font-bold text-[#292724] hover:text-[#8B7EC8] transition-all shadow-2xs"
+            >
+              <span className="flex items-center gap-2">
+                <School className="w-4 h-4 text-[#8B7EC8]" /> Enter Teacher Workspace
+              </span>
+              <ArrowRight className="w-3.5 h-3.5 ml-2 group-hover:translate-x-1 transition-transform text-[#8B7EC8]" />
+            </button>
           </div>
         </div>
 
         {/* Right Column: Refined Warm Cream Auth Box */}
         <div className="lg:col-span-6 flex justify-center">
-          <Card className="w-full max-w-md bg-[#FFF9F1] border border-[#E5DCD0] shadow-xl rounded-2xl overflow-hidden">
+          <Card className="w-full max-w-md bg-[#FFF9F1]/95 backdrop-blur-md border border-[#E5DCD0] shadow-xl rounded-2xl overflow-hidden">
             <CardHeader className="space-y-1 pb-4 text-center border-b border-[#E5DCD0] bg-[#F1E8DD]/40">
               <CardTitle className="text-lg font-serif font-bold text-[#292724] flex items-center justify-center gap-2">
                 <Zap className="w-4 h-4 text-[#E76F51]" /> Access Workspace
@@ -354,8 +390,8 @@ export default function AuthPage() {
       </main>
 
       {/* Editorial Footer */}
-      <footer className="px-8 py-4 border-t border-[#E5DCD0] bg-[#FFF9F1]/60 text-center text-xs text-[#77716A]">
-        <p>© 2026 EduMeet.Ai • Learn smarter. Teach better. Understand deeper.</p>
+      <footer className="px-8 py-4 border-t border-[#E5DCD0] bg-[#FFF9F1]/80 backdrop-blur-md text-center text-xs text-[#77716A]">
+        <p>© 2026 EduMeet.Ai • One place for the entire learning journey.</p>
       </footer>
     </div>
   )
