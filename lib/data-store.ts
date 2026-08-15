@@ -830,3 +830,52 @@ export function saveStudyGroup(group: StudyGroup) {
   localStorage.setItem(GROUPS_KEY, JSON.stringify(list))
   window.dispatchEvent(new Event("aulyn-data-update"))
 }
+
+// Teacher Material Upload Helper
+export function uploadClassroomMaterial(
+  classId: string,
+  chapterName: string,
+  fileName: string,
+  fileUrl?: string,
+  size?: string,
+  sourceNoteContent?: string
+) {
+  if (typeof window === "undefined") return
+  const classrooms = getStoredClassrooms()
+  const targetClass = classrooms.find((c) => c.classId === classId)
+  if (targetClass) {
+    if (!targetClass.chapters) targetClass.chapters = []
+
+    let chap = targetClass.chapters.find((ch) => ch.chapterName.toLowerCase() === chapterName.toLowerCase())
+    if (!chap) {
+      chap = {
+        chapterId: `chap-${Date.now()}`,
+        chapterName,
+        description: `Uploaded lecture notes for ${chapterName}`,
+        sourceNoteFile: fileName,
+        sourceNoteContent: sourceNoteContent || `Lecture notes and study guide for ${chapterName}.`,
+        materials: []
+      }
+      targetClass.chapters.unshift(chap)
+    }
+
+    if (!chap.materials) chap.materials = []
+    const newMat: MaterialData = {
+      fileId: `mat-${Date.now()}`,
+      fileName,
+      fileType: "application/pdf",
+      fileUrl: fileUrl || `/materials/${fileName}`,
+      uploadedAt: new Date().toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
+      size: size || "1.8 MB"
+    }
+
+    chap.materials.unshift(newMat)
+
+    if (!targetClass.materials) targetClass.materials = []
+    targetClass.materials.unshift(newMat)
+
+    saveStoredClassrooms(classrooms)
+    window.dispatchEvent(new Event("aulyn-data-update"))
+  }
+}
+

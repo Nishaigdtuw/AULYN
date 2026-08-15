@@ -23,6 +23,8 @@ import { DoubtThreadsModal } from "@/components/doubt-threads-modal"
 import { StudentGroupsModal } from "@/components/student-groups-modal"
 import { NotificationsDrawer } from "@/components/notifications-drawer"
 import { AiTutorDialog } from "@/components/ai-tutor-dialog"
+import { UploadMaterialModal } from "@/components/upload-material-modal"
+
 
 import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, AnnouncementData, NotificationItem, AssignmentData } from "@/lib/data-store"
 import { getAuthenticatedUser, clearAuthenticatedUser, setAuthenticatedUser } from "@/lib/auth-guard"
@@ -47,6 +49,8 @@ export default function TeacherPortal() {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
   const [pricingOpen, setPricingOpen] = useState(false)
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false)
+  const [uploadMaterialOpen, setUploadMaterialOpen] = useState(false)
+
 
   // Ecosystem Modals
   const [aiTutorOpen, setAiTutorOpen] = useState(false)
@@ -278,6 +282,16 @@ export default function TeacherPortal() {
         >
           <Plus className="w-4 h-4" /> Create Assignment (AI Assisted)
         </Button>
+
+        {/* Upload Notes PDF Trigger */}
+        <Button
+          onClick={() => { setUploadMaterialOpen(true); setMobileDrawerOpen(false) }}
+          variant="outline"
+          className="w-full bg-[#FFF9F1] border-[#E5DCD0] text-[#292724] hover:bg-[#F1E8DD] font-bold py-2 rounded-xl shadow-2xs transition-all duration-200 text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <FileText className="w-4 h-4 text-[#E76F51]" /> Upload Course Notes PDF
+        </Button>
+
 
         {/* Navigation Items */}
         <nav className="space-y-1 text-xs">
@@ -843,6 +857,14 @@ export default function TeacherPortal() {
           </Tabs>
         </main>
       </div>
+
+      {activeClassroom && (
+        <UploadMaterialModal
+          open={uploadMaterialOpen}
+          onOpenChange={setUploadMaterialOpen}
+          activeClassroom={activeClassroom}
+        />
+      )}
     </div>
   )
 }

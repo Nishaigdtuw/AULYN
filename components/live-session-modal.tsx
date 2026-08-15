@@ -1,12 +1,14 @@
 'use client'
 
 import React, { useState, useEffect } from "react"
-import { Play, Pause, Square, AlertCircle, Sparkles, Send, Clock, Flame, BookOpen } from "lucide-react"
+import { AlertCircle, Sparkles, Send, Clock, Flame, BookOpen, Video } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 import { ClassroomData, LiveSessionData, getLiveSession, saveLiveSession, saveStoredClassrooms, getStoredClassrooms } from "@/lib/data-store"
 import { saveMasteryEvidence } from "@/lib/mastery-engine"
 
@@ -24,6 +26,7 @@ export function LiveSessionModal({
   classroom,
   userRole
 }: LiveSessionModalProps) {
+  const router = useRouter()
   const [session, setSession] = useState<LiveSessionData | null>(null)
   const [cooldown, setCooldown] = useState(0)
 
@@ -71,6 +74,12 @@ export function LiveSessionModal({
     }
   }, [cooldown])
 
+  const handleLaunchVirtualMeeting = () => {
+    onOpenChange(false)
+    const targetSessionId = session?.sessionId || `sess-${classroom.classId}-1`
+    router.push(`/live/${targetSessionId}`)
+  }
+
   const handleStudentConfusionSignal = () => {
     if (!session || cooldown > 0) return
 
@@ -106,13 +115,6 @@ export function LiveSessionModal({
     })
   }
 
-  const handleToggleSessionStatus = (newStatus: 'Live' | 'Paused' | 'Ended') => {
-    if (!session) return
-    const updated = { ...session, status: newStatus }
-    setSession(updated)
-    saveLiveSession(updated)
-    toast.info(`Live session status updated to ${newStatus}`)
-  }
 
   const handleGenerateAiNotes = () => {
     setIsGeneratingNotes(true)
@@ -168,27 +170,12 @@ export function LiveSessionModal({
               <span className="text-xs font-bold text-[#77716A]">{session.startedAt}</span>
             </div>
 
-            {userRole === 'teacher' && (
-              <div className="flex items-center space-x-1.5">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleToggleSessionStatus(session.status === 'Live' ? 'Paused' : 'Live')}
-                  className="text-xs font-bold border-[#E5DCD0] rounded-xl cursor-pointer"
-                >
-                  {session.status === 'Live' ? <Pause className="w-3.5 h-3.5 mr-1 text-[#E9B949]" /> : <Play className="w-3.5 h-3.5 mr-1 text-[#75B798]" />}
-                  {session.status === 'Live' ? 'Pause' : 'Resume'}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => handleToggleSessionStatus('Ended')}
-                  className="text-xs font-bold rounded-xl cursor-pointer"
-                >
-                  <Square className="w-3.5 h-3.5 mr-1" /> End Session
-                </Button>
-              </div>
-            )}
+            <Button
+              onClick={handleLaunchVirtualMeeting}
+              className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5"
+            >
+              <Video className="w-4 h-4" /> Open Virtual Meeting Room
+            </Button>
           </div>
 
           <DialogTitle className="text-xl font-serif font-black text-[#292724] mt-2">
@@ -197,11 +184,32 @@ export function LiveSessionModal({
           <DialogDescription className="text-xs text-[#77716A]">
             {userRole === 'teacher'
               ? 'Real-time confusion heatmap analysis and live AI lecture notes publishing.'
-              : '&quot;I&apos;m confused&quot; button lets you report confusion anonymously.'}
+              : 'Anonymous confusion signaling and virtual classroom meeting room access.'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 pt-4">
+          <div className="p-4 bg-gradient-to-r from-red-50 to-amber-50 border-2 border-red-300 rounded-2xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-red-600 text-white rounded-xl flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                <Video className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-serif font-bold text-red-900 uppercase tracking-wider">Virtual Class Meeting Room Ready</h4>
+                <p className="text-xs text-[#292724] font-semibold mt-0.5">
+                  Enter the WebRTC virtual meeting with camera, microphone, in-meeting live chat, and anonymous confusion signaling.
+                </p>
+              </div>
+            </div>
+
+            <Button
+              onClick={handleLaunchVirtualMeeting}
+              className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-2 px-5 rounded-xl shadow-2xs cursor-pointer shrink-0"
+            >
+              Enter Meeting Room
+            </Button>
+          </div>
+
           {userRole === 'student' && (
             <Card className="bg-white border-2 border-[#E76F51]/30 shadow-md rounded-2xl p-5 text-center space-y-4">
               <div className="flex items-center justify-center space-x-2 text-[#E76F51]">
