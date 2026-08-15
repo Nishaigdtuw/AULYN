@@ -1,219 +1,142 @@
 'use client'
-import React, { useEffect, useState } from "react"
-import { Book, BookOpen, LogOut, PenTool, Send, CheckCircle2, Circle, AlertCircle, Plus, Sparkles, Check, FileCheck, PlayCircle, Trophy, Award, Crown, Compass, Clock, ArrowUpRight, Menu, ChevronDown, ChevronRight, Play, Pause, RotateCcw, Code, Brain, Settings, FileText, Download, User, Bell, Shield, Save, Eye } from "lucide-react"
+
+import React, { useEffect, useState, useCallback } from "react"
+import { FileText, Download, ArrowUpRight, Menu, LogOut, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Eye, Send, Bell, User, Save, BookOpen, Sparkles, Award } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Progress } from "@/components/ui/progress"
-import Markdown from 'react-markdown'
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import CodeVisualizer from "@/components/code-visualizer"
-import NotesAiConverter from "@/components/notes-ai-converter"
 import PricingModal from "@/components/pricing-modal"
-
-interface AiMessage {
-  type: 'ai' | 'user'
-  content: string
-}
-
-interface MaterialItem {
-  title: string
-  url: string
-}
-
-interface EnrolledClass {
-  id: string
-  name: string
-  code: string
-  teacher: string
-  icon: React.ReactNode
-  progress: number
-  chapters: string[]
-  materials: MaterialItem[]
-  assignments: Array<{ id: number; title: string; dueDate: string; status: "Pending" | "Submitted" }>
-  announcement: string
-}
-
-const CLASSROOM_DATABASE: Record<string, EnrolledClass> = {
-  "dsa": {
-    id: "dsa",
-    name: "Data Structures & Algorithms",
-    code: "CS201",
-    teacher: "Prof. Sarah Jenkins",
-    icon: <PenTool className="w-4 h-4 text-[#E76F51]" />,
-    progress: 85,
-    chapters: ["Chapter 1: Binary Search Trees", "Chapter 2: Recursion & Backtracking", "Chapter 3: Graph Traversals (BFS/DFS)"],
-    materials: [
-      { title: "Trees_Lecture_Notes.pdf", url: "/materials/Trees_Lecture_Notes.pdf" },
-      { title: "Recursion_CallStack_Guide.pdf", url: "/materials/Recursion_CallStack_Guide.pdf" },
-      { title: "Graph_Algorithms.pdf", url: "/materials/Graph_Algorithms.pdf" }
-    ],
-    assignments: [
-      { id: 101, title: "Binary Search Tree Implementation", dueDate: "2026-08-20", status: "Pending" },
-      { id: 102, title: "Recursion & Call Stack Problem Set", dueDate: "2026-08-22", status: "Pending" }
-    ],
-    announcement: "Next class will feature a live 3-Panel Code Trace session on Recursion."
-  },
-  "math": {
-    id: "math",
-    name: "Mathematics 101 (Calculus)",
-    code: "MATH101",
-    teacher: "Dr. Robert Vance",
-    icon: <BookOpen className="w-4 h-4 text-[#8B7EC8]" />,
-    progress: 72,
-    chapters: ["Chapter 1: Limits & Continuity", "Chapter 2: Derivatives & Chain Rule", "Chapter 3: Definite & Indefinite Integrals"],
-    materials: [
-      { title: "Calculus_CheatSheet.pdf", url: "/materials/Calculus_CheatSheet.pdf" },
-      { title: "Limits_Practice_Problems.pdf", url: "/materials/Limits_Practice_Problems.pdf" }
-    ],
-    assignments: [
-      { id: 201, title: "Limits & Derivatives Quiz", dueDate: "2026-08-21", status: "Pending" },
-      { id: 202, title: "Integration Techniques Assignment", dueDate: "2026-08-24", status: "Pending" }
-    ],
-    announcement: "Midterm exam covers limits, differentiation and integration."
-  },
-  "physics": {
-    id: "physics",
-    name: "Physics 301 (Classical Mechanics)",
-    code: "PHYS301",
-    teacher: "Dr. Elena Rostova",
-    icon: <Book className="w-4 h-4 text-[#75B798]" />,
-    progress: 68,
-    chapters: ["Chapter 1: Newton's Laws of Motion", "Chapter 2: Work, Energy & Momentum", "Chapter 3: Rotational Dynamics"],
-    materials: [
-      { title: "Mechanics_Lab_Guide.pdf", url: "/materials/Mechanics_Lab_Guide.pdf" },
-      { title: "Kinematics_Formulas.pdf", url: "/materials/Kinematics_Formulas.pdf" }
-    ],
-    assignments: [
-      { id: 301, title: "Newtonian Motion Lab Report", dueDate: "2026-08-23", status: "Pending" }
-    ],
-    announcement: "Lab submissions must include vector diagram analysis."
-  },
-  "history": {
-    id: "history",
-    name: "History 202 (Modern History)",
-    code: "HIST202",
-    teacher: "Prof. Arthur Pendelton",
-    icon: <Award className="w-4 h-4 text-[#E9B949]" />,
-    progress: 90,
-    chapters: ["Chapter 1: The Industrial Revolution", "Chapter 2: World War I & II Dynamics", "Chapter 3: Cold War Geopolitics"],
-    materials: [
-      { title: "Industrial_Revolution_Essays.pdf", url: "/materials/Industrial_Revolution_Essays.pdf" },
-      { title: "Cold_War_Timeline.pdf", url: "/materials/Cold_War_Timeline.pdf" }
-    ],
-    assignments: [
-      { id: 401, title: "Industrialization Historical Analysis", dueDate: "2026-08-25", status: "Pending" }
-    ],
-    announcement: "Essay peer review deadline is this Friday."
-  }
-}
+import { QuizModal, FlashcardsModal, MockTestModal } from "@/components/practice-modals"
+import { AiTutorDialog } from "@/components/ai-tutor-dialog"
+import { getStoredClassrooms, ClassroomData, saveSubmission, getSubmissions, SubmissionData } from "@/lib/data-store"
+import { getAuthenticatedUser, clearAuthenticatedUser } from "@/lib/auth-guard"
 
 export default function StudentPortal() {
   const router = useRouter()
+  const [self, setSelf] = useState<{ userId?: string; name?: string; email?: string; role?: string } | null>(null)
+
+  // Classrooms Data Store
+  const [classrooms, setClassrooms] = useState<ClassroomData[]>([])
+  const [activeClassroom, setActiveClassroom] = useState<ClassroomData | null>(null)
+  const [selectedChapterIdx, setSelectedChapterIdx] = useState<number>(0)
+
+  // Settings State
   const [studentName, setStudentName] = useState("Alex Rivera")
   const [studentEmail, setStudentEmail] = useState("alex.rivera@aulyn.edu")
   const [studentMajor, setStudentMajor] = useState("Computer Science & Engineering")
-  const [studyReminder, setStudyReminder] = useState("Daily at 6:00 PM")
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
 
-  // Class Selection State (Default: Data Structures)
-  const [selectedClassId, setSelectedClassId] = useState<string>("dsa")
-  const currentClass = CLASSROOM_DATABASE[selectedClassId] || CLASSROOM_DATABASE["dsa"]
-
-  const [aiQueryCount, setAiQueryCount] = useState(2) // Free tier 5 max
-  const [pricingOpen, setPricingOpen] = useState(false)
+  // Workspace tab & sidebar navigation
+  const [activeMainTab, setActiveMainTab] = useState("overview")
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
-  const [activeMainTab, setActiveMainTab] = useState("progress")
+  const [pricingOpen, setPricingOpen] = useState(false)
 
-  // Sidebar Expandable Sections State
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    myClasses: true,
-    learn: true,
-    codeLab: true,
-    assessments: false,
-    progress: false
-  })
+  // Modals state
+  const [quizModalOpen, setQuizModalOpen] = useState(false)
+  const [flashcardsModalOpen, setFlashcardsModalOpen] = useState(false)
+  const [mockTestModalOpen, setMockTestModalOpen] = useState(false)
+  const [aiTutorOpen, setAiTutorOpen] = useState(false)
 
-  // Focus Session Modal & Timer State
-  const [focusModalOpen, setFocusModalOpen] = useState(false)
-  const [focusTimerSeconds, setFocusTimerSeconds] = useState(18 * 60) // 18 minutes
-  const [isFocusActive, setIsFocusActive] = useState(false)
-  const [focusCompleted, setFocusCompleted] = useState(false)
-  const [focusGoals, setFocusGoals] = useState({
-    baseCase: true,
-    stackFrames: false,
-    traceTree: false
-  })
+  // Loaded Notes state
+  const [isNotesLoading, setIsNotesLoading] = useState(false)
+  const [activeNoteText, setActiveNoteText] = useState<string>("")
+  const [activeNoteFile, setActiveNoteFile] = useState<string>("Trees_Lecture_Notes.pdf")
 
-  const [aiMessages, setAiMessages] = useState<AiMessage[]>([
-    { type: "ai", content: "Hello Alex! I am your **AI Study Tutor**. Ask me any question or tap a quick prompt chip below to begin." }
-  ])
-  const [inputMessage, setInputMessage] = useState("")
-  const [isAiLoading, setIsAiLoading] = useState(false)
-
-  const [joinClassCode, setJoinClassCode] = useState("")
+  // Submission Form State
   const [submissionText, setSubmissionText] = useState("")
-  const [submittingId, setSubmittingId] = useState<number | null>(null)
+  const [userSubmissions, setUserSubmissions] = useState<SubmissionData[]>([])
 
-  // Load user data & settings on mount with localStorage persistence
+  // Sidebar Expandable Submenus
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    classes: true,
+    tools: true,
+    practice: true
+  })
+
+  // Data Reload Handler
+  const loadClassroomData = useCallback(() => {
+    const list = getStoredClassrooms()
+    setClassrooms(list)
+    if (list.length > 0) {
+      if (!activeClassroom) {
+        setActiveClassroom(list[0])
+        setActiveNoteText(list[0].chapters[0]?.sourceNoteContent || "")
+        setActiveNoteFile(list[0].chapters[0]?.sourceNoteFile || "Trees_Lecture_Notes.pdf")
+      } else {
+        const found = list.find((c) => c.classId === activeClassroom.classId)
+        if (found) setActiveClassroom(found)
+      }
+    }
+  }, [activeClassroom])
+
   useEffect(() => {
-    const userStr = localStorage.getItem("user")
-    if (!userStr) {
+    loadClassroomData()
+    window.addEventListener("aulyn-data-update", loadClassroomData)
+    return () => window.removeEventListener("aulyn-data-update", loadClassroomData)
+  }, [loadClassroomData])
+
+  // Authenticated Session Check
+  useEffect(() => {
+    const user = getAuthenticatedUser()
+    if (!user) {
       router.replace("/")
       return
     }
-    try {
-      const parsed = JSON.parse(userStr)
-      if (parsed.name) setStudentName(parsed.name)
-      if (parsed.email) setStudentEmail(parsed.email)
-      if (parsed.major) setStudentMajor(parsed.major)
-      if (parsed.reminder) setStudyReminder(parsed.reminder)
-      if (parsed.notifications !== undefined) setNotificationsEnabled(parsed.notifications)
-    } catch {
-      router.replace("/")
+    if (user.role === "teacher") {
+      toast.info("Redirected to Teacher Command Center")
+      router.replace("/teacher")
+      return
     }
+    setSelf(user)
+    if (user.name) setStudentName(user.name)
+    if (user.email) setStudentEmail(user.email)
+
+    // Load Submissions
+    setUserSubmissions(getSubmissions())
   }, [router])
 
-  // Timer Effect for Focus Session
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null
-    if (isFocusActive && focusTimerSeconds > 0) {
-      interval = setInterval(() => {
-        setFocusTimerSeconds((prev) => prev - 1)
-      }, 1000)
-    } else if (focusTimerSeconds === 0 && isFocusActive) {
-      setIsFocusActive(false)
-      setFocusCompleted(true)
-      toast.success("Focus Session Complete! 18 minutes logged.")
-    }
-    return () => {
-      if (interval) clearInterval(interval)
-    }
-  }, [isFocusActive, focusTimerSeconds])
-
-  const toggleSection = (section: string) => {
-    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }))
+  const toggleSection = (sec: string) => {
+    setExpandedSections((prev) => ({ ...prev, [sec]: !prev[sec] }))
   }
 
-  // Real Working View Handler for Materials
-  const handleViewMaterial = (fileName: string, url: string) => {
+  // Functional Load Notes
+  const handleLoadNotes = () => {
+    if (!activeClassroom) return
+    setIsNotesLoading(true)
+    const toastId = toast.loading(`Loading lecture notes for ${activeClassroom.className}...`)
+
+    setTimeout(() => {
+      const activeChap = activeClassroom.chapters[selectedChapterIdx] || activeClassroom.chapters[0]
+      if (activeChap) {
+        setActiveNoteText(activeChap.sourceNoteContent)
+        setActiveNoteFile(activeChap.sourceNoteFile)
+        toast.success(`Notes Loaded: "${activeChap.chapterName}"`, { id: toastId })
+      } else {
+        toast.error("Notes unavailable for selected chapter", { id: toastId })
+      }
+      setIsNotesLoading(false)
+    }, 500)
+  }
+
+  // Material View/Open Handler
+  const handleViewMaterial = (fileName: string, fileUrl?: string) => {
+    const urlToUse = fileUrl || `/materials/${fileName}`
     toast.info(`Opening "${fileName}"...`)
-    window.open(url, "_blank")
+    window.open(urlToUse, "_blank")
   }
 
-  // Real Working Download Handler for Materials
-  const handleDownloadMaterial = (fileName: string, url: string) => {
+  // Material Download Handler
+  const handleDownloadMaterial = (fileName: string, fileUrl?: string) => {
     toast.info(`Downloading "${fileName}"...`)
-
     try {
+      const urlToUse = fileUrl || `/materials/${fileName}`
       const a = document.createElement("a")
-      a.href = url
+      a.href = urlToUse
       a.download = fileName
       a.target = "_blank"
       document.body.appendChild(a)
@@ -225,257 +148,147 @@ export default function StudentPortal() {
     }
   }
 
-  // Save Settings Function with localStorage Persistence
-  const handleSaveSettings = () => {
-    const userStr = localStorage.getItem("user")
-    let parsedUser = {}
-    if (userStr) {
-      try { parsedUser = JSON.parse(userStr) } catch {}
+  // Assignment Submission Handler
+  const handleSubmitAssignment = (asgnId: string, asgnTitle: string) => {
+    if (!submissionText.trim()) {
+      toast.warning("Please type or attach your solution text before submitting")
+      return
     }
 
+    const sub: SubmissionData = {
+      submissionId: `sub-${Date.now()}`,
+      assignmentId: asgnId,
+      assignmentTitle: asgnTitle,
+      studentId: self?.userId || "student-demo",
+      studentName: studentName,
+      classId: activeClassroom?.classId || "dsa-2026",
+      submittedAt: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      content: submissionText.trim(),
+      status: "Submitted"
+    }
+
+    saveSubmission(sub)
+    setUserSubmissions(getSubmissions())
+    setSubmissionText("")
+    toast.success(`Assignment "${asgnTitle}" submitted to ${activeClassroom?.instructor}!`)
+  }
+
+  // Save Settings
+  const handleSaveSettings = () => {
     const updatedUser = {
-      ...parsedUser,
+      ...(self || {}),
+      userId: self?.userId || "student-demo",
       name: studentName,
       email: studentEmail,
-      major: studentMajor,
-      reminder: studyReminder,
-      notifications: notificationsEnabled
+      role: "student" as const
     }
-
     localStorage.setItem("user", JSON.stringify(updatedUser))
-    toast.success("Profile & Settings saved successfully!")
-  }
-
-  const handleStartFocusSession = () => {
-    setFocusTimerSeconds(18 * 60)
-    setIsFocusActive(true)
-    setFocusCompleted(false)
-    setFocusModalOpen(true)
-  }
-
-  const handleToggleFocusTimer = () => {
-    setIsFocusActive(!isFocusActive)
-  }
-
-  const handleResetFocusTimer = () => {
-    setIsFocusActive(false)
-    setFocusTimerSeconds(18 * 60)
-    setFocusCompleted(false)
-  }
-
-  const formatTimer = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
-
-  const handleSendMessage = async (customPrompt?: string) => {
-    const messageToSend = customPrompt || inputMessage.trim()
-    if (!messageToSend) return
-
-    if (aiQueryCount >= 5) {
-      toast.warning("Free daily AI query limit reached (5/5). Upgrade for unlimited access!")
-      setPricingOpen(true)
-      return
-    }
-
-    setAiMessages((prev) => [...prev, { type: 'user', content: messageToSend }])
-    if (!customPrompt) setInputMessage("")
-    setAiQueryCount((prev) => prev + 1)
-    setIsAiLoading(true)
-
-    setTimeout(() => {
-      let aiResponse = `Here is your requested guidance for **"${messageToSend}"** in **${currentClass.name}**:\n\n`
-      const lower = messageToSend.toLowerCase()
-      if (lower.includes("simply") || lower.includes("recursion")) {
-        aiResponse += `• **Recursion Explained Simply**: Recursion is when a function calls itself to solve smaller instances of the same problem, stopping when it hits a **base case**.`
-      } else if (lower.includes("example")) {
-        aiResponse += `• **Factorial Example**: \\(5! = 5 \\times 4! = 5 \\times 4 \\times 3 \\times 2 \\times 1 = 120\\). Base case: \\(0! = 1\\).`
-      } else if (lower.includes("quiz")) {
-        aiResponse += `• **Quick Quiz**: What happens if a recursive function does NOT have a base case?\n*(Answer: Stack Overflow Error)*`
-      } else {
-        aiResponse += `Great question! Trace recursive algorithm execution step-by-step in the **Code Trace** tab or convert notes in the **Notes AI** tab.`
-      }
-      setAiMessages((prev) => [...prev, { type: 'ai', content: aiResponse }])
-      setIsAiLoading(false)
-    }, 600)
-  }
-
-  const handleJoinClass = () => {
-    if (!joinClassCode.trim()) {
-      toast.warning("Please enter a valid class code")
-      return
-    }
-    toast.success(`Joined class code ${joinClassCode.toUpperCase()}!`)
-    setJoinClassCode("")
-  }
-
-  const handleSubmitAssignment = (id: number) => {
-    if (!submissionText.trim()) {
-      toast.warning("Please enter your submission details")
-      return
-    }
-    currentClass.assignments.forEach((a) => {
-      if (a.id === id) a.status = "Submitted"
-    })
-    setSubmissionText("")
-    setSubmittingId(null)
-    toast.success("Assignment submitted successfully!")
+    setSelf(updatedUser)
+    toast.success("Profile & Preferences saved successfully!")
   }
 
   const handleLogout = () => {
-    localStorage.removeItem("user")
+    clearAuthenticatedUser()
     toast.info("Logged out.")
     router.replace("/")
   }
 
-  // Sidebar Navigation Content
+  const currentChapter = activeClassroom?.chapters[selectedChapterIdx] || activeClassroom?.chapters[0]
+
+  // Sidebar Content Render Component
   const RenderSidebarContent = () => (
     <div className="flex flex-col justify-between h-full space-y-6">
       <div className="space-y-4">
-        {/* Join Class Button */}
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="w-full bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold py-2 rounded-xl shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-xs">
-              <Plus className="w-4 h-4 mr-1.5" /> Join Class
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md bg-[#FFF9F1] border-[#E5DCD0] text-[#292724] rounded-2xl">
-            <DialogHeader>
-              <DialogTitle className="text-[#292724] font-serif font-bold">Join Classroom</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label htmlFor="classCode" className="text-[#292724] text-xs font-bold">Class Code</Label>
-                <Input
-                  id="classCode"
-                  placeholder="e.g. CS201 or MATH101"
-                  value={joinClassCode}
-                  onChange={(e) => setJoinClassCode(e.target.value)}
-                  className="bg-white border-[#E5DCD0] text-[#292724] rounded-xl text-xs"
-                />
-              </div>
-            </div>
-            <DialogClose asChild>
-              <Button className="w-full bg-[#E76F51] text-white font-bold text-xs" onClick={handleJoinClass}>
-                Join Classroom
-              </Button>
-            </DialogClose>
-          </DialogContent>
-        </Dialog>
+        {/* Ask AI Tutor Banner Trigger */}
+        <Button
+          onClick={() => { setAiTutorOpen(true); setMobileDrawerOpen(false) }}
+          className="w-full bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold py-2 rounded-xl shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-xs flex items-center justify-center gap-1.5"
+        >
+          <Sparkles className="w-4 h-4 text-[#E9B949]" /> Ask AI Tutor (Vision Enabled)
+        </Button>
 
-        {/* Structured Navigation */}
+        {/* Structured Expandable Submenus */}
         <nav className="space-y-1 text-xs">
-          {/* Home */}
           <button
-            onClick={() => { setActiveMainTab("progress"); setMobileDrawerOpen(false) }}
+            onClick={() => { setActiveMainTab("overview"); setMobileDrawerOpen(false) }}
             className={`w-full flex items-center px-3 py-2 rounded-xl font-bold transition-all duration-200 ${
-              activeMainTab === "progress" ? "bg-[#F1E8DD] text-[#E76F51] shadow-2xs" : "text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724]"
+              activeMainTab === "overview" ? "bg-[#F1E8DD] text-[#E76F51] shadow-2xs" : "text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724]"
             }`}
           >
-            <Compass className="w-4 h-4 mr-2.5 text-[#E76F51]" /> Home Workspace
+            <LayoutDashboard className="w-4 h-4 mr-2.5 text-[#E76F51]" /> Dashboard Overview
           </button>
 
-          {/* My Classes Section */}
+          {/* Enrolled Classes Submenu */}
           <div>
             <button
-              onClick={() => toggleSection("myClasses")}
+              onClick={() => toggleSection("classes")}
               className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724] transition-all duration-200"
             >
               <span className="flex items-center">
-                <Book className="w-4 h-4 mr-2.5 text-[#E76F51]" /> Enrolled Classes
+                <BookOpen className="w-4 h-4 mr-2.5 text-[#E76F51]" /> Enrolled Classrooms
               </span>
-              {expandedSections.myClasses ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+              {expandedSections.classes ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             </button>
 
-            {expandedSections.myClasses && (
+            {expandedSections.classes && (
               <div className="ml-4 pl-2 border-l border-[#E5DCD0] space-y-1 mt-1">
-                {Object.values(CLASSROOM_DATABASE).map((cls) => {
-                  const isActive = selectedClassId === cls.id
-                  return (
-                    <button
-                      key={cls.id}
-                      onClick={() => { setSelectedClassId(cls.id); setActiveMainTab("progress"); setMobileDrawerOpen(false) }}
-                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold truncate block transition-all duration-200 ${
-                        isActive ? "bg-[#FFF9F1] text-[#E76F51] font-bold shadow-2xs border border-[#E5DCD0]" : "text-[#77716A] hover:text-[#292724]"
-                      }`}
-                    >
-                      {cls.name}
-                    </button>
-                  )
-                })}
+                {classrooms.map((cls) => (
+                  <button
+                    key={cls.classId}
+                    onClick={() => {
+                      setActiveClassroom(cls)
+                      setSelectedChapterIdx(0)
+                      setActiveNoteText(cls.chapters[0]?.sourceNoteContent || "")
+                      setActiveNoteFile(cls.chapters[0]?.sourceNoteFile || "Trees_Lecture_Notes.pdf")
+                      setMobileDrawerOpen(false)
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold truncate transition-all duration-200 ${
+                      activeClassroom?.classId === cls.classId ? "bg-[#FFF9F1] text-[#E76F51] font-bold shadow-2xs border border-[#E5DCD0]" : "text-[#77716A] hover:text-[#292724]"
+                    }`}
+                  >
+                    {cls.code}: {cls.className}
+                  </button>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Learn Tools */}
+          {/* Practice Workflows */}
           <div>
             <button
-              onClick={() => toggleSection("learn")}
+              onClick={() => toggleSection("practice")}
               className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724] transition-all duration-200"
             >
               <span className="flex items-center">
-                <Brain className="w-4 h-4 mr-2.5 text-[#8B7EC8]" /> Learn & Study
+                <Award className="w-4 h-4 mr-2.5 text-[#75B798]" /> Practice & Mock Tests
               </span>
-              {expandedSections.learn ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+              {expandedSections.practice ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             </button>
 
-            {expandedSections.learn && (
+            {expandedSections.practice && (
               <div className="ml-4 pl-2 border-l border-[#E5DCD0] space-y-1 mt-1">
-                <button onClick={() => { setActiveMainTab("qna"); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors duration-200">
-                  AI Study Tutor
+                <button onClick={() => { setQuizModalOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors">
+                  🎯 Start Chapter Quiz
                 </button>
-                <button onClick={() => { setActiveMainTab("notes"); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors duration-200">
-                  Smart Notes & Flashcards
+                <button onClick={() => { setFlashcardsModalOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors">
+                  🃏 Review Flashcard Deck
                 </button>
-                <button onClick={() => { setActiveMainTab("prep"); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors duration-200">
-                  Practice Quizzes
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Code Lab */}
-          <div>
-            <button
-              onClick={() => toggleSection("codeLab")}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724] transition-all duration-200"
-            >
-              <span className="flex items-center">
-                <Code className="w-4 h-4 mr-2.5 text-[#75B798]" /> Code Lab
-              </span>
-              {expandedSections.codeLab ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-            </button>
-
-            {expandedSections.codeLab && (
-              <div className="ml-4 pl-2 border-l border-[#E5DCD0] space-y-1 mt-1">
-                <button onClick={() => { setActiveMainTab("code"); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors duration-200">
-                  3-Area Code Trace IDE
+                <button onClick={() => { setMockTestModalOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors">
+                  ⏱️ Take Timed Mock Test
                 </button>
               </div>
             )}
           </div>
 
-          {/* Assessments */}
-          <div>
-            <button
-              onClick={() => toggleSection("assessments")}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724] transition-all duration-200"
-            >
-              <span className="flex items-center">
-                <FileCheck className="w-4 h-4 mr-2.5 text-[#E9B949]" /> Assessments
-              </span>
-              {expandedSections.assessments ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-            </button>
-
-            {expandedSections.assessments && (
-              <div className="ml-4 pl-2 border-l border-[#E5DCD0] space-y-1 mt-1">
-                <button onClick={() => { setActiveMainTab("assessments"); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors duration-200">
-                  Assignments & Due Tasks
-                </button>
-              </div>
-            )}
-          </div>
+          {/* Code Visualizer */}
+          <button
+            onClick={() => { setActiveMainTab("visualizer"); setMobileDrawerOpen(false) }}
+            className={`w-full flex items-center px-3 py-2 rounded-xl font-bold transition-all duration-200 ${
+              activeMainTab === "visualizer" ? "bg-[#F1E8DD] text-[#8B7EC8] shadow-2xs" : "text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724]"
+            }`}
+          >
+            <FolderOpen className="w-4 h-4 mr-2.5 text-[#8B7EC8]" /> Code Trace Visualizer
+          </button>
 
           {/* Settings */}
           <button
@@ -484,19 +297,15 @@ export default function StudentPortal() {
               activeMainTab === "settings" ? "bg-[#F1E8DD] text-[#E76F51] shadow-2xs" : "text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724]"
             }`}
           >
-            <Settings className="w-4 h-4 mr-2.5 text-[#77716A]" /> Settings & Preferences
+            <Settings className="w-4 h-4 mr-2.5 text-[#77716A]" /> Settings & Profile
           </button>
         </nav>
       </div>
 
       <div className="pt-4 border-t border-[#E5DCD0] space-y-3">
-        <div className="p-3 bg-[#F1E8DD]/80 rounded-xl text-xs border border-[#E5DCD0] space-y-2 shadow-2xs">
-          <div className="flex items-center justify-between font-bold text-[11px]">
-            <span className="flex items-center gap-1 text-[#E76F51]"><Sparkles className="w-3.5 h-3.5 text-[#E76F51]" /> Daily AI Limit</span>
-            <span className="text-[#292724] font-mono">{aiQueryCount} / 5</span>
-          </div>
-          <Progress value={(aiQueryCount / 5) * 100} className="h-1.5 bg-[#E5DCD0]" />
-        </div>
+        <Button variant="ghost" className="w-full justify-start text-[#77716A] hover:text-[#E76F51] text-xs font-semibold" onClick={handleLogout}>
+          <LogOut className="w-4 h-4 mr-2" /> Sign Out
+        </Button>
       </div>
     </div>
   )
@@ -515,7 +324,7 @@ export default function StudentPortal() {
             </SheetTrigger>
             <SheetContent side="left" className="w-72 bg-[#FFF9F1] border-r border-[#E5DCD0] p-6">
               <SheetHeader className="pb-4 border-b border-[#E5DCD0]">
-                <SheetTitle className="text-left font-serif font-bold text-[#292724]">Student Navigation</SheetTitle>
+                <SheetTitle className="text-left font-serif font-bold text-[#292724]">AULYN Student</SheetTitle>
               </SheetHeader>
               <div className="pt-4 h-[calc(100vh-120px)]">
                 <RenderSidebarContent />
@@ -537,10 +346,9 @@ export default function StudentPortal() {
             className="border-[#E5DCD0] bg-[#FFF9F1] text-[#292724] hover:bg-[#F1E8DD] font-bold text-xs rounded-xl hover:-translate-y-0.5 transition-all duration-200"
             onClick={() => setPricingOpen(true)}
           >
-            <Crown className="w-3.5 h-3.5 mr-1.5 text-[#E9B949]" /> Pro
+            Upgrade to Pro
           </Button>
 
-          {/* High-Contrast Student Profile Indicator */}
           <div className="text-right hidden sm:block">
             <p className="text-xs font-bold text-[#292724]">{studentName}</p>
             <p className="text-[10px] font-semibold text-[#4A453F]">{studentEmail}</p>
@@ -552,93 +360,38 @@ export default function StudentPortal() {
         </div>
       </header>
 
+      {/* Pricing & Practice Modals */}
       <PricingModal open={pricingOpen} onOpenChange={setPricingOpen} userRole="student" />
-
-      {/* Focus Session Working Timer Modal */}
-      <Dialog open={focusModalOpen} onOpenChange={setFocusModalOpen}>
-        <DialogContent className="sm:max-w-lg bg-[#FFF9F1] border-[#E5DCD0] text-[#292724] rounded-2xl p-6">
-          <DialogHeader className="text-center space-y-1">
-            <div className="mx-auto w-12 h-12 bg-[#E76F51]/15 text-[#E76F51] border border-[#E76F51]/30 rounded-2xl flex items-center justify-center font-bold mb-1">
-              <Clock className="w-6 h-6" />
-            </div>
-            <DialogTitle className="text-xl font-serif font-bold text-[#292724]">
-              Interactive Focus Session
-            </DialogTitle>
-            <p className="text-xs text-[#77716A]">
-              Topic: <span className="font-bold text-[#292724]">Recursion & Call Stack Trace</span> • {currentClass.name}
-            </p>
-          </DialogHeader>
-
-          <div className="py-6 space-y-6 text-center">
-            {/* Live Countdown Timer HUD */}
-            <div className="p-6 bg-[#F1E8DD]/80 border border-[#E5DCD0] rounded-2xl shadow-inner space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#77716A]">
-                {isFocusActive ? "Focus Timer Countdown" : focusCompleted ? "Session Finished" : "Timer Paused"}
-              </span>
-              <div className="text-5xl font-mono font-black text-[#292724] tracking-tight">
-                {formatTimer(focusTimerSeconds)}
-              </div>
-              <Progress value={((18 * 60 - focusTimerSeconds) / (18 * 60)) * 100} className="h-2 bg-[#E5DCD0] mt-2" />
-            </div>
-
-            {/* Session Checklist Goals */}
-            <div className="text-left space-y-2 bg-[#FFF9F1] p-4 rounded-xl border border-[#E5DCD0]">
-              <p className="text-xs font-bold text-[#292724] uppercase tracking-wider">Session Learning Objectives</p>
-              <div className="space-y-1.5 text-xs text-[#77716A]">
-                <label className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={focusGoals.baseCase}
-                    onChange={(e) => setFocusGoals({ ...focusGoals, baseCase: e.target.checked })}
-                    className="rounded border-[#E5DCD0] text-[#E76F51]"
-                  />
-                  <span>Understand base case termination condition</span>
-                </label>
-                <label className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={focusGoals.stackFrames}
-                    onChange={(e) => setFocusGoals({ ...focusGoals, stackFrames: e.target.checked })}
-                    className="rounded border-[#E5DCD0] text-[#E76F51]"
-                  />
-                  <span>Trace call stack activation frames step-by-step</span>
-                </label>
-                <label className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={focusGoals.traceTree}
-                    onChange={(e) => setFocusGoals({ ...focusGoals, traceTree: e.target.checked })}
-                    className="rounded border-[#E5DCD0] text-[#E76F51]"
-                  />
-                  <span>Run binary search trace in Code Visualizer</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Timer Control Buttons */}
-            <div className="flex items-center justify-center gap-3">
-              <Button
-                onClick={handleToggleFocusTimer}
-                className={`font-bold text-xs rounded-xl px-5 py-2.5 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${
-                  isFocusActive ? "bg-[#E76F51] hover:bg-[#d55e42] text-white" : "bg-[#75B798] hover:bg-[#64a687] text-white"
-                }`}
-              >
-                {isFocusActive ? <><Pause className="w-4 h-4 mr-1.5" /> Pause Timer</> : <><Play className="w-4 h-4 mr-1.5" /> {focusTimerSeconds === 18 * 60 ? "Start Session" : "Resume Timer"}</>}
-              </Button>
-
-              <Button variant="outline" size="sm" className="border-[#E5DCD0] text-[#77716A] hover:text-[#292724] text-xs font-semibold rounded-xl" onClick={handleResetFocusTimer}>
-                <RotateCcw className="w-3.5 h-3.5 mr-1" /> Reset
-              </Button>
-
-              <DialogClose asChild>
-                <Button variant="ghost" size="sm" className="text-xs text-[#77716A]">
-                  End & Close
-                </Button>
-              </DialogClose>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {activeClassroom && (
+        <>
+          <QuizModal
+            open={quizModalOpen}
+            onOpenChange={setQuizModalOpen}
+            quiz={activeClassroom.quizzes[0] || { quizId: "q1", chapterId: "c1", title: "Practice Quiz", topic: "Core", timeMinutes: 10, totalMarks: 20, questions: [] }}
+            classroom={activeClassroom}
+            studentName={studentName}
+          />
+          <FlashcardsModal
+            open={flashcardsModalOpen}
+            onOpenChange={setFlashcardsModalOpen}
+            flashcards={activeClassroom.flashcards}
+            classroom={activeClassroom}
+          />
+          <MockTestModal
+            open={mockTestModalOpen}
+            onOpenChange={setMockTestModalOpen}
+            classroom={activeClassroom}
+            studentName={studentName}
+          />
+          <AiTutorDialog
+            open={aiTutorOpen}
+            onOpenChange={setAiTutorOpen}
+            activeClassName={activeClassroom.className}
+            activeChapterName={currentChapter?.chapterName || "General"}
+            sourceNoteContent={activeNoteText}
+          />
+        </>
+      )}
 
       <div className="flex flex-1 overflow-hidden z-10">
         {/* Desktop Sidebar (≥ lg screens) */}
@@ -646,392 +399,305 @@ export default function StudentPortal() {
           <RenderSidebarContent />
         </aside>
 
-        {/* Main Workspace */}
+        {/* Main Student Workspace */}
         <main className="flex-1 p-4 sm:p-8 overflow-y-auto space-y-6">
-          {/* HIGH-CONTRAST GREETING PILL & CLASSROOM SELECTOR (Fix Prompt Rule #3: Good morning Alex Readability) */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#FFF9F1]/90 backdrop-blur-md p-5 rounded-2xl border border-[#E5DCD0] shadow-sm">
+          {/* Header Greeting Pill */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#FFF9F1]/90 backdrop-blur-md p-5 rounded-2xl border border-[#E5DCD0] shadow-sm">
             <div>
               <h2 className="text-2xl sm:text-3xl font-serif font-black text-[#292724] tracking-tight">
-                Good morning, {studentName.split(" ")[0]}.
+                Good morning, {studentName.split(" ")[0] || "Alex"}.
               </h2>
-              {/* High-Contrast Professor / Teacher Name Indicator (Fix Prompt Rule #4) */}
               <p className="text-xs font-bold text-[#292724] mt-1">
-                Active Classroom: <span className="text-[#E76F51] font-bold">{currentClass.name}</span> ({currentClass.code} • <span className="text-[#292724] font-black underline decoration-[#E76F51]">{currentClass.teacher}</span>)
+                Active Classroom: <span className="text-[#E76F51] font-bold">{activeClassroom?.className}</span> ({activeClassroom?.code})
               </p>
             </div>
 
-            {/* Quick Class Selection Dropdown Pill */}
-            <div className="flex items-center gap-1.5 bg-[#F1E8DD] p-1.5 rounded-xl border border-[#E5DCD0]">
-              {Object.values(CLASSROOM_DATABASE).map((c) => (
+            {/* Classroom Selector Pills */}
+            <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 sm:pb-0">
+              {classrooms.map((cls) => (
                 <button
-                  key={c.id}
-                  onClick={() => setSelectedClassId(c.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
-                    selectedClassId === c.id ? "bg-[#FFF9F1] text-[#E76F51] shadow-2xs border border-[#E5DCD0]" : "text-[#292724] hover:text-[#E76F51]"
+                  key={cls.classId}
+                  onClick={() => {
+                    setActiveClassroom(cls)
+                    setSelectedChapterIdx(0)
+                    setActiveNoteText(cls.chapters[0]?.sourceNoteContent || "")
+                    setActiveNoteFile(cls.chapters[0]?.sourceNoteFile || "Trees_Lecture_Notes.pdf")
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 shrink-0 ${
+                    activeClassroom?.classId === cls.classId
+                      ? "bg-[#E76F51] text-white shadow-2xs"
+                      : "bg-[#F1E8DD] text-[#292724] hover:bg-[#E5DCD0]"
                   }`}
                 >
-                  {c.code}
+                  {cls.code}
                 </button>
               ))}
             </div>
           </div>
 
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-7 max-w-4xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6 overflow-x-auto">
-              <TabsTrigger value="progress" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200">
+            <TabsList className="grid w-full grid-cols-4 max-w-xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6">
+              <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200">
                 Overview
               </TabsTrigger>
-              <TabsTrigger value="code" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200">
-                Code Trace
+              <TabsTrigger value="materials" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200">
+                Materials & Notes
               </TabsTrigger>
-              <TabsTrigger value="notes" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200">
-                Notes AI
-              </TabsTrigger>
-              <TabsTrigger value="assessments" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200">
-                Assignments
-              </TabsTrigger>
-              <TabsTrigger value="qna" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200">
-                AI Tutor
-              </TabsTrigger>
-              <TabsTrigger value="prep" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200">
-                Practice
+              <TabsTrigger value="visualizer" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#8B7EC8] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200">
+                Code IDE
               </TabsTrigger>
               <TabsTrigger value="settings" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200">
                 Settings
               </TabsTrigger>
             </TabsList>
 
-            {/* Overview / Class-Specific Workspace Tab */}
-            <TabsContent value="progress" className="space-y-6 animate-in fade-in-50 duration-200">
-              {/* PRIMARY FOCUS CARD */}
-              <div className="p-6 bg-gradient-to-r from-[#FFF9F1]/95 to-[#F1E8DD]/95 backdrop-blur-md border-2 border-[#E76F51] rounded-2xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-lg transition-shadow duration-300">
-                <div className="space-y-2">
-                  <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-[#E76F51]/10 text-[#E76F51] text-xs font-bold border border-[#E76F51]/20">
-                    <Compass className="w-3.5 h-3.5" />
-                    <span>Today&apos;s Primary Focus • {currentClass.name}</span>
+            {/* OVERVIEW TAB */}
+            <TabsContent value="overview" className="space-y-6 animate-in fade-in-50 duration-200">
+              {/* Classroom Announcement Banner */}
+              {activeClassroom?.announcements && activeClassroom.announcements.length > 0 && (
+                <div className="p-4 bg-[#FFF9F1]/95 border-2 border-[#E76F51]/40 rounded-2xl shadow-sm backdrop-blur-md flex items-start space-x-3.5">
+                  <div className="w-9 h-9 bg-[#E76F51]/15 text-[#E76F51] border border-[#E76F51]/30 rounded-xl flex items-center justify-center font-bold shrink-0 mt-0.5">
+                    <Bell className="w-5 h-5" />
                   </div>
-                  <h3 className="text-xl sm:text-2xl font-serif font-bold text-[#292724]">
-                    Recursion & Call Stack Visualization
-                  </h3>
-                  <p className="text-xs text-[#292724] font-bold flex items-center gap-2">
-                    <Clock className="w-3.5 h-3.5 text-[#E76F51]" /> 18 min recommended session • Master base case termination & stack frames
-                  </p>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <h4 className="text-sm font-serif font-bold text-[#292724]">{activeClassroom.announcements[0].title}</h4>
+                      <span className="text-[10px] font-bold text-[#E76F51] bg-[#E76F51]/10 px-2 py-0.5 rounded-full">
+                        {activeClassroom.announcements[0].author}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#292724] font-semibold mt-0.5">{activeClassroom.announcements[0].content}</p>
+                  </div>
                 </div>
+              )}
 
-                <Button 
-                  className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs py-3 px-5 rounded-xl shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 self-start md:self-center"
-                  onClick={handleStartFocusSession}
+              {/* Quick Practice Modules Trigger Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card
+                  onClick={() => setQuizModalOpen(true)}
+                  className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl cursor-pointer group"
                 >
-                  Start Focus Session <ArrowUpRight className="w-4 h-4 ml-1.5" />
-                </Button>
-              </div>
-
-              {/* Class Notice & Professor Name Visibility Banner */}
-              <div className="p-4 bg-[#FFF9F1]/95 backdrop-blur-md border border-[#E5DCD0] rounded-2xl shadow-2xs space-y-1">
-                <p className="text-[11px] font-bold text-[#292724] uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[#E76F51]" /> Class Notice from <span className="font-black text-[#292724]">{currentClass.teacher}</span>
-                </p>
-                <p className="text-xs font-bold text-[#292724]">{currentClass.announcement}</p>
-              </div>
-
-              {/* Class-Specific Course Chapters & Materials Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Class Chapters */}
-                <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
-                  <CardHeader className="p-4 border-b border-[#E5DCD0]">
-                    <CardTitle className="text-sm font-serif font-bold text-[#292724] flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-[#E76F51]" /> Class Chapters ({currentClass.code})
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center justify-between">
+                      Start Chapter Quiz <ArrowUpRight className="w-4 h-4 text-[#E76F51] group-hover:translate-x-0.5 transition-transform" />
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-4 space-y-2">
-                    {currentClass.chapters.map((chap, idx) => (
-                      <div key={idx} className="p-3 bg-[#F1E8DD]/60 rounded-xl border border-[#E5DCD0] text-xs font-bold text-[#292724] flex items-center justify-between hover:bg-[#F1E8DD] transition-colors duration-200">
-                        <span>{chap}</span>
-                        <span className="text-[10px] text-[#75B798] bg-[#75B798]/10 px-2 py-0.5 rounded-full border border-[#75B798]/30 font-mono">Active</span>
+                  <CardContent>
+                    <div className="text-xl font-serif font-bold text-[#E76F51]">Interactive MCQs</div>
+                    <p className="text-xs text-[#77716A] font-semibold mt-1">Test mastery on {activeClassroom?.code}</p>
+                  </CardContent>
+                </Card>
+
+                <Card
+                  onClick={() => setFlashcardsModalOpen(true)}
+                  className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl cursor-pointer group"
+                >
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center justify-between">
+                      Review Flashcard Deck <ArrowUpRight className="w-4 h-4 text-[#8B7EC8] group-hover:translate-x-0.5 transition-transform" />
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl font-serif font-bold text-[#8B7EC8]">3D Flip Cards</div>
+                    <p className="text-xs text-[#77716A] font-semibold mt-1">Active recall for key definitions</p>
+                  </CardContent>
+                </Card>
+
+                <Card
+                  onClick={() => setMockTestModalOpen(true)}
+                  className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl cursor-pointer group"
+                >
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center justify-between">
+                      Take Timed Mock Test <ArrowUpRight className="w-4 h-4 text-[#75B798] group-hover:translate-x-0.5 transition-transform" />
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl font-serif font-bold text-[#75B798]">Timed Examination</div>
+                    <p className="text-xs text-[#77716A] font-semibold mt-1">Simulate exam under pressure</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Active Course Assignments */}
+              <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
+                <CardHeader>
+                  <CardTitle className="text-[#292724] font-serif font-bold text-base flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-[#E76F51]" /> Active Assignments ({activeClassroom?.className})
+                  </CardTitle>
+                  <CardDescription className="text-[#292724] font-semibold text-xs">
+                    Submit solutions before the deadline for instructor review
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {activeClassroom?.assignments.map((asgn) => (
+                    <div key={asgn.id} className="p-4 bg-white border border-[#E5DCD0] rounded-xl space-y-3 shadow-2xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <h4 className="font-bold text-sm text-[#292724]">{asgn.title}</h4>
+                          <p className="text-xs font-semibold text-[#77716A]">
+                            Format: {asgn.type} • Max Marks: {asgn.totalMarks} • Due: {asgn.dueDate}
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-bold text-[#E76F51] bg-[#E76F51]/10 px-2.5 py-1 rounded-full border border-[#E76F51]/30 self-start sm:self-auto">
+                          {asgn.difficulty}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#292724] font-medium bg-[#F1E8DD]/40 p-2.5 rounded-lg border border-[#E5DCD0]/60">
+                        {asgn.instructions}
+                      </p>
+
+                      {/* Submission Input Box */}
+                      <div className="space-y-2">
+                        <Input
+                          placeholder="Paste solution text, code link, or notes answer here..."
+                          value={submissionText}
+                          onChange={(e) => setSubmissionText(e.target.value)}
+                          className="bg-white border-[#E5DCD0] text-[#292724] text-xs font-semibold rounded-xl"
+                        />
+                        <Button
+                          onClick={() => handleSubmitAssignment(asgn.id, asgn.title)}
+                          className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs py-2 rounded-xl shadow-2xs"
+                        >
+                          <Send className="w-3.5 h-3.5 mr-1.5" /> Submit Solution
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Submissions Tracker History */}
+              {userSubmissions.length > 0 && (
+                <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
+                  <CardHeader>
+                    <CardTitle className="text-[#292724] font-serif font-bold text-base">Your Assignment Submissions History</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {userSubmissions.map((sub) => (
+                      <div key={sub.submissionId} className="p-3 bg-white border border-[#E5DCD0] rounded-xl text-xs flex items-center justify-between font-bold">
+                        <div>
+                          <p className="text-[#292724]">{sub.assignmentTitle}</p>
+                          <p className="text-[10px] text-[#77716A]">Submitted: {sub.submittedAt}</p>
+                        </div>
+                        <span className="text-[10px] text-[#75B798] bg-[#75B798]/10 border border-[#75B798]/30 px-2.5 py-0.5 rounded-full font-mono">
+                          {sub.status}
+                        </span>
                       </div>
                     ))}
                   </CardContent>
                 </Card>
+              )}
+            </TabsContent>
 
-                {/* REAL downloadable study materials */}
-                <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
-                  <CardHeader className="p-4 border-b border-[#E5DCD0]">
-                    <CardTitle className="text-sm font-serif font-bold text-[#292724] flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-[#8B7EC8]" /> Study Materials & Drive Documents
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 space-y-2">
-                    {currentClass.materials.map((mat, idx) => (
-                      <div key={idx} className="p-3 bg-white hover:bg-[#F1E8DD]/40 rounded-xl border border-[#E5DCD0] hover:border-[#E76F51]/40 text-xs font-bold text-[#292724] flex items-center justify-between transition-all duration-200 shadow-2xs">
-                        <span className="truncate flex items-center gap-1.5 text-[#292724]">
-                          <FileText className="w-3.5 h-3.5 text-[#E76F51]" /> {mat.title}
+            {/* MATERIALS & NOTES TAB */}
+            <TabsContent value="materials" className="space-y-6 animate-in fade-in-50 duration-200">
+              <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-[#292724] font-serif font-bold text-base">Course Materials & Lecture Notes</CardTitle>
+                    <CardDescription className="text-[#292724] font-semibold text-xs">
+                      Official lecture slides and study documents for {activeClassroom?.className}
+                    </CardDescription>
+                  </div>
+
+                  {/* Load Notes Trigger Button */}
+                  <Button
+                    onClick={handleLoadNotes}
+                    disabled={isNotesLoading}
+                    className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs rounded-xl shadow-2xs"
+                  >
+                    <BookOpen className="w-4 h-4 mr-1.5" /> {isNotesLoading ? "Loading..." : "Load Active Notes"}
+                  </Button>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  {/* Chapter Selector */}
+                  <div className="flex items-center space-x-2">
+                    <Label className="text-xs font-bold text-[#292724]">Select Chapter:</Label>
+                    <select
+                      value={selectedChapterIdx}
+                      onChange={(e) => {
+                        const idx = Number(e.target.value)
+                        setSelectedChapterIdx(idx)
+                        const ch = activeClassroom?.chapters[idx]
+                        if (ch) {
+                          setActiveNoteText(ch.sourceNoteContent)
+                          setActiveNoteFile(ch.sourceNoteFile)
+                        }
+                      }}
+                      className="bg-white border border-[#E5DCD0] text-[#292724] font-bold text-xs px-3 py-1.5 rounded-xl"
+                    >
+                      {activeClassroom?.chapters.map((ch, idx) => (
+                        <option key={ch.chapterId} value={idx}>
+                          {ch.chapterName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Real Materials File List */}
+                  <div className="space-y-2">
+                    {activeClassroom?.materials.map((mat) => (
+                      <div key={mat.fileId} className="p-3.5 bg-white border border-[#E5DCD0] rounded-xl text-xs font-bold text-[#292724] flex items-center justify-between shadow-2xs hover:border-[#E76F51]/40 transition-colors">
+                        <span className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-[#E76F51]" /> {mat.fileName} <span className="text-[10px] text-[#77716A]">({mat.size})</span>
                         </span>
-                        <div className="flex items-center space-x-1.5">
+                        <div className="flex items-center space-x-2">
                           <Button
-                            variant="outline"
                             size="sm"
-                            className="text-[11px] text-[#8B7EC8] border-[#E5DCD0] hover:bg-[#8B7EC8] hover:text-white font-bold h-7 px-2.5 rounded-lg transition-all duration-200"
-                            onClick={() => handleViewMaterial(mat.title, mat.url)}
+                            variant="outline"
+                            onClick={() => handleViewMaterial(mat.fileName, mat.fileUrl)}
+                            className="text-[11px] text-[#8B7EC8] border-[#E5DCD0] hover:bg-[#8B7EC8] hover:text-white font-bold h-7 px-3 rounded-lg"
                           >
                             <Eye className="w-3 h-3 mr-1" /> View
                           </Button>
                           <Button
-                            variant="outline"
                             size="sm"
-                            className="text-[11px] text-[#E76F51] border-[#E5DCD0] hover:bg-[#E76F51] hover:text-white font-bold h-7 px-2.5 rounded-lg transition-all duration-200"
-                            onClick={() => handleDownloadMaterial(mat.title, mat.url)}
+                            variant="outline"
+                            onClick={() => handleDownloadMaterial(mat.fileName, mat.fileUrl)}
+                            className="text-[11px] text-[#E76F51] border-[#E5DCD0] hover:bg-[#E76F51] hover:text-white font-bold h-7 px-3 rounded-lg"
                           >
                             <Download className="w-3 h-3 mr-1" /> Download
                           </Button>
                         </div>
                       </div>
                     ))}
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Class Mastery Progress Indicator */}
-              <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
-                <CardHeader>
-                  <CardTitle className="text-base font-serif font-bold text-[#292724]">Overall Course Progress ({currentClass.code})</CardTitle>
-                  <CardDescription className="text-[#292724] font-semibold text-xs">Real-time completion metrics for {currentClass.name} with <span className="font-bold text-[#292724]">{currentClass.teacher}</span></CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex justify-between text-xs font-bold">
-                    <span className="text-[#292724]">Course Completion</span>
-                    <span className="text-[#E76F51] font-mono">{currentClass.progress}%</span>
-                  </div>
-                  <Progress value={currentClass.progress} className="h-2.5 bg-[#F1E8DD]" />
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Code Visualizer Tab */}
-            <TabsContent value="code" className="animate-in fade-in-50 duration-200">
-              <CodeVisualizer />
-            </TabsContent>
-
-            {/* Notes AI Converter Tab */}
-            <TabsContent value="notes" className="animate-in fade-in-50 duration-200">
-              <NotesAiConverter />
-            </TabsContent>
-
-            {/* Class-Specific Assignments Tab */}
-            <TabsContent value="assessments" className="space-y-6 animate-in fade-in-50 duration-200">
-              <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
-                <CardHeader>
-                  <CardTitle className="text-[#292724] font-serif font-bold text-base">Active Assignments for {currentClass.name}</CardTitle>
-                  <CardDescription className="text-[#292724] font-semibold text-xs">Instructor: <span className="font-bold text-[#292724]">{currentClass.teacher}</span></CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <ul className="divide-y divide-[#E5DCD0]">
-                    {currentClass.assignments.map((item) => (
-                      <li key={item.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                              item.status === "Submitted" ? "bg-[#75B798]/15 text-[#75B798] border-[#75B798]/30" : "bg-[#E9B949]/15 text-[#E9B949] border-[#E9B949]/30"
-                            }`}>
-                              {item.status}
-                            </span>
-                            <p className="font-bold text-[#292724] text-sm">{item.title}</p>
-                          </div>
-                          <p className="text-xs font-semibold text-[#292724] mt-1">{currentClass.name} • Due: {item.dueDate}</p>
-                        </div>
-
-                        {item.status === "Pending" ? (
-                          <Dialog open={submittingId === item.id} onOpenChange={(open) => setSubmittingId(open ? item.id : null)}>
-                            <DialogTrigger asChild>
-                              <Button size="sm" className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-xl">
-                                Submit Work
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-md bg-[#FFF9F1] border-[#E5DCD0] text-[#292724] rounded-2xl">
-                              <DialogHeader>
-                                <DialogTitle className="text-[#292724] font-serif font-bold">Submit Assignment</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-3 py-2">
-                                <Label className="text-[#292724] text-xs font-bold">Submission Details / Drive Link</Label>
-                                <Input
-                                  placeholder="Paste document link or summary..."
-                                  value={submissionText}
-                                  onChange={(e) => setSubmissionText(e.target.value)}
-                                  className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl"
-                                />
-                              </div>
-                              <Button className="w-full bg-[#E76F51] text-white font-bold text-xs" onClick={() => handleSubmitAssignment(item.id)}>
-                                Confirm Submission
-                              </Button>
-                            </DialogContent>
-                          </Dialog>
-                        ) : (
-                          <span className="text-xs font-bold text-[#75B798] flex items-center">
-                            <Check className="w-4 h-4 mr-1" /> Submitted
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* AI STUDY TUTOR TAB */}
-            <TabsContent value="qna" className="flex-1 flex flex-col animate-in fade-in-50 duration-200">
-              <Card className="flex-1 flex flex-col bg-[#FFF9F1]/95 backdrop-blur-md border border-[#E5DCD0] shadow-2xs rounded-2xl">
-                <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-[#E5DCD0]">
-                  <div>
-                    <CardTitle className="text-[#292724] font-serif font-bold text-base flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-[#E76F51]" /> AI Study Tutor Workspace ({currentClass.code})
-                    </CardTitle>
-                    <CardDescription className="text-[#292724] font-semibold text-xs">Contextual AI tutoring for {currentClass.name} with {currentClass.teacher}</CardDescription>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setAiMessages([])} className="text-xs border-[#E5DCD0] text-[#77716A] hover:bg-[#F1E8DD] rounded-xl font-bold">
-                    Clear Chat
-                  </Button>
-                </CardHeader>
-
-                <CardContent className="flex-1 flex flex-col p-4 justify-between min-h-[450px]">
-                  {/* Contextual Action Chips */}
-                  <div className="flex flex-wrap gap-2 pb-3 border-b border-[#E5DCD0]">
-                    <button 
-                      onClick={() => handleSendMessage(`Explain ${currentClass.name} concepts simply`)}
-                      className="px-3 py-1 bg-[#F1E8DD] border border-[#E5DCD0] hover:border-[#E76F51] rounded-full text-xs font-bold text-[#292724] hover:-translate-y-0.5 transition-all duration-200 shadow-2xs"
-                    >
-                      💡 Explain this simply
-                    </button>
-                    <button 
-                      onClick={() => handleSendMessage(`Give me an example problem for ${currentClass.name}`)}
-                      className="px-3 py-1 bg-[#F1E8DD] border border-[#E5DCD0] hover:border-[#E76F51] rounded-full text-xs font-bold text-[#292724] hover:-translate-y-0.5 transition-all duration-200 shadow-2xs"
-                    >
-                      💻 Give me an example
-                    </button>
-                    <button 
-                      onClick={() => handleSendMessage(`Quiz me on ${currentClass.name}`)}
-                      className="px-3 py-1 bg-[#F1E8DD] border border-[#E5DCD0] hover:border-[#E76F51] rounded-full text-xs font-bold text-[#292724] hover:-translate-y-0.5 transition-all duration-200 shadow-2xs"
-                    >
-                      🎯 Quiz me on this
-                    </button>
-                    <button 
-                      onClick={() => handleSendMessage(`Explain step-by-step for ${currentClass.name}`)}
-                      className="px-3 py-1 bg-[#F1E8DD] border border-[#E5DCD0] hover:border-[#E76F51] rounded-full text-xs font-bold text-[#292724] hover:-translate-y-0.5 transition-all duration-200 shadow-2xs"
-                    >
-                      🔍 Explain step-by-step
-                    </button>
-                  </div>
-
-                  <ScrollArea className="flex-1 pr-4 py-4 max-h-[380px] overflow-y-auto">
-                    <div className="space-y-4">
-                      {aiMessages.map((msg, index) => (
-                        <div key={index} className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}>
-                          <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-xs shadow-2xs leading-relaxed ${
-                            msg.type === "user"
-                              ? "bg-[#E76F51] text-white rounded-br-none font-semibold"
-                              : "bg-[#F1E8DD]/80 text-[#292724] border border-[#E5DCD0] rounded-bl-none font-normal"
-                          }`}>
-                            <Markdown>{msg.content}</Markdown>
-                          </div>
-                        </div>
-                      ))}
-                      {isAiLoading && (
-                        <div className="flex justify-start">
-                          <div className="bg-[#F1E8DD] border border-[#E5DCD0] text-[#77716A] text-xs px-4 py-2 rounded-2xl animate-pulse">
-                            AI Tutor is processing...
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </ScrollArea>
-
-                  <div className="flex items-center space-x-2 pt-4 border-t border-[#E5DCD0]">
-                    <Input
-                      value={inputMessage}
-                      onChange={(e) => setInputMessage(e.target.value)}
-                      placeholder={`Ask your AI tutor about ${currentClass.name}...`}
-                      className="bg-white border-[#E5DCD0] text-[#292724] text-xs rounded-xl font-medium"
-                      onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                    />
-                    <Button onClick={() => handleSendMessage()} className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-xl">
-                      <Send className="w-4 h-4 mr-1.5" /> Send
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            {/* Practice & Mock Test Tab */}
-            <TabsContent value="prep" className="space-y-6 animate-in fade-in-50 duration-200">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl">
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-[#292724] text-base font-serif font-bold">
-                      <CheckCircle2 className="w-4 h-4 mr-2 text-[#E76F51]" /> Multiple Choice Quizzes
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-xs font-semibold text-[#292724]">Test conceptual understanding for {currentClass.name}.</p>
-                    <Button className="w-full bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-xl" onClick={() => toast.info(`Launching ${currentClass.name} quiz...`)}>
-                      <PlayCircle className="w-4 h-4 mr-2" /> Start Quiz
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl">
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-[#292724] text-base font-serif font-bold">
-                      <Circle className="w-4 h-4 mr-2 text-[#8B7EC8]" /> Tactile Flashcards
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-xs font-semibold text-[#292724]">Practice quick recall of key definitions in {currentClass.code}.</p>
-                    <Button className="w-full bg-[#8B7EC8] hover:bg-[#796bb5] text-white font-bold text-xs shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-xl" onClick={() => toast.info(`Opening ${currentClass.code} flashcard deck...`)}>
-                      <PlayCircle className="w-4 h-4 mr-2" /> Review Deck
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl">
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-[#292724] text-base font-serif font-bold">
-                      <AlertCircle className="w-4 h-4 mr-2 text-[#75B798]" /> Timed Assessment
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-xs font-semibold text-[#292724]">Simulate exam conditions with a timed mock test.</p>
-                    <Button className="w-full bg-[#75B798] hover:bg-[#64a687] text-white font-bold text-xs shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-xl" onClick={() => toast.info("Launching mock assessment...")}>
-                      <Trophy className="w-4 h-4 mr-2" /> Take Mock Test
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
+            {/* CODE IDE TAB */}
+            <TabsContent value="visualizer" className="animate-in fade-in-50 duration-200">
+              <CodeVisualizer
+                sourceNoteText={activeNoteText}
+                sourceFileName={activeNoteFile}
+                activeClassName={activeClassroom?.className || "Data Structures & Algorithms"}
+              />
             </TabsContent>
 
-            {/* FULLY FUNCTIONAL SETTINGS TAB WITH LOCALSTORAGE PERSISTENCE */}
+            {/* SETTINGS TAB */}
             <TabsContent value="settings" className="space-y-6 animate-in fade-in-50 duration-200">
               <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
                 <CardHeader>
                   <CardTitle className="text-[#292724] font-serif font-bold text-lg flex items-center gap-2">
-                    <User className="w-5 h-5 text-[#E76F51]" /> Student Profile & Learning Preferences
+                    <User className="w-5 h-5 text-[#E76F51]" /> Student Profile & Preferences
                   </CardTitle>
-                  <CardDescription className="text-[#292724] font-semibold text-xs">Manage your student profile, academic major, and study notification reminders</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Student Profile Form */}
+                <CardContent className="space-y-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="studName" className="text-xs font-bold text-[#292724]">Full Name</Label>
+                      <Label className="text-xs font-bold text-[#292724]">Full Name</Label>
                       <Input
-                        id="studName"
                         value={studentName}
                         onChange={(e) => setStudentName(e.target.value)}
                         className="bg-white border-[#E5DCD0] text-[#292724] text-xs font-semibold rounded-xl"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="studEmail" className="text-xs font-bold text-[#292724]">Email Address</Label>
+                      <Label className="text-xs font-bold text-[#292724]">Email Address</Label>
                       <Input
-                        id="studEmail"
-                        type="email"
                         value={studentEmail}
                         onChange={(e) => setStudentEmail(e.target.value)}
                         className="bg-white border-[#E5DCD0] text-[#292724] text-xs font-semibold rounded-xl"
@@ -1040,77 +706,19 @@ export default function StudentPortal() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="studMajor" className="text-xs font-bold text-[#292724]">Academic Major / Specialization</Label>
+                    <Label className="text-xs font-bold text-[#292724]">Academic Major / Specialization</Label>
                     <Input
-                      id="studMajor"
                       value={studentMajor}
                       onChange={(e) => setStudentMajor(e.target.value)}
                       className="bg-white border-[#E5DCD0] text-[#292724] text-xs font-semibold rounded-xl"
                     />
                   </div>
 
-                  <div className="pt-4 border-t border-[#E5DCD0] space-y-4">
-                    <h4 className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center gap-1.5">
-                      <Bell className="w-4 h-4 text-[#8B7EC8]" /> Study & Assignment Reminders
-                    </h4>
-
-                    <div className="flex items-center justify-between p-3 bg-white border border-[#E5DCD0] rounded-xl text-xs">
-                      <div>
-                        <p className="font-bold text-[#292724]">Assignment Due Notifications</p>
-                        <p className="text-[11px] font-semibold text-[#4A453F]">Receive email reminders 24 hours before coursework deadlines</p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={notificationsEnabled}
-                        onChange={(e) => setNotificationsEnabled(e.target.checked)}
-                        className="w-4 h-4 accent-[#E76F51] rounded cursor-pointer"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 bg-white border border-[#E5DCD0] rounded-xl text-xs">
-                      <div>
-                        <p className="font-bold text-[#292724]">Daily Focus Session Schedule</p>
-                        <p className="text-[11px] font-semibold text-[#4A453F]">Choose your preferred daily study prompt time</p>
-                      </div>
-                      <select
-                        value={studyReminder}
-                        onChange={(e) => setStudyReminder(e.target.value)}
-                        className="bg-[#F1E8DD] border border-[#E5DCD0] text-[#292724] font-bold text-xs px-2.5 py-1 rounded-lg"
-                      >
-                        <option value="Daily at 6:00 PM">Daily at 6:00 PM</option>
-                        <option value="Daily at 8:00 PM">Daily at 8:00 PM</option>
-                        <option value="Morning at 9:00 AM">Morning at 9:00 AM</option>
-                        <option value="Turned Off">Turned Off</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Account Information Metadata */}
-                  <div className="pt-4 border-t border-[#E5DCD0] space-y-2">
-                    <h4 className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center gap-1.5">
-                      <Shield className="w-4 h-4 text-[#75B798]" /> Student Credentials & Tier
-                    </h4>
-                    <div className="grid grid-cols-3 gap-2 text-xs p-3 bg-[#F1E8DD]/60 border border-[#E5DCD0] rounded-xl font-mono">
-                      <div>
-                        <span className="text-[#292724] block text-[10px] font-sans font-bold">Role</span>
-                        <span className="font-bold text-[#E76F51]">Student</span>
-                      </div>
-                      <div>
-                        <span className="text-[#292724] block text-[10px] font-sans font-bold">Account ID</span>
-                        <span className="font-bold text-[#292724]">student-demo</span>
-                      </div>
-                      <div>
-                        <span className="text-[#292724] block text-[10px] font-sans font-bold">Free AI Queries</span>
-                        <span className="font-bold text-[#75B798]">{5 - aiQueryCount} left today</span>
-                      </div>
-                    </div>
-                  </div>
-
                   <Button
                     onClick={handleSaveSettings}
-                    className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                    className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-2xs"
                   >
-                    <Save className="w-4 h-4 mr-1.5" /> Save Settings
+                    <Save className="w-4 h-4 mr-1.5" /> Save Preferences
                   </Button>
                 </CardContent>
               </Card>

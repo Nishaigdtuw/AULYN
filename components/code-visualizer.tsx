@@ -1,6 +1,7 @@
 'use client'
+
 import React, { useState } from "react"
-import { Play, Pause, SkipForward, SkipBack, RotateCcw, Terminal, Code2, Cpu, Sparkles, Sliders } from "lucide-react"
+import { Play, Pause, SkipForward, SkipBack, RotateCcw, Terminal, Code2, Cpu, Sparkles, Sliders, BookOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { toast } from "sonner"
@@ -127,7 +128,13 @@ const PRESET_EXAMPLES = {
   }
 }
 
-export default function CodeVisualizer() {
+interface CodeVisualizerProps {
+  sourceNoteText?: string
+  sourceFileName?: string
+  activeClassName?: string
+}
+
+export default function CodeVisualizer({ sourceNoteText, sourceFileName, activeClassName = "Data Structures & Algorithms" }: CodeVisualizerProps) {
   const [selectedPreset, setSelectedPreset] = useState<keyof typeof PRESET_EXAMPLES>("binarySearch")
   const [code, setCode] = useState(PRESET_EXAMPLES.binarySearch.code)
   const [currentStepIdx, setCurrentStepIdx] = useState(0)
@@ -207,7 +214,7 @@ export default function CodeVisualizer() {
             <Cpu className="w-5 h-5 text-[#E76F51]" /> 3-Area Interactive Code Visualizer
           </CardTitle>
           <CardDescription className="text-[#77716A] text-xs mt-0.5">
-            Synchronized Code Editor, Real-Time Data Visualization & AI Execution Explanation
+            Synchronized Code Editor, Real-Time Data Visualization & AI Execution Explanation ({activeClassName})
           </CardDescription>
         </div>
         <div className="flex gap-2">
@@ -427,14 +434,16 @@ export default function CodeVisualizer() {
               <p className="text-xs font-semibold text-[#292724] leading-relaxed">{currentStep.explanation}</p>
             </div>
 
-            <div className="p-4 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl shadow-2xs space-y-2 text-xs text-[#77716A]">
-              <div className="font-bold text-[#292724] flex items-center gap-1">
-                💡 Learning Tip
+            {sourceNoteText && (
+              <div className="p-4 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl shadow-2xs space-y-2 text-xs text-[#77716A]">
+                <div className="font-bold text-[#292724] flex items-center gap-1">
+                  <BookOpen className="w-4 h-4 text-[#8B7EC8]" /> Loaded Lecture Note ({sourceFileName || "Notes"})
+                </div>
+                <p className="leading-relaxed text-[11px] line-clamp-6 text-[#292724] bg-white p-2 rounded-lg border border-[#E5DCD0]">
+                  {sourceNoteText}
+                </p>
               </div>
-              <p className="leading-relaxed text-[11px]">
-                Binary Search repeatedly divides the search space in half, resulting in logarithmic time complexity \\(O(\\log N)\\).
-              </p>
-            </div>
+            )}
           </div>
         </div>
       </CardContent>

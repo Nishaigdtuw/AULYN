@@ -35,8 +35,19 @@ export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
 
-  // Scroll listener for sticky navbar translucency effect
+  // Scroll listener for sticky navbar translucency effect & Session Auto-Redirect
   useEffect(() => {
+    const existing = localStorage.getItem('user')
+    if (existing) {
+      try {
+        const u = JSON.parse(existing)
+        if (u && (u.role || u.type)) {
+          const dest = (u.role || u.type) === 'teacher' ? '/teacher' : '/student'
+          router.replace(dest)
+        }
+      } catch {}
+    }
+
     const handleScroll = () => {
       if (window.scrollY > 20) {
         setIsScrolled(true)
@@ -46,7 +57,7 @@ export default function AuthPage() {
     }
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+  }, [router])
 
   const handleSignInSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
