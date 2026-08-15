@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback, useRef } from "react"
-import { FileText, Download, ArrowUpRight, Menu, LogOut, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Eye, Bell, User, Save, BookOpen, Sparkles, Award, ArrowLeft, RefreshCw } from "lucide-react"
+import { FileText, Download, ArrowUpRight, Menu, LogOut, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Eye, Bell, User, Save, BookOpen, Sparkles, Award, ArrowLeft, RefreshCw, HelpCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -88,6 +88,31 @@ export default function StudentPortal() {
     ecosystem: true,
     practice: true
   })
+
+  // Help Engine Action Navigator
+  const handleHelpNavigation = (target: string) => {
+    if (target.startsWith("tab:")) {
+      const tabName = target.replace("tab:", "")
+      setActiveMainTab(tabName)
+    } else if (target.startsWith("modal:")) {
+      const modalName = target.replace("modal:", "")
+      if (modalName === "quiz") setQuizModalOpen(true)
+      if (modalName === "adaptive_quiz") setAdaptiveQuizOpen(true)
+      if (modalName === "ai_viva") setAiVivaOpen(true)
+      if (modalName === "flashcards") setFlashcardsModalOpen(true)
+      if (modalName === "mock_test") setMockTestModalOpen(true)
+      if (modalName === "live_session") setLiveSessionOpen(true)
+      if (modalName === "doubt_threads") setDoubtThreadsOpen(true)
+      if (modalName === "peer_study") setPeerStudyOpen(true)
+      if (modalName === "student_groups") setStudentGroupsOpen(true)
+      if (modalName === "pricing") setPricingOpen(true)
+      if (modalName === "ai_tutor") setAiTutorOpen(true)
+      if (modalName === "asgn_submission" && activeClassroom?.assignments?.[0]) {
+        setSelectedAsgn(activeClassroom.assignments[0])
+        setAsgnSubmissionOpen(true)
+      }
+    }
+  }
 
   // Data Reload Handler - Safe from loops
   const loadClassroomData = useCallback(() => {
@@ -356,7 +381,7 @@ export default function StudentPortal() {
             {expandedSections.ecosystem && (
               <div className="ml-4 pl-2 border-l border-[#E5DCD0] space-y-1 mt-1">
                 <button onClick={() => { setAiTutorOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
-                  🤖 AI Tutor (Vision Enabled)
+                  🤖 AI Tutor & Product Help
                 </button>
                 <button onClick={() => { setAdaptiveQuizOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
                   ⚡ Take Adaptive Quiz
@@ -478,6 +503,16 @@ export default function StudentPortal() {
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* AI Assistant Help Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAiTutorOpen(true)}
+            className="border-[#8B7EC8] bg-[#FFF9F1] text-[#8B7EC8] hover:bg-[#8B7EC8]/10 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-2xs"
+          >
+            <HelpCircle className="w-4 h-4 text-[#8B7EC8]" /> AI Assistant & Help
+          </Button>
+
           {/* Notifications Drawer Trigger */}
           <Button
             variant="ghost"
@@ -538,7 +573,17 @@ export default function StudentPortal() {
           <QuizModal open={quizModalOpen} onOpenChange={setQuizModalOpen} quiz={activeClassroom.quizzes?.[0] || { quizId: `quiz-${activeClassroom.classId}`, chapterId: "c1", title: `${activeClassroom.code} Quiz`, topic: activeClassroom.subject || "Core", timeMinutes: 10, totalMarks: 20, questions: [] }} classroom={activeClassroom} studentName={studentName} />
           <FlashcardsModal open={flashcardsModalOpen} onOpenChange={setFlashcardsModalOpen} flashcards={activeClassroom.flashcards || []} classroom={activeClassroom} />
           <MockTestModal open={mockTestModalOpen} onOpenChange={setMockTestModalOpen} classroom={activeClassroom} studentName={studentName} />
-          <AiTutorDialog open={aiTutorOpen} onOpenChange={setAiTutorOpen} activeClassName={activeClassroom.className || "General Course"} activeChapterName={currentChapter?.chapterName || "Overview"} sourceNoteContent={activeNoteText} />
+          <AiTutorDialog
+            open={aiTutorOpen}
+            onOpenChange={setAiTutorOpen}
+            activeClassName={activeClassroom.className || "General Course"}
+            activeChapterName={currentChapter?.chapterName || "Overview"}
+            sourceNoteContent={activeNoteText}
+            userRole="student"
+            currentMainTab={activeMainTab}
+            currentModal={liveSessionOpen ? "live_session" : asgnSubmissionOpen ? "asgn_submission" : undefined}
+            onNavigate={handleHelpNavigation}
+          />
         </>
       )}
 

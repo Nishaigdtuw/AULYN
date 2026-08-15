@@ -1,12 +1,14 @@
 'use client'
 
-import React, { useState } from "react"
-import { Sparkles, Send, Image as ImageIcon, X } from "lucide-react"
+import React, { useState, useEffect } from "react"
+import { Sparkles, Send, Image as ImageIcon, X, HelpCircle, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { askAiTutor } from "@/actions/ai/tutor"
+import { processAulynQuery } from "@/lib/help-engine"
+import { HelpActionButton } from "@/lib/help-knowledge-base"
 import ReactMarkdown from "react-markdown"
 
 interface AiTutorDialogProps {
@@ -15,6 +17,10 @@ interface AiTutorDialogProps {
   activeClassName: string
   activeChapterName: string
   sourceNoteContent?: string
+  userRole?: 'student' | 'teacher'
+  currentMainTab?: string
+  currentModal?: string
+  onNavigate?: (actionTarget: string) => void
 }
 
 interface Message {
@@ -22,22 +28,58 @@ interface Message {
   text: string
   image?: string
   timestamp: string
+  actionButtons?: HelpActionButton[]
+  isHelp?: boolean
 }
 
-export function AiTutorDialog({ open, onOpenChange, activeClassName, activeChapterName, sourceNoteContent }: AiTutorDialogProps) {
+export function AiTutorDialog({
+  open,
+  onOpenChange,
+  activeClassName,
+  activeChapterName,
+  sourceNoteContent,
+  userRole = 'student',
+  currentMainTab,
+  currentModal,
+  onNavigate
+}: AiTutorDialogProps) {
   const [query, setQuery] = useState("")
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      sender: "ai",
-      text: `Hello! I am your **AULYN AI Learning Tutor** configured for **${activeClassName} (${activeChapterName})**. Ask me anything about your lecture notes, equations, code, or upload a handwritten problem screenshot!`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
   // Image Upload State
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+
+  // Initialize Welcome Message with Suggested Prompts
+  useEffect(() => {
+    if (open && messages.length === 0) {
+      const welcomeText = userRole === 'student'
+        ? `Hello! I am your **AULYN AI Assistant & Learning Tutor** configured for **${activeClassName} (${activeChapterName})**.\n\nI can answer **academic questions** about your lecture notes or code, AND guide you on **how to use any AULYN feature**!`
+        : `Welcome to the **AULYN Educator AI Assistant** for **${activeClassName}**.\n\nI can assist with course analytics, lesson planning, assignment creation, live lecture heatmaps, and answer **any product-usage questions**!`
+
+      setMessages([
+        {
+          sender: "ai",
+          text: welcomeText,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          actionButtons: userRole === 'student'
+            ? [
+                { label: 'How do I use AULYN?', actionTarget: 'prompt:How do I use AULYN?' },
+                { label: 'Where are my assignments?', actionTarget: 'prompt:Where are my assignments?' },
+                { label: 'How do I use AI Tutor?', actionTarget: 'prompt:How do I upload an image to AI Tutor?' },
+                { label: 'Show my weak topics', actionTarget: 'prompt:Show my weak topics' }
+              ]
+            : [
+                { label: 'How do I use AULYN?', actionTarget: 'prompt:How do I use AULYN?' },
+                { label: 'How do I create an assignment?', actionTarget: 'prompt:How do I create an assignment?' },
+                { label: 'Show students needing attention', actionTarget: 'prompt:Where can I see student performance?' },
+                { label: 'How do I start a live lecture?', actionTarget: 'prompt:How do I start a live lecture?' }
+              ]
+        }
+      ])
+    }
+  }, [open, messages.length, activeClassName, activeChapterName, userRole])
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -62,8 +104,25 @@ export function AiTutorDialog({ open, onOpenChange, activeClassName, activeChapt
     setImagePreview(null)
   }
 
-  const handleSendMessage = async (actionType?: 'explain_simply' | 'step_by_step' | 'example' | 'quiz_me' | 'another_method' | 'summarize' | 'missing') => {
-    const textToSend = query.trim() || (actionType ? `Perform ${actionType} on active note` : "")
+  const handleActionClick = (btn: HelpActionButton) => {
+    if (btn.actionTarget.startsWith('prompt:')) {
+      const promptText = btn.actionTarget.replace('prompt:', '')
+      handleSendMessage(undefined, promptText)
+      return
+    }
+
+    if (onNavigate) {
+      onNavigate(btn.actionTarget)
+      onOpenChange(false)
+      toast.info(`Navigated to ${btn.label}`)
+    }
+  }
+
+  const handleSendMessage = async (
+    actionType?: 'explain_simply' | 'step_by_step' | 'example' | 'quiz_me' | 'another_method' | 'summarize' | 'missing',
+    overrideQuery?: string
+  ) => {
+    const textToSend = overrideQuery || query.trim() || (actionType ? `Perform ${actionType} on active note` : "")
     if (!textToSend && !imagePreview) {
       toast.warning("Please enter a question or upload an image")
       return
@@ -82,15 +141,43 @@ export function AiTutorDialog({ open, onOpenChange, activeClassName, activeChapt
     handleRemoveImage()
     setIsLoading(true)
 
+    // Check local client-side Help Engine first for instant responsiveness
+    if (!currentImg && !actionType) {
+      const localHelp = processAulynQuery(textToSend, userRole, {
+        activeMainTab: currentMainTab,
+        activeModal: currentModal,
+        activeClassName,
+        activeChapterName
+      })
+
+      if (localHelp.isHelpQuery) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "ai",
+            text: localHelp.responseText,
+            actionButtons: localHelp.actionButtons,
+            isHelp: true,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        ])
+        setIsLoading(false)
+        return
+      }
+    }
+
     try {
       const res = await askAiTutor({
         query: textToSend,
+        userRole,
         className: activeClassName,
         chapterName: activeChapterName,
         sourceNoteContent,
         actionType,
         imageBase64: currentImg || undefined,
-        imageMimeType: imageFile?.type || "image/png"
+        imageMimeType: imageFile?.type || "image/png",
+        activeMainTab: currentMainTab,
+        activeModal: currentModal
       })
 
       if (res && res.answer) {
@@ -99,6 +186,8 @@ export function AiTutorDialog({ open, onOpenChange, activeClassName, activeChapt
           {
             sender: "ai",
             text: res.answer,
+            actionButtons: res.actionButtons,
+            isHelp: res.isHelp,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }
         ])
@@ -108,7 +197,7 @@ export function AiTutorDialog({ open, onOpenChange, activeClassName, activeChapt
         ...prev,
         {
           sender: "ai",
-          text: "I analyzed your question and loaded course materials. Always double-check base conditions and step-by-step calculations for accuracy!",
+          text: "I analyzed your question in the context of your active course notes. Try checking base conditions and step-by-step formula execution!",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ])
@@ -123,17 +212,17 @@ export function AiTutorDialog({ open, onOpenChange, activeClassName, activeChapt
         <DialogHeader className="border-b border-[#E5DCD0] pb-3 shrink-0">
           <div className="flex items-center justify-between">
             <span className="text-[10px] uppercase font-bold tracking-wider text-[#E76F51] bg-[#E76F51]/10 px-2.5 py-0.5 rounded-full border border-[#E76F51]/30 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-[#E9B949]" /> AI Learning Tutor
+              <Sparkles className="w-3 h-3 text-[#E9B949]" /> AULYN AI Assistant & Help
             </span>
             <span className="text-xs font-semibold text-[#77716A]">
               {activeClassName}
             </span>
           </div>
-          <DialogTitle className="text-lg font-serif font-bold text-[#292724] mt-1">
-            Context-Aware Academic Tutor ({activeChapterName})
+          <DialogTitle className="text-lg font-serif font-bold text-[#292724] mt-1 flex items-center gap-2">
+            <HelpCircle className="w-5 h-5 text-[#8B7EC8]" /> Product Help & Academic Tutor ({activeChapterName})
           </DialogTitle>
           <DialogDescription className="text-xs text-[#77716A]">
-            Ask questions, upload handwritten notes or diagrams, or trigger quick learning actions.
+            Ask how to use any AULYN feature, navigate your workspace, or get step-by-step academic explanations.
           </DialogDescription>
         </DialogHeader>
 
@@ -145,7 +234,7 @@ export function AiTutorDialog({ open, onOpenChange, activeClassName, activeChapt
               className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"}`}
             >
               <div
-                className={`max-w-[85%] p-3.5 rounded-2xl text-xs space-y-2 shadow-2xs ${
+                className={`max-w-[88%] p-4 rounded-2xl text-xs space-y-3 shadow-2xs ${
                   msg.sender === "user"
                     ? "bg-[#E76F51] text-white rounded-br-none font-semibold"
                     : "bg-white border border-[#E5DCD0] text-[#292724] rounded-bl-none"
@@ -161,6 +250,27 @@ export function AiTutorDialog({ open, onOpenChange, activeClassName, activeChapt
                 ) : (
                   <p>{msg.text}</p>
                 )}
+
+                {/* Interactive Action Buttons */}
+                {msg.actionButtons && msg.actionButtons.length > 0 && (
+                  <div className="pt-2 border-t border-[#E5DCD0] flex flex-wrap gap-1.5">
+                    {msg.actionButtons.map((btn, idx) => (
+                      <Button
+                        key={idx}
+                        size="sm"
+                        onClick={() => handleActionClick(btn)}
+                        className={`text-[11px] font-bold rounded-xl h-7 px-3 cursor-pointer shadow-2xs transition-transform hover:scale-102 ${
+                          btn.actionTarget.startsWith('prompt:')
+                            ? "bg-[#F1E8DD] text-[#292724] hover:bg-[#E5DCD0]"
+                            : "bg-[#E76F51] hover:bg-[#d55e42] text-white"
+                        }`}
+                      >
+                        {btn.label} <ArrowRight className="w-3 h-3 ml-1" />
+                      </Button>
+                    ))}
+                  </div>
+                )}
+
                 <span className={`text-[9px] block text-right font-mono ${msg.sender === "user" ? "text-white/80" : "text-[#77716A]"}`}>
                   {msg.timestamp}
                 </span>
@@ -169,12 +279,12 @@ export function AiTutorDialog({ open, onOpenChange, activeClassName, activeChapt
           ))}
           {isLoading && (
             <div className="flex items-center space-x-2 text-xs font-bold text-[#8B7EC8] animate-pulse p-2">
-              <Sparkles className="w-4 h-4" /> AULYN AI is analyzing notes & visual context...
+              <Sparkles className="w-4 h-4 text-[#E9B949]" /> AULYN AI Assistant is thinking...
             </div>
           )}
         </div>
 
-        {/* Quick Learning Action Bar */}
+        {/* Quick Academic Action Bar */}
         <div className="pt-2 border-t border-[#E5DCD0] shrink-0 space-y-2">
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] no-scrollbar">
             <Button
@@ -237,13 +347,13 @@ export function AiTutorDialog({ open, onOpenChange, activeClassName, activeChapt
               variant="outline"
               size="icon"
               onClick={() => document.getElementById("aiImageUpload")?.click()}
-              className="border-[#E5DCD0] bg-white text-[#77716A] hover:text-[#E76F51] shrink-0 rounded-xl"
+              className="border-[#E5DCD0] bg-white text-[#77716A] hover:text-[#E76F51] shrink-0 rounded-xl cursor-pointer"
             >
               <ImageIcon className="w-4 h-4" />
             </Button>
 
             <Input
-              placeholder={`Ask about ${activeClassName} (${activeChapterName})...`}
+              placeholder={`Ask how to do something or ask about ${activeClassName}...`}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
@@ -253,7 +363,7 @@ export function AiTutorDialog({ open, onOpenChange, activeClassName, activeChapt
             <Button
               onClick={() => handleSendMessage()}
               disabled={isLoading}
-              className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs rounded-xl shadow-2xs shrink-0"
+              className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs rounded-xl shadow-2xs shrink-0 cursor-pointer"
             >
               <Send className="w-4 h-4" />
             </Button>

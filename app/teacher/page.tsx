@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback, useRef } from "react"
-import { FileText, LogOut, Plus, Book, FileCheck, Sparkles, TrendingUp, Crown, Menu, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Download, User, Save, Eye, Send, ArrowLeft, RefreshCw, Bell } from "lucide-react"
+import { FileText, LogOut, Plus, Book, FileCheck, Sparkles, TrendingUp, Crown, Menu, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Download, User, Save, Eye, Send, ArrowLeft, RefreshCw, Bell, HelpCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -22,6 +22,7 @@ import { AssignmentSubmissionModal } from "@/components/assignment-submission-mo
 import { DoubtThreadsModal } from "@/components/doubt-threads-modal"
 import { StudentGroupsModal } from "@/components/student-groups-modal"
 import { NotificationsDrawer } from "@/components/notifications-drawer"
+import { AiTutorDialog } from "@/components/ai-tutor-dialog"
 
 import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, AnnouncementData, NotificationItem, AssignmentData } from "@/lib/data-store"
 import { getAuthenticatedUser, clearAuthenticatedUser, setAuthenticatedUser } from "@/lib/auth-guard"
@@ -48,6 +49,7 @@ export default function TeacherPortal() {
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false)
 
   // Ecosystem Modals
+  const [aiTutorOpen, setAiTutorOpen] = useState(false)
   const [liveSessionOpen, setLiveSessionOpen] = useState(false)
   const [doubtThreadsOpen, setDoubtThreadsOpen] = useState(false)
   const [studentGroupsOpen, setStudentGroupsOpen] = useState(false)
@@ -74,6 +76,22 @@ export default function TeacherPortal() {
     ecosystem: true,
     content: true
   })
+
+  // Help Engine Action Navigator
+  const handleHelpNavigation = (target: string) => {
+    if (target.startsWith("tab:")) {
+      const tabName = target.replace("tab:", "")
+      setActiveMainTab(tabName)
+    } else if (target.startsWith("modal:")) {
+      const modalName = target.replace("modal:", "")
+      if (modalName === "live_session") setLiveSessionOpen(true)
+      if (modalName === "create_assignment") setCreateAssignmentOpen(true)
+      if (modalName === "doubt_threads") setDoubtThreadsOpen(true)
+      if (modalName === "student_groups") setStudentGroupsOpen(true)
+      if (modalName === "pricing") setPricingOpen(true)
+      if (modalName === "ai_tutor") setAiTutorOpen(true)
+    }
+  }
 
   // Data Reload Handler - Safe from loop
   const loadTeacherData = useCallback(() => {
@@ -315,6 +333,9 @@ export default function TeacherPortal() {
 
             {expandedSections.ecosystem && (
               <div className="ml-4 pl-2 border-l border-[#E5DCD0] space-y-1 mt-1">
+                <button onClick={() => { setAiTutorOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
+                  🤖 AI Educator & Product Help
+                </button>
                 <button onClick={() => { setActiveMainTab("analytics"); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
                   📊 Evidence Analytics
                 </button>
@@ -412,6 +433,16 @@ export default function TeacherPortal() {
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* AI Assistant Help Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAiTutorOpen(true)}
+            className="border-[#8B7EC8] bg-[#FFF9F1] text-[#8B7EC8] hover:bg-[#8B7EC8]/10 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-2xs"
+          >
+            <HelpCircle className="w-4 h-4 text-[#8B7EC8]" /> AI Assistant & Help
+          </Button>
+
           {/* Notifications Drawer Trigger */}
           <Button
             variant="ghost"
@@ -462,6 +493,16 @@ export default function TeacherPortal() {
           <CreateAssignmentModal open={createAssignmentOpen} onOpenChange={setCreateAssignmentOpen} activeClass={activeClassroom} />
           <DoubtThreadsModal open={doubtThreadsOpen} onOpenChange={setDoubtThreadsOpen} classId={activeClassroom.classId} className={activeClassroom.className} userRole="teacher" />
           <StudentGroupsModal open={studentGroupsOpen} onOpenChange={setStudentGroupsOpen} classId={activeClassroom.classId} className={activeClassroom.className} userRole="teacher" />
+          <AiTutorDialog
+            open={aiTutorOpen}
+            onOpenChange={setAiTutorOpen}
+            activeClassName={activeClassroom.className || "General Course"}
+            activeChapterName="Educator Workspace"
+            userRole="teacher"
+            currentMainTab={activeMainTab}
+            currentModal={liveSessionOpen ? "live_session" : createAssignmentOpen ? "create_assignment" : undefined}
+            onNavigate={handleHelpNavigation}
+          />
 
           {selectedAsgn && (
             <AssignmentSubmissionModal open={asgnSubmissionOpen} onOpenChange={setAsgnSubmissionOpen} assignment={selectedAsgn} userRole="teacher" />
