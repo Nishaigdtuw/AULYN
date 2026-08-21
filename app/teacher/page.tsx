@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback, useRef } from "react"
-import { FileText, LogOut, Plus, Book, FileCheck, Sparkles, Crown, Menu, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Download, User, Save, Eye, Send, ArrowLeft, RefreshCw, Bell, HelpCircle } from "lucide-react"
+import { FileText, LogOut, Plus, Book, FileCheck, Crown, Menu, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Download, User, Save, Eye, Send, ArrowLeft, RefreshCw, Bell, HelpCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -26,11 +26,11 @@ import { NotificationsDrawer } from "@/components/notifications-drawer"
 import { AiTutorDialog } from "@/components/ai-tutor-dialog"
 import { UploadMaterialModal } from "@/components/upload-material-modal"
 import { TeacherReviewModal } from "@/components/teacher-review-modal"
-
-
+import { TeacherQuizModal } from "@/components/teacher-quiz-modal"
+import { QuizAttemptsModal } from "@/components/quiz-attempts-modal"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, AnnouncementData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile, createClassroom, getStoredSubscription, SubscriptionData } from "@/lib/data-store"
+import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, AnnouncementData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile, createClassroom, getStoredSubscription, SubscriptionData, QuizData, getQuizzesForClass, deleteQuiz, getQuizAttemptsForQuiz } from "@/lib/data-store"
 import { isPro } from "@/lib/subscription"
 import { ProLimitDialog } from "@/components/pro-limit-dialog"
 import { getAuthenticatedUser, clearAuthenticatedUser, setAuthenticatedUser } from "@/lib/auth-guard"
@@ -129,6 +129,12 @@ ${activeClassroom.assignments?.map(a => `Assignment: ${a.title} | Submissions: $
   const [teacherReviewOpen, setTeacherReviewOpen] = useState(false)
   const [selectedSubForReview, setSelectedSubForReview] = useState<SubmissionData | null>(null)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+
+  // Quiz Modals State
+  const [teacherQuizOpen, setTeacherQuizOpen] = useState(false)
+  const [selectedQuizForEdit, setSelectedQuizForEdit] = useState<QuizData | null>(null)
+  const [quizAttemptsOpen, setQuizAttemptsOpen] = useState(false)
+  const [selectedQuizForAttempts, setSelectedQuizForAttempts] = useState<QuizData | null>(null)
 
 
   // Submissions state
@@ -755,7 +761,7 @@ ${activeClassroom.assignments?.map(a => `Assignment: ${a.title} | Submissions: $
           )}
 
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-5 max-w-2xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6">
+            <TabsList className="grid w-full grid-cols-6 max-w-3xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6">
               <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Overview
               </TabsTrigger>
@@ -764,6 +770,9 @@ ${activeClassroom.assignments?.map(a => `Assignment: ${a.title} | Submissions: $
               </TabsTrigger>
               <TabsTrigger value="submissions" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Submissions
+              </TabsTrigger>
+              <TabsTrigger value="quizzes" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
+                Quizzes
               </TabsTrigger>
               <TabsTrigger value="analytics" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#75B798] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Analytics
@@ -1055,12 +1064,125 @@ ${activeClassroom.assignments?.map(a => `Assignment: ${a.title} | Submissions: $
                               }}
                               className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs h-7 px-3 rounded-lg cursor-pointer flex items-center gap-1 shadow-2xs"
                             >
-                              <Sparkles className="w-3.5 h-3.5 text-[#E9B949]" /> Grade & Add Feedback
+                              Evaluate
                             </Button>
                           </div>
                         </div>
                       </div>
                     ))
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* QUIZZES TAB */}
+            <TabsContent value="quizzes" className="space-y-6 animate-in fade-in-50 duration-200">
+              <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
+                <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-[#E5DCD0]">
+                  <div>
+                    <CardTitle className="text-[#292724] font-serif font-bold text-base flex items-center gap-2">
+                      <HelpCircle className="w-4 h-4 text-[#E76F51]" /> Quiz Management & Scheduling ({activeClassroom?.code})
+                    </CardTitle>
+                    <CardDescription className="text-xs text-[#77716A]">Build conceptual quizzes, configure time limits, scheduled dates, and review student attempts</CardDescription>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      setSelectedQuizForEdit(null)
+                      setTeacherQuizOpen(true)
+                    }}
+                    className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" /> Create New Quiz
+                  </Button>
+                </CardHeader>
+                <CardContent className="p-6 space-y-4">
+                  {getQuizzesForClass(activeClassroom?.classId || "").length === 0 ? (
+                    <div className="text-center py-10 space-y-2 bg-white rounded-2xl border-2 border-dashed border-[#E5DCD0]">
+                      <HelpCircle className="w-8 h-8 text-[#77716A] mx-auto opacity-50" />
+                      <h4 className="text-xs font-serif font-bold text-[#292724]">No quizzes created yet</h4>
+                      <p className="text-[11px] text-[#77716A]">Create your first manual or AI-assisted conceptual quiz for {activeClassroom?.className}.</p>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setSelectedQuizForEdit(null)
+                          setTeacherQuizOpen(true)
+                        }}
+                        className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs rounded-xl mt-2 cursor-pointer"
+                      >
+                        + Create Quiz
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {getQuizzesForClass(activeClassroom?.classId || "").map((qz) => {
+                        const attempts = getQuizAttemptsForQuiz(qz.quizId)
+                        return (
+                          <Card key={qz.quizId} className="p-4 bg-white border border-[#E5DCD0] rounded-2xl space-y-3 shadow-2xs">
+                            <div className="flex items-center justify-between border-b border-[#E5DCD0] pb-2">
+                              <span className="text-[10px] font-bold text-[#E76F51] bg-[#E76F51]/10 px-2 py-0.5 rounded-full border border-[#E76F51]/30">
+                                {qz.topic || "Core Concept"}
+                              </span>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${qz.published ? "bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-amber-100 text-amber-800 border-amber-300"}`}>
+                                {qz.published ? "Published" : "Draft"}
+                              </span>
+                            </div>
+
+                            <div>
+                              <h4 className="text-sm font-serif font-bold text-[#292724]">{qz.title}</h4>
+                              <p className="text-xs text-[#77716A] line-clamp-1">{qz.description}</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-[#77716A] bg-[#FFF9F1] p-2.5 rounded-xl border border-[#E5DCD0]">
+                              <div>Duration: {qz.durationMinutes}m</div>
+                              <div>Total Marks: {qz.totalMarks}</div>
+                              <div>Questions: {qz.questions?.length || 0}</div>
+                              <div>Attempts: {attempts.length}</div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedQuizForAttempts(qz)
+                                  setQuizAttemptsOpen(true)
+                                }}
+                                className="text-xs font-bold rounded-xl border-[#8B7EC8] text-[#8B7EC8] hover:bg-[#8B7EC8]/10 cursor-pointer"
+                              >
+                                View Attempts ({attempts.length})
+                              </Button>
+
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedQuizForEdit(qz)
+                                    setTeacherQuizOpen(true)
+                                  }}
+                                  className="text-xs font-bold rounded-xl border-[#E5DCD0] cursor-pointer"
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    deleteQuiz(qz.quizId, activeClassroom?.classId || "")
+                                    toast.info(`Quiz "${qz.title}" deleted.`)
+                                    // Trigger re-render
+                                    saveStoredClassrooms([...getStoredClassrooms()])
+                                  }}
+                                  className="text-xs text-red-600 font-bold hover:bg-red-50 rounded-xl cursor-pointer"
+                                >
+                                  Delete
+                                </Button>
+                              </div>
+                            </div>
+                          </Card>
+                        )
+                      })}
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -1133,6 +1255,19 @@ ${activeClassroom.assignments?.map(a => `Assignment: ${a.title} | Submissions: $
             open={teacherReviewOpen}
             onOpenChange={setTeacherReviewOpen}
             submission={selectedSubForReview}
+          />
+          <TeacherQuizModal
+            open={teacherQuizOpen}
+            onOpenChange={setTeacherQuizOpen}
+            classroom={activeClassroom}
+            editingQuiz={selectedQuizForEdit}
+            onQuizSaved={() => setClassrooms(getStoredClassrooms())}
+          />
+          <QuizAttemptsModal
+            open={quizAttemptsOpen}
+            onOpenChange={setQuizAttemptsOpen}
+            quiz={selectedQuizForAttempts}
+            classroom={activeClassroom}
           />
         </>
       )}

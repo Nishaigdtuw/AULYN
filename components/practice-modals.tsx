@@ -96,6 +96,9 @@ export function QuizModal({ open, onOpenChange, quiz, classroom, studentName }: 
         studentId: "student-demo",
         studentName: studentName || "Alex Rivera",
         classId: classroom.classId,
+        startedAt: new Date().toISOString(),
+        expiresAt: new Date().toISOString(),
+        status: "GRADED",
         score: Math.round((correct / activeQuestions.length) * totalMarks),
         totalMarks: totalMarks,
         percentage,
@@ -151,7 +154,7 @@ export function QuizModal({ open, onOpenChange, quiz, classroom, studentName }: 
 
             {/* Option Choices */}
             <div className="space-y-2">
-              {currentQ?.options.map((opt, idx) => {
+              {(currentQ?.options || []).map((opt, idx) => {
                 const isSelected = selectedOption === idx
                 return (
                   <button
@@ -373,6 +376,9 @@ export function MockTestModal({ open, onOpenChange, classroom, studentName }: Mo
       studentId: "student-demo",
       studentName: studentName || "Alex Rivera",
       classId: classroom.classId,
+      startedAt: new Date().toISOString(),
+      expiresAt: new Date().toISOString(),
+      status: "GRADED",
       score: score * 30,
       totalMarks: 90,
       percentage,

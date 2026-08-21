@@ -38,21 +38,36 @@ export interface MaterialData {
 
 export interface QuizQuestion {
   id: string
+  type?: 'MCQ' | 'TrueFalse' | 'ShortAnswer' | 'Coding'
   question: string
-  options: string[]
-  correctAnswer: number
-  explanation: string
+  options?: string[]
+  correctAnswer: number | string
+  explanation?: string
+  marks?: number
   difficulty?: 'Basic' | 'Medium' | 'Advanced'
 }
 
 export interface QuizData {
   quizId: string
+  classId?: string
   chapterId: string
   title: string
+  description?: string
+  instructions?: string
   topic: string
-  timeMinutes: number
+  durationMinutes?: number
+  timeMinutes?: number
   totalMarks: number
+  passingMarks?: number
+  mode?: 'OPEN_NOW' | 'SCHEDULED'
+  startDate?: string
+  startTime?: string
+  endDate?: string
+  endTime?: string
+  published?: boolean
+  releaseResults?: 'IMMEDIATELY' | 'MANUALLY'
   questions: QuizQuestion[]
+  createdAt?: string
 }
 
 export interface FlashcardData {
@@ -111,6 +126,9 @@ export interface SubmissionData {
   feedback?: string
   comments?: AssignmentComment[]
   evaluationReport?: EvaluationReportData
+  published?: boolean
+  gradedBy?: string
+  gradedAt?: string
 }
 
 
@@ -128,17 +146,24 @@ export interface AssignmentComment {
 export interface QuizAttemptData {
   attemptId: string
   quizId: string
-  quizTitle: string
+  quizTitle?: string
   studentId: string
   studentName: string
   classId: string
+  startedAt: string
+  expiresAt: string
+  submittedAt?: string
+  status: 'IN_PROGRESS' | 'SUBMITTED' | 'AUTO_SUBMITTED' | 'GRADED'
+  userAnswers?: Record<string, string | number>
   score: number
   totalMarks: number
   percentage: number
-  completedAt: string
-  weakTopics: string[]
+  released?: boolean
+  completedAt?: string
+  weakTopics?: string[]
   misconceptions?: string[]
 }
+
 
 export interface AnnouncementData {
   id: string
@@ -768,8 +793,8 @@ export function saveQuizAttempt(attempt: QuizAttemptData) {
     if (student) {
       student.score = Math.round((student.score + attempt.percentage) / 2)
       student.lastActive = "Just now"
-      if (attempt.percentage < 70 && attempt.weakTopics.length > 0) {
-        student.weakTopics = Array.from(new Set([...student.weakTopics, ...attempt.weakTopics]))
+      if (attempt.percentage < 70 && attempt.weakTopics && attempt.weakTopics.length > 0) {
+        student.weakTopics = Array.from(new Set([...(student.weakTopics || []), ...attempt.weakTopics]))
       }
     }
     saveStoredClassrooms(classrooms)
@@ -1027,7 +1052,8 @@ export function gradeSubmission(
   submissionId: string,
   marks: number,
   feedback: string,
-  evaluationReport?: EvaluationReportData
+  evaluationReport?: EvaluationReportData,
+  gradedBy: string = "Prof. Sarah Jenkins"
 ) {
   if (typeof window === "undefined") return
   const submissionsKey = "aulyn_submissions_v1"
@@ -1040,12 +1066,79 @@ export function gradeSubmission(
       gradeStatus: 'Graded',
       marks,
       feedback,
-      evaluationReport
+      evaluationReport,
+      published: true,
+      gradedBy,
+      gradedAt: new Date().toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
     }
     localStorage.setItem(submissionsKey, JSON.stringify(list))
     window.dispatchEvent(new Event("aulyn-data-update"))
   }
 }
+
+// Quizzes & Attempts Data Store Helpers
+export function saveQuiz(quiz: QuizData) {
+  if (typeof window === "undefined") return
+  const classrooms = getStoredClassrooms()
+  const cls = classrooms.find((c) => c.classId === quiz.classId)
+  if (cls) {
+    if (!cls.quizzes) cls.quizzes = []
+    const idx = cls.quizzes.findIndex((q) => q.quizId === quiz.quizId)
+    if (idx >= 0) {
+      cls.quizzes[idx] = quiz
+    } else {
+      cls.quizzes.unshift(quiz)
+    }
+    saveStoredClassrooms(classrooms)
+  }
+}
+
+export function getQuizzesForClass(classId: string): QuizData[] {
+  const cls = getClassroomById(classId)
+  return cls?.quizzes || []
+}
+
+export function deleteQuiz(classId: string, quizId: string) {
+  if (typeof window === "undefined") return
+  const classrooms = getStoredClassrooms()
+  const cls = classrooms.find((c) => c.classId === classId)
+  if (cls && cls.quizzes) {
+    cls.quizzes = cls.quizzes.filter((q) => q.quizId !== quizId)
+    saveStoredClassrooms(classrooms)
+  }
+}
+
+export function getQuizAttemptsForQuiz(quizId: string): QuizAttemptData[] {
+  if (typeof window === "undefined") return []
+  const attemptsKey = "aulyn_quiz_attempts_v1"
+  const existingStr = localStorage.getItem(attemptsKey)
+  const list: QuizAttemptData[] = existingStr ? JSON.parse(existingStr) : []
+  return list.filter((a) => a.quizId === quizId)
+}
+
+export function getStudentQuizAttempt(quizId: string, studentId: string): QuizAttemptData | null {
+  if (typeof window === "undefined") return null
+  const attemptsKey = "aulyn_quiz_attempts_v1"
+  const existingStr = localStorage.getItem(attemptsKey)
+  const list: QuizAttemptData[] = existingStr ? JSON.parse(existingStr) : []
+  return list.find((a) => a.quizId === quizId && (a.studentId === studentId || a.studentName === studentId)) || null
+}
+
+export function updateQuizAttempt(attempt: QuizAttemptData) {
+  if (typeof window === "undefined") return
+  const attemptsKey = "aulyn_quiz_attempts_v1"
+  const existingStr = localStorage.getItem(attemptsKey)
+  const attempts: QuizAttemptData[] = existingStr ? JSON.parse(existingStr) : []
+  const idx = attempts.findIndex((a) => a.attemptId === attempt.attemptId || (a.quizId === attempt.quizId && a.studentId === attempt.studentId))
+  if (idx >= 0) {
+    attempts[idx] = attempt
+  } else {
+    attempts.push(attempt)
+  }
+  localStorage.setItem(attemptsKey, JSON.stringify(attempts))
+  window.dispatchEvent(new Event("aulyn-data-update"))
+}
+
 
 // File View & Download Helpers for Data URLs and Blobs
 export function viewDocumentFile(fileName: string, fileUrl?: string) {

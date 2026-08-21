@@ -27,14 +27,14 @@ import { AiVivaModal } from "@/components/ai-viva-modal"
 import { AssignmentSubmissionModal } from "@/components/assignment-submission-modal"
 import { StudentNotesAI } from "@/components/student-notes-ai"
 import { StudentLectureSummaryModal } from "@/components/student-lecture-summary-modal"
+import { StudentQuizModal } from "@/components/student-quiz-modal"
 
 import { DoubtThreadsModal } from "@/components/doubt-threads-modal"
 import { StudentGroupsModal } from "@/components/student-groups-modal"
 import { PeerStudyRoomModal } from "@/components/peer-study-room-modal"
 import { NotificationsDrawer } from "@/components/notifications-drawer"
-import { StudentReportModal } from "@/components/student-report-modal"
 
-import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile, joinClassroom, FinalLectureSummary, getLectureSummaries, getStoredSubscription, SubscriptionData } from "@/lib/data-store"
+import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile, joinClassroom, FinalLectureSummary, getLectureSummaries, getStoredSubscription, SubscriptionData, QuizData, getQuizzesForClass, getStudentQuizAttempt } from "@/lib/data-store"
 import { isPro } from "@/lib/subscription"
 import { getAuthenticatedUser, clearAuthenticatedUser, setAuthenticatedUser } from "@/lib/auth-guard"
 
@@ -87,7 +87,8 @@ export default function StudentPortal() {
   const [studentGroupsOpen, setStudentGroupsOpen] = useState(false)
   const [peerStudyOpen, setPeerStudyOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [studentReportOpen, setStudentReportOpen] = useState(false)
+  const [studentQuizOpen, setStudentQuizOpen] = useState(false)
+  const [selectedQuizForStudent, setSelectedQuizForStudent] = useState<QuizData | null>(null)
 
 
   // Active Selection for Submission Modal
@@ -538,16 +539,6 @@ export default function StudentPortal() {
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-3">
-          {/* Evaluation Report & Graphs Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setStudentReportOpen(true)}
-            className="border-[#75B798] bg-[#FFF9F1] text-[#75B798] hover:bg-[#75B798]/10 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-2xs"
-          >
-            <Award className="w-4 h-4 text-[#75B798]" /> Evaluation Report & Graphs
-          </Button>
-
           {/* AI Assistant Help Button */}
           <Button
             variant="outline"
@@ -622,7 +613,6 @@ export default function StudentPortal() {
           <DoubtThreadsModal open={doubtThreadsOpen} onOpenChange={setDoubtThreadsOpen} classId={activeClassroom.classId} className={activeClassroom.className} userRole="student" studentName={studentName} />
           <StudentGroupsModal open={studentGroupsOpen} onOpenChange={setStudentGroupsOpen} classId={activeClassroom.classId} className={activeClassroom.className} userRole="student" studentName={studentName} />
           <PeerStudyRoomModal open={peerStudyOpen} onOpenChange={setPeerStudyOpen} classId={activeClassroom.classId} className={activeClassroom.className} studentName={studentName} />
-          <StudentReportModal open={studentReportOpen} onOpenChange={setStudentReportOpen} studentId="student-demo" studentName={studentName} />
 
 
           {selectedAsgn && (
@@ -630,6 +620,7 @@ export default function StudentPortal() {
           )}
 
           <QuizModal open={quizModalOpen} onOpenChange={setQuizModalOpen} quiz={activeClassroom.quizzes?.[0] || { quizId: `quiz-${activeClassroom.classId}`, chapterId: "c1", title: `${activeClassroom.code} Quiz`, topic: activeClassroom.subject || "Core", timeMinutes: 10, totalMarks: 20, questions: [] }} classroom={activeClassroom} studentName={studentName} />
+          <StudentQuizModal open={studentQuizOpen} onOpenChange={setStudentQuizOpen} quiz={selectedQuizForStudent} classroom={activeClassroom} studentName={studentName} />
           <FlashcardsModal open={flashcardsModalOpen} onOpenChange={setFlashcardsModalOpen} flashcards={activeClassroom.flashcards || []} classroom={activeClassroom} />
           <MockTestModal open={mockTestModalOpen} onOpenChange={setMockTestModalOpen} classroom={activeClassroom} studentName={studentName} />
           <AiTutorDialog
@@ -751,14 +742,16 @@ export default function StudentPortal() {
           </div>
 
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full flex flex-col">
-
-            <TabsList className="grid w-full grid-cols-5 max-w-2xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6">
+            <TabsList className="grid w-full grid-cols-6 max-w-3xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6">
 
               <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Overview
               </TabsTrigger>
               <TabsTrigger value="materials" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Course Materials
+              </TabsTrigger>
+              <TabsTrigger value="quizzes" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
+                Quizzes
               </TabsTrigger>
               <TabsTrigger value="notes-ai" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#8B7EC8] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Notes AI
@@ -1036,6 +1029,102 @@ export default function StudentPortal() {
                       <p className="text-xs text-[#77716A] italic">No lecture summaries published yet for this class.</p>
                     )}
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* QUIZZES TAB */}
+            <TabsContent value="quizzes" className="space-y-6 animate-in fade-in-50 duration-200">
+              <Card className="bg-[#FFF9F1] border border-[#E5DCD0] shadow-sm rounded-2xl">
+                <CardHeader className="pb-4 border-b border-[#E5DCD0]">
+                  <CardTitle className="text-base font-serif font-black text-[#292724]">Classroom Quizzes & Assessments</CardTitle>
+                  <CardDescription className="text-xs text-[#77716A]">View scheduled quizzes, check time limits, and complete active tests.</CardDescription>
+                </CardHeader>
+
+                <CardContent className="p-6">
+                  {getQuizzesForClass(activeClassroom?.classId || "").length === 0 ? (
+                    <div className="text-center py-10 space-y-2 bg-white rounded-2xl border-2 border-dashed border-[#E5DCD0]">
+                      <HelpCircle className="w-8 h-8 text-[#77716A] mx-auto opacity-50" />
+                      <h4 className="text-xs font-serif font-bold text-[#292724]">No quizzes assigned yet</h4>
+                      <p className="text-[11px] text-[#77716A]">Your professor has not published any quizzes for {activeClassroom?.className || "this class"} yet.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {getQuizzesForClass(activeClassroom?.classId || "").map((qz) => {
+                        const attempt = getStudentQuizAttempt(qz.quizId, "student-demo")
+
+                        let statusBadge = (
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                            Available
+                          </span>
+                        )
+
+                        const now = new Date()
+                        const isScheduled = qz.mode === "SCHEDULED"
+                        const startDt = isScheduled && qz.startDate && qz.startTime ? new Date(`${qz.startDate}T${qz.startTime}`) : null
+                        const endDt = isScheduled && qz.endDate && qz.endTime ? new Date(`${qz.endDate}T${qz.endTime}`) : null
+
+                        if (attempt) {
+                          if (attempt.status === "SUBMITTED" || attempt.status === "AUTO_SUBMITTED" || attempt.status === "GRADED") {
+                            statusBadge = (
+                              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-200 px-2.5 py-0.5 rounded-full border border-emerald-400">
+                                Submitted
+                              </span>
+                            )
+                          } else if (attempt.status === "IN_PROGRESS") {
+                            statusBadge = (
+                              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2.5 py-0.5 rounded-full border border-indigo-300">
+                                In Progress
+                              </span>
+                            )
+                          }
+                        } else if (startDt && now < startDt) {
+                          statusBadge = (
+                            <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+                              Upcoming ({qz.startDate} {qz.startTime})
+                            </span>
+                          )
+                        } else if (endDt && now > endDt) {
+                          statusBadge = (
+                            <span className="text-[10px] font-bold text-[#77716A] bg-[#77716A]/10 px-2.5 py-0.5 rounded-full border border-[#77716A]/30">
+                              Closed
+                            </span>
+                          )
+                        }
+
+                        return (
+                          <Card key={qz.quizId} className="p-4 bg-white border border-[#E5DCD0] rounded-2xl space-y-3 shadow-2xs">
+                            <div className="flex items-center justify-between border-b border-[#E5DCD0] pb-2">
+                              <span className="text-xs font-mono font-bold text-[#E76F51]">
+                                {qz.topic || "Core Subject"}
+                              </span>
+                              {statusBadge}
+                            </div>
+
+                            <div>
+                              <h4 className="text-sm font-bold text-[#292724]">{qz.title}</h4>
+                              <p className="text-xs text-[#77716A] line-clamp-1">{qz.description || "Timed classroom quiz."}</p>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[11px] text-[#77716A] font-semibold pt-1 border-t border-[#E5DCD0]/60">
+                              <span>Duration: {qz.durationMinutes} mins</span>
+                              <span>Total Marks: {qz.totalMarks}</span>
+                            </div>
+
+                            <Button
+                              onClick={() => {
+                                setSelectedQuizForStudent(qz)
+                                setStudentQuizOpen(true)
+                              }}
+                              className="w-full bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs rounded-xl h-8 shadow-2xs cursor-pointer"
+                            >
+                              {attempt ? (attempt.status === "IN_PROGRESS" ? "Resume Quiz" : "View Quiz Result") : "Start Quiz"}
+                            </Button>
+                          </Card>
+                        )
+                      })}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from "react"
-import { Send, CheckCircle, Sparkles, Award, CheckCircle2, AlertCircle, FileText, Download, Eye, Upload, X } from "lucide-react"
+import { Send, CheckCircle, Sparkles, FileText, Download, Eye, Upload, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
@@ -326,50 +326,34 @@ export function AssignmentSubmissionModal({
                 </p>
               )}
 
-              {/* Evaluation Report Display */}
-              {existingSubmission.evaluationReport && (
-                <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-[#8B7EC8]/40 rounded-2xl space-y-3">
-                  <div className="flex items-center justify-between border-b border-[#8B7EC8]/30 pb-2">
-                    <div className="flex items-center space-x-2">
-                      <Award className="w-5 h-5 text-[#8B7EC8]" />
-                      <h4 className="text-xs font-serif font-bold text-indigo-950">AI Evaluation Report & Instructor Feedback</h4>
-                    </div>
-                    <span className="text-[10px] font-mono text-indigo-700 font-bold">
-                      {existingSubmission.evaluationReport.percentage}% Score
+              {/* Teacher Published Grade & Feedback Result */}
+              {existingSubmission.marks !== undefined && (
+                <div className="p-4 bg-[#FFF9F1] border-2 border-[#E76F51]/40 rounded-xl space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between border-b border-[#E5DCD0] pb-2">
+                    <span className="font-serif font-bold text-[#292724] uppercase tracking-wider text-[11px]">
+                      Assignment Evaluation Result
+                    </span>
+                    <span className="font-bold text-[#E76F51] bg-[#E76F51]/15 px-3 py-1 rounded-full border border-[#E76F51]/30 font-mono text-sm shadow-2xs">
+                      Marks: {existingSubmission.marks} / {assignment?.totalMarks || 50}
                     </span>
                   </div>
 
                   {existingSubmission.feedback && (
-                    <p className="text-xs font-semibold text-indigo-900 bg-white/80 p-2.5 rounded-xl border border-indigo-200">
-                      💬 <strong>Instructor Note:</strong> {existingSubmission.feedback}
-                    </p>
+                    <div className="space-y-1">
+                      <span className="font-bold text-[#292724]">Teacher Feedback:</span>
+                      <p className="text-[#292724] font-medium leading-relaxed bg-white p-3 rounded-xl border border-[#E5DCD0] italic">
+                        &quot;{existingSubmission.feedback}&quot;
+                      </p>
+                    </div>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="p-3 bg-white/90 border border-emerald-200 rounded-xl space-y-1">
-                      <h5 className="font-bold text-emerald-900 flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Key Strengths
-                      </h5>
-                      <ul className="list-disc list-inside text-[11px] text-emerald-800 space-y-0.5">
-                        {existingSubmission.evaluationReport.strengths.map((s, idx) => (
-                          <li key={idx}>{s}</li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div className="p-3 bg-white/90 border border-amber-200 rounded-xl space-y-1">
-                      <h5 className="font-bold text-amber-900 flex items-center gap-1">
-                        <AlertCircle className="w-3.5 h-3.5 text-amber-600" /> Improvement Guidance
-                      </h5>
-                      <ul className="list-disc list-inside text-[11px] text-amber-800 space-y-0.5">
-                        {existingSubmission.evaluationReport.recommendations.map((r, idx) => (
-                          <li key={idx}>{r}</li>
-                        ))}
-                      </ul>
-                    </div>
+                  <div className="flex items-center justify-between text-[10px] text-[#77716A] font-semibold pt-1 border-t border-[#E5DCD0]/60">
+                    <span>Graded: {existingSubmission.gradedAt || existingSubmission.submittedAt}</span>
+                    {existingSubmission.gradedBy && <span>Evaluator: {existingSubmission.gradedBy}</span>}
                   </div>
                 </div>
               )}
+
 
               {assignment?.vivaRequired && (
                 <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center justify-between">
