@@ -28,7 +28,8 @@ import { NotificationsDrawer } from "@/components/notifications-drawer"
 import { StudentReportModal } from "@/components/student-report-modal"
 
 
-import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, NotificationItem, AssignmentData } from "@/lib/data-store"
+import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile } from "@/lib/data-store"
+
 import { getAuthenticatedUser, clearAuthenticatedUser, setAuthenticatedUser } from "@/lib/auth-guard"
 
 export default function StudentPortal() {
@@ -258,30 +259,17 @@ export default function StudentPortal() {
 
   // Material View/Open Handler
   const handleViewMaterial = (fileName: string, fileUrl?: string) => {
-    const urlToUse = fileUrl || `/materials/${fileName}`
     toast.info(`Opening "${fileName}"...`)
-    if (typeof window !== "undefined") {
-      window.open(urlToUse, "_blank")
-    }
+    viewDocumentFile(fileName, fileUrl)
   }
 
   // Material Download Handler
   const handleDownloadMaterial = (fileName: string, fileUrl?: string) => {
     toast.info(`Downloading "${fileName}"...`)
-    try {
-      const urlToUse = fileUrl || `/materials/${fileName}`
-      const a = document.createElement("a")
-      a.href = urlToUse
-      a.download = fileName
-      a.target = "_blank"
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      toast.success(`Downloaded "${fileName}" successfully!`)
-    } catch {
-      toast.error("Download failed. Please check network connection.")
-    }
+    downloadDocumentFile(fileName, fileUrl)
+    toast.success(`Downloaded "${fileName}" successfully!`)
   }
+
 
   // Save Settings & Profile
   const handleSaveSettings = () => {
@@ -524,7 +512,8 @@ export default function StudentPortal() {
             onClick={() => setAiTutorOpen(true)}
             className="border-[#8B7EC8] bg-[#FFF9F1] text-[#8B7EC8] hover:bg-[#8B7EC8]/10 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-2xs"
           >
-            <HelpCircle className="w-4 h-4 text-[#8B7EC8]" /> AI Assistant & Help
+            <HelpCircle className="w-4 h-4 text-[#8B7EC8]" /> AI Assistant Help
+
           </Button>
 
 

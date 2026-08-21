@@ -61,19 +61,24 @@ export function processAulynQuery(
   }
 
   // ----------------------------------------------------
-  // 2. FEATURE DISCOVERY QUERIES ("What can I do here?", "What features does AULYN have?")
+  // 2. ONBOARDING & GENERAL PLATFORM QUERIES ("How do I use AULYN?", "How does AULYN work?")
   // ----------------------------------------------------
   if (
-    lowerQuery.includes('what can i do') ||
-    lowerQuery.includes('what features') ||
+    lowerQuery === 'how do i use aulyn' ||
+    lowerQuery === 'how do i use aulyn?' ||
+    lowerQuery.includes('how do i use aulyn') ||
+    lowerQuery.includes('how does aulyn work') ||
+    lowerQuery.includes('what can i do here') ||
+    lowerQuery.includes('show me how to use') ||
+    lowerQuery.includes('what features are available') ||
+    lowerQuery.includes('where should i start') ||
     lowerQuery.includes('how can aulyn help') ||
-    lowerQuery.includes('what tools') ||
     lowerQuery.includes('overview of features')
   ) {
     if (userRole === 'student') {
       return {
         isHelpQuery: true,
-        responseText: `### 🚀 Student Workspace Features & Tools\n\nHere is what you can do on **AULYN**:\n\n1. **Classrooms & Materials**: View lecture notes and download PDF study guides.\n2. **AI Tutor**: Ask academic questions or upload screenshots of handwritten problems.\n3. **Code Trace IDE**: Visualize step-by-step call stacks and data structures.\n4. **Assessments**: Take Adaptive Quizzes, MCQ tests, 3D Flashcards, and AI Oral Viva Defenses.\n5. **Progress**: Track concept mastery on your **Knowledge Graph**.\n6. **Collaboration**: Ask doubts in Doubt Threads (+10 Bounties) and join Peer Study Rooms.`,
+        responseText: `### Here's a simple way to get started with AULYN:\n\n1. **Choose a class** — Open one of your enrolled classrooms.\n2. **Study your material** — Access lecture notes and course resources.\n3. **Use AI Tutor** — Ask questions or get difficult concepts explained.\n4. **Practice** — Take quizzes, review flashcards or attempt mock tests.\n5. **Visualize code** — Use Code Visualizer for supported programming topics.\n6. **Complete assignments** — View and submit your classroom work.\n7. **Track progress** — Check mastery, weak concepts and recommendations.\n8. **Collaborate** — Use doubts, groups and study features where available.`,
         actionButtons: [
           { label: 'View Dashboard', actionTarget: 'tab:overview' },
           { label: 'Open Materials', actionTarget: 'tab:materials' },
@@ -83,11 +88,11 @@ export function processAulynQuery(
     } else {
       return {
         isHelpQuery: true,
-        responseText: `### 🎓 Educator Command Center Features\n\nHere is what teachers can do on **AULYN**:\n\n1. **Live Classroom Sessions**: Host lectures and monitor real-time student confusion heatmaps.\n2. **AI Assignment Creation**: Generate structured coding assignments and set AI Viva requirements.\n3. **Notes AI Converter**: Upload PDFs to automatically generate quizzes, summaries, and flashcards.\n4. **Student Roster & Submissions**: Review live code submissions, grade work, and leave feedback.\n5. **Evidence Analytics**: Track class net improvement (+23%) and audit individual concept evidence logs.\n6. **Class Announcements**: Broadcast alerts and track real-time student acknowledgement ratios.`,
+        responseText: `### Here's a simple way to get started as an Educator on AULYN:\n\n1. **Manage Classrooms** — Create or select a managed classroom.\n2. **Share Lecture Materials** — Upload notes PDFs for student access.\n3. **Host Live Sessions** — Start interactive live classes with confusion heatmaps.\n4. **Create & Upload Assignments** — Publish coursework and assignment files.\n5. **Review & Grade Submissions** — Inspect student code, assign marks, and generate AI evaluation reports.\n6. **Track Class Analytics** — Audit class performance and topic mastery.\n7. **Post Announcements** — Alert students on schedule changes and exams.`,
         actionButtons: [
           { label: 'Command Overview', actionTarget: 'tab:overview' },
-          { label: 'Evidence Analytics', actionTarget: 'tab:analytics' },
-          { label: 'Notes AI Converter', actionTarget: 'tab:notes' }
+          { label: 'Analytics', actionTarget: 'tab:analytics' },
+          { label: 'Start Live Session', actionTarget: 'modal:live_session' }
         ]
       }
     }
@@ -196,8 +201,8 @@ export function processAulynQuery(
   // ----------------------------------------------------
   // 6. UNKNOWN / UNCERTAIN QUERY HANDLER (NO HALLUCINATION)
   // ----------------------------------------------------
-  // Check if query is explicitly asking how to do something product-related
-  if (lowerQuery.startsWith('how to') || lowerQuery.startsWith('how do i') || lowerQuery.startsWith('how can i') || lowerQuery.includes('aulyn')) {
+  // Only trigger fallback if explicitly asking about a specific unsupported feature
+  if ((lowerQuery.startsWith('how to') || lowerQuery.startsWith('how do i') || lowerQuery.startsWith('how can i')) && (lowerQuery.includes('pizza') || lowerQuery.includes('buy') || lowerQuery.includes('stock') || lowerQuery.includes('order') || lowerQuery.includes('game'))) {
     const suggestions: HelpActionButton[] = userRole === 'student'
       ? [
           { label: 'View Dashboard', actionTarget: 'tab:overview' },
@@ -206,16 +211,17 @@ export function processAulynQuery(
         ]
       : [
           { label: 'Command Overview', actionTarget: 'tab:overview' },
-          { label: 'Evidence Analytics', actionTarget: 'tab:analytics' },
+          { label: 'Analytics', actionTarget: 'tab:analytics' },
           { label: 'Start Live Session', actionTarget: 'modal:live_session' }
         ]
 
     return {
       isHelpQuery: true,
-      responseText: `I couldn't find that exact feature in your current AULYN workspace. I can help you with classes, assignments, quizzes, notes, AI Tutor, Code Visualizer, progress, settings and other available tools.`,
+      responseText: `I couldn't find that feature in your current AULYN workspace. I can help you with classes, assignments, quizzes, notes, AI Tutor, Code Visualizer, progress, settings and other available learning tools.`,
       actionButtons: suggestions
     }
   }
+
 
   // Not a product help query -> pass through to general AI Academic Tutor logic
   return {

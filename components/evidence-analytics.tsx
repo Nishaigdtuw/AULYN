@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from "react"
-import { TrendingUp, ShieldCheck } from "lucide-react"
+import { ShieldCheck } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { StudentMastery } from "@/lib/data-store"
 import { getStudentMastery } from "@/lib/mastery-engine"
@@ -38,29 +38,8 @@ export function EvidenceAnalytics({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl p-5">
-          <p className="text-xs font-bold text-[#77716A] uppercase tracking-wider">Before Intervention Class Mastery</p>
-          <div className="text-3xl font-serif font-black text-[#77716A] mt-1">51%</div>
-          <p className="text-[11px] text-[#77716A] font-semibold mt-1">Baseline metric prior to live session & AI tutor</p>
-        </Card>
-
-        <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-2 border-emerald-300 shadow-2xs rounded-2xl p-5">
-          <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">After Intervention Class Mastery</p>
-          <div className="text-3xl font-serif font-black text-emerald-700 mt-1">74%</div>
-          <p className="text-xs text-emerald-600 font-bold mt-1 flex items-center gap-1">
-            <TrendingUp className="w-4 h-4 text-emerald-600" /> +23% Class Net Improvement
-          </p>
-        </Card>
-
-        <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl p-5">
-          <p className="text-xs font-bold text-[#77716A] uppercase tracking-wider">Verified Evidence Multiplier</p>
-          <div className="text-3xl font-serif font-black text-[#8B7EC8] mt-1">5 Evidence Sources</div>
-          <p className="text-[11px] text-[#77716A] font-semibold mt-1">Signals + Visualizer + Quiz + Assignment + Viva</p>
-        </Card>
-      </div>
-
       <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-sm rounded-2xl p-6 space-y-6">
+
         <CardHeader className="p-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <CardTitle className="text-base font-serif font-black text-[#292724] flex items-center gap-2">

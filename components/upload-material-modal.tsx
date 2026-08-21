@@ -48,15 +48,20 @@ export function UploadMaterialModal({
     setIsUploading(true)
     const toastId = toast.loading(`Uploading "${pdfFile.name}" to ${activeClassroom.className}...`)
 
-    setTimeout(() => {
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const dataUrl = reader.result as string
       const sizeMB = `${(pdfFile.size / (1024 * 1024)).toFixed(1)} MB`
-      const fileNameToUse = pdfFile.name
+      const extension = pdfFile.name.split('.').pop() || 'pdf'
+      const fileNameToUse = noteTitle.trim()
+        ? (noteTitle.trim().endsWith(`.${extension}`) ? noteTitle.trim() : `${noteTitle.trim()}.${extension}`)
+        : pdfFile.name
 
       uploadClassroomMaterial(
         activeClassroom.classId,
         chapterName.trim(),
         fileNameToUse,
-        `/materials/${fileNameToUse}`,
+        dataUrl,
         sizeMB,
         `Official lecture notes for ${chapterName.trim()} in ${activeClassroom.className}. Published by instructor.`
       )
@@ -67,8 +72,16 @@ export function UploadMaterialModal({
       setChapterName("")
       setNoteTitle("")
       onOpenChange(false)
-    }, 600)
+    }
+
+    reader.onerror = () => {
+      setIsUploading(false)
+      toast.error("Failed to read the file. Please try again.", { id: toastId })
+    }
+
+    reader.readAsDataURL(pdfFile)
   }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

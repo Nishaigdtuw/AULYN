@@ -55,8 +55,9 @@ export function AiTutorDialog({
   useEffect(() => {
     if (open && messages.length === 0) {
       const welcomeText = userRole === 'student'
-        ? `Hello! I am your **AULYN AI Assistant & Learning Tutor** configured for **${activeClassName} (${activeChapterName})**.\n\nI can answer **academic questions** about your lecture notes or code, AND guide you on **how to use any AULYN feature**!`
+        ? `Hello! I am your **AULYN AI Assistant** configured for **${activeClassName} (${activeChapterName})**.\n\nI can answer **academic questions** about your lecture notes or code, AND guide you on **how to use any AULYN feature**!`
         : `Welcome to the **AULYN Educator AI Assistant** for **${activeClassName}**.\n\nI can assist with course analytics, lesson planning, assignment creation, live lecture heatmaps, and answer **any product-usage questions**!`
+
 
       setMessages([
         {
@@ -212,7 +213,7 @@ export function AiTutorDialog({
         <DialogHeader className="border-b border-[#E5DCD0] pb-3 shrink-0">
           <div className="flex items-center justify-between">
             <span className="text-[10px] uppercase font-bold tracking-wider text-[#E76F51] bg-[#E76F51]/10 px-2.5 py-0.5 rounded-full border border-[#E76F51]/30 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-[#E9B949]" /> AULYN AI Assistant & Help
+              <Sparkles className="w-3 h-3 text-[#E9B949]" /> AULYN AI Assistant Help
             </span>
             <span className="text-xs font-semibold text-[#77716A]">
               {activeClassName}
@@ -293,7 +294,7 @@ export function AiTutorDialog({
               onClick={() => handleSendMessage("explain_simply")}
               className="border-[#E5DCD0] bg-white text-[#292724] font-bold h-7 px-2.5 rounded-lg shrink-0 hover:border-[#E76F51]"
             >
-              💡 Explain Simply
+              Explain Simply
             </Button>
             <Button
               size="sm"
@@ -301,7 +302,7 @@ export function AiTutorDialog({
               onClick={() => handleSendMessage("step_by_step")}
               className="border-[#E5DCD0] bg-white text-[#292724] font-bold h-7 px-2.5 rounded-lg shrink-0 hover:border-[#8B7EC8]"
             >
-              📋 Step-by-Step
+              Explain Step-by-Step
             </Button>
             <Button
               size="sm"
@@ -309,7 +310,7 @@ export function AiTutorDialog({
               onClick={() => handleSendMessage("example")}
               className="border-[#E5DCD0] bg-white text-[#292724] font-bold h-7 px-2.5 rounded-lg shrink-0 hover:border-[#75B798]"
             >
-              🚀 Give Example
+              Give Example
             </Button>
             <Button
               size="sm"
@@ -317,9 +318,10 @@ export function AiTutorDialog({
               onClick={() => handleSendMessage("quiz_me")}
               className="border-[#E5DCD0] bg-white text-[#292724] font-bold h-7 px-2.5 rounded-lg shrink-0 hover:border-[#E9B949]"
             >
-              🎯 Quiz Me
+              Quiz Me
             </Button>
           </div>
+
 
           {/* Image Thumbnail Preview */}
           {imagePreview && (

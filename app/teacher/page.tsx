@@ -28,10 +28,11 @@ import { TeacherReviewModal } from "@/components/teacher-review-modal"
 
 
 
-import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, AnnouncementData, NotificationItem, AssignmentData } from "@/lib/data-store"
+import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, AnnouncementData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile } from "@/lib/data-store"
 import { getAuthenticatedUser, clearAuthenticatedUser, setAuthenticatedUser } from "@/lib/auth-guard"
 
 export default function TeacherPortal() {
+
   const router = useRouter()
   const [self, setSelf] = useState<{ userId?: string; name?: string; email?: string; role?: string } | null>(null)
 
@@ -177,31 +178,19 @@ export default function TeacherPortal() {
   }
 
   // Material View/Open Handler
+  // Material View/Open Handler
   const handleViewMaterial = (fileName: string, fileUrl?: string) => {
-    const urlToUse = fileUrl || `/materials/${fileName}`
     toast.info(`Opening "${fileName}"...`)
-    if (typeof window !== "undefined") {
-      window.open(urlToUse, "_blank")
-    }
+    viewDocumentFile(fileName, fileUrl)
   }
 
   // Material Download Handler
   const handleDownloadMaterial = (fileName: string, fileUrl?: string) => {
     toast.info(`Downloading "${fileName}"...`)
-    try {
-      const urlToUse = fileUrl || `/materials/${fileName}`
-      const a = document.createElement("a")
-      a.href = urlToUse
-      a.download = fileName
-      a.target = "_blank"
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      toast.success(`Downloaded "${fileName}" successfully!`)
-    } catch {
-      toast.error("Download failed. Please check network connection.")
-    }
+    downloadDocumentFile(fileName, fileUrl)
+    toast.success(`Downloaded "${fileName}" successfully!`)
   }
+
 
   // Publish Announcement Broadcast
   const handlePublishAnnouncement = () => {
@@ -356,8 +345,9 @@ export default function TeacherPortal() {
                   🤖 AI Educator & Product Help
                 </button>
                 <button onClick={() => { setActiveMainTab("analytics"); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
-                  📊 Evidence Analytics
+                  📊 Analytics
                 </button>
+
                 <button onClick={() => { setDoubtThreadsOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
                   ❓ Doubt Threads & Bounties
                 </button>
@@ -459,7 +449,8 @@ export default function TeacherPortal() {
             onClick={() => setAiTutorOpen(true)}
             className="border-[#8B7EC8] bg-[#FFF9F1] text-[#8B7EC8] hover:bg-[#8B7EC8]/10 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-2xs"
           >
-            <HelpCircle className="w-4 h-4 text-[#8B7EC8]" /> AI Assistant & Help
+            <HelpCircle className="w-4 h-4 text-[#8B7EC8]" /> AI Assistant Help
+
           </Button>
 
           {/* Notifications Drawer Trigger */}
@@ -572,8 +563,9 @@ export default function TeacherPortal() {
                 Overview
               </TabsTrigger>
               <TabsTrigger value="analytics" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#75B798] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
-                Evidence Analytics
+                Analytics
               </TabsTrigger>
+
               <TabsTrigger value="students" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#8B7EC8] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Roster
               </TabsTrigger>

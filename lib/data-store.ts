@@ -72,11 +72,16 @@ export interface AssignmentData {
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced'
   dueDate: string
   totalMarks: number
-  instructions: string
+  instructions?: string
   published: boolean
   submissionsCount: number
   vivaRequired?: boolean
+  fileUrl?: string
+  fileName?: string
+  fileSize?: string
+  fileType?: string
 }
+
 
 export interface EvaluationReportData {
   overallScore: number
@@ -291,17 +296,38 @@ export interface DoubtReply {
   isHelpful?: boolean
 }
 
+export interface GroupMember {
+  id: string
+  name: string
+  email: string
+  role?: 'creator' | 'member'
+}
+
+export interface GroupChatMessage {
+  id: string
+  groupId: string
+  senderId: string
+  senderName: string
+  senderRole: 'student' | 'teacher'
+  content: string
+  timestamp: string
+}
+
 export interface StudyGroup {
   groupId: string
   classId: string
   name: string
-  members: { id: string; name: string; email: string }[]
+  members: GroupMember[]
   assignmentId?: string
   assignmentTitle?: string
   workspaceNotes: string
   submissionContent?: string
   submittedAt?: string
+  messages?: GroupChatMessage[]
+  createdAt?: string
+  creatorId?: string
 }
+
 
 export interface StudyStreakData {
   studentId: string
@@ -846,6 +872,15 @@ export function saveStudyGroup(group: StudyGroup) {
   window.dispatchEvent(new Event("aulyn-data-update"))
 }
 
+export function deleteStudyGroup(groupId: string) {
+  if (typeof window === "undefined") return
+  const list = getStudyGroups()
+  const filtered = list.filter((g) => g.groupId !== groupId)
+  localStorage.setItem(GROUPS_KEY, JSON.stringify(filtered))
+  window.dispatchEvent(new Event("aulyn-data-update"))
+}
+
+
 // Teacher Material Upload Helper
 export function uploadClassroomMaterial(
   classId: string,
@@ -917,6 +952,80 @@ export function gradeSubmission(
     window.dispatchEvent(new Event("aulyn-data-update"))
   }
 }
+
+// File View & Download Helpers for Data URLs and Blobs
+export function viewDocumentFile(fileName: string, fileUrl?: string) {
+  if (typeof window === "undefined") return
+  if (!fileUrl) {
+    window.open(`/materials/${fileName}`, "_blank")
+    return
+  }
+  try {
+    let urlToOpen = fileUrl
+    if (fileUrl.startsWith("data:")) {
+      const parts = fileUrl.split(",")
+      const mimeMatch = parts[0].match(/:(.*?);/)
+      const mime = mimeMatch ? mimeMatch[1] : "application/pdf"
+      const bstr = atob(parts[1])
+      let n = bstr.length
+      const u8arr = new Uint8Array(n)
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n)
+      }
+      const blob = new Blob([u8arr], { type: mime })
+      urlToOpen = URL.createObjectURL(blob)
+    }
+    window.open(urlToOpen, "_blank")
+  } catch (err) {
+    console.error("View file error:", err)
+    window.open(fileUrl, "_blank")
+  }
+}
+
+export function downloadDocumentFile(fileName: string, fileUrl?: string) {
+  if (typeof window === "undefined") return
+  if (!fileUrl) {
+    const a = document.createElement("a")
+    a.href = `/materials/${fileName}`
+    a.download = fileName
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    return
+  }
+  try {
+    let urlToDownload = fileUrl
+    let isBlobCreated = false
+    if (fileUrl.startsWith("data:")) {
+      const parts = fileUrl.split(",")
+      const mimeMatch = parts[0].match(/:(.*?);/)
+      const mime = mimeMatch ? mimeMatch[1] : "application/octet-stream"
+      const bstr = atob(parts[1])
+      let n = bstr.length
+      const u8arr = new Uint8Array(n)
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n)
+      }
+      const blob = new Blob([u8arr], { type: mime })
+      urlToDownload = URL.createObjectURL(blob)
+      isBlobCreated = true
+    }
+
+    const a = document.createElement("a")
+    a.href = urlToDownload
+    a.download = fileName
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+
+    if (isBlobCreated) {
+      setTimeout(() => URL.revokeObjectURL(urlToDownload), 10000)
+    }
+  } catch (err) {
+    console.error("Download file error:", err)
+  }
+}
+
 
 
 

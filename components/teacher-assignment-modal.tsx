@@ -22,8 +22,13 @@ export function CreateAssignmentModal({ open, onOpenChange, activeClass }: Creat
   const [difficulty, setDifficulty] = useState<'Beginner' | 'Intermediate' | 'Advanced'>("Intermediate")
   const [totalMarks, setTotalMarks] = useState(50)
   const [dueDate, setDueDate] = useState("2026-08-30")
-  const [instructions, setInstructions] = useState("")
-  
+
+  // Assignment File Upload state
+  const [asgnFileUrl, setAsgnFileUrl] = useState<string | undefined>(undefined)
+  const [asgnFileName, setAsgnFileName] = useState<string | undefined>(undefined)
+  const [asgnFileSize, setAsgnFileSize] = useState<string | undefined>(undefined)
+  const [asgnFileType, setAsgnFileType] = useState<string | undefined>(undefined)
+
   // AI Draft Generator state
   const [isGenerating, setIsGenerating] = useState(false)
   const [draftQuestions, setDraftQuestions] = useState<string[]>([])
@@ -64,9 +69,13 @@ export function CreateAssignmentModal({ open, onOpenChange, activeClass }: Creat
       difficulty,
       dueDate,
       totalMarks,
-      instructions: instructions || "Complete all questions and submit before the deadline.",
+      instructions: "Complete all problem sets and submit your solution before the deadline.",
       published: true,
-      submissionsCount: 0
+      submissionsCount: 0,
+      fileUrl: asgnFileUrl,
+      fileName: asgnFileName,
+      fileSize: asgnFileSize,
+      fileType: asgnFileType
     }
 
     const classrooms = getStoredClassrooms()
@@ -79,8 +88,13 @@ export function CreateAssignmentModal({ open, onOpenChange, activeClass }: Creat
     toast.success(`Published assignment "${title}" to all students in ${activeClass.className}!`)
     onOpenChange(false)
     setTitle("")
+    setAsgnFileUrl(undefined)
+    setAsgnFileName(undefined)
+    setAsgnFileSize(undefined)
+    setAsgnFileType(undefined)
     setDraftQuestions([])
   }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -168,7 +182,7 @@ export function CreateAssignmentModal({ open, onOpenChange, activeClass }: Creat
             </div>
           </div>
 
-          {/* Due Date & Instructions */}
+          {/* Due Date & Assignment File Upload */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-[#292724]">Due Date</Label>
@@ -179,16 +193,59 @@ export function CreateAssignmentModal({ open, onOpenChange, activeClass }: Creat
                 className="bg-white border-[#E5DCD0] text-[#292724] text-xs font-semibold rounded-xl"
               />
             </div>
+
+            {/* Assignment Upload Section */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-[#292724]">Instructions / Submission Notes</Label>
-              <Input
-                placeholder="e.g. Upload PDF or code repository link before midnight."
-                value={instructions}
-                onChange={(e) => setInstructions(e.target.value)}
-                className="bg-white border-[#E5DCD0] text-[#292724] text-xs font-semibold rounded-xl"
-              />
+              <Label className="text-xs font-bold text-[#292724]">Upload Assignment File</Label>
+              <div
+                className="p-3 border-2 border-dashed border-[#E5DCD0] rounded-xl bg-white text-center space-y-1 hover:border-[#E76F51] transition-colors cursor-pointer"
+                onClick={() => document.getElementById("asgnFileInput")?.click()}
+              >
+                <input
+                  id="asgnFileInput"
+                  type="file"
+                  accept="application/pdf,.doc,.docx,image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      const file = e.target.files[0]
+                      const sizeMB = `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+                      setAsgnFileName(file.name)
+                      setAsgnFileSize(sizeMB)
+                      setAsgnFileType(file.type || file.name.split('.').pop() || 'document')
+                      const reader = new FileReader()
+                      reader.onloadend = () => setAsgnFileUrl(reader.result as string)
+                      reader.readAsDataURL(file)
+                      toast.success(`Attached assignment "${file.name}"`)
+                    }
+                  }}
+                />
+                {asgnFileName ? (
+                  <div className="flex items-center justify-between text-xs bg-[#FFF9F1] p-1.5 rounded-lg border border-[#E5DCD0]">
+                    <span className="font-bold text-emerald-700 truncate max-w-[160px]">{asgnFileName} ({asgnFileSize})</span>
+                    <button
+                      onClick={(evt) => {
+                        evt.stopPropagation()
+                        setAsgnFileUrl(undefined)
+                        setAsgnFileName(undefined)
+                        setAsgnFileSize(undefined)
+                        setAsgnFileType(undefined)
+                      }}
+                      className="text-[10px] text-red-600 hover:underline font-bold"
+                    >
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-xs font-bold text-[#292724]">Upload Assignment (PDF/DOCX)</p>
+                    <p className="text-[10px] text-[#77716A]">Click or Drag & Drop file</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+
 
           {/* AI Generator Toggle */}
           <div className="p-3 bg-white border border-[#E5DCD0] rounded-xl flex items-center justify-between">

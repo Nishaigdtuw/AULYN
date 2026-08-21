@@ -1,14 +1,14 @@
 'use client'
 
 import React, { useState } from "react"
-import { Send, MessageSquare, CheckCircle, Sparkles, Award, CheckCircle2, AlertCircle } from "lucide-react"
+import { Send, MessageSquare, CheckCircle, Sparkles, Award, CheckCircle2, AlertCircle, FileText, Download, Eye } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
-import { AssignmentData, SubmissionData, saveSubmission, getSubmissions, AssignmentComment } from "@/lib/data-store"
+import { AssignmentData, SubmissionData, saveSubmission, getSubmissions, AssignmentComment, viewDocumentFile, downloadDocumentFile } from "@/lib/data-store"
 import { sendNotificationEmail } from "@/lib/email-service"
 import { saveMasteryEvidence } from "@/lib/mastery-engine"
 
@@ -130,11 +130,48 @@ export function AssignmentSubmissionModal({
             {assignment?.title}
           </DialogTitle>
           <DialogDescription className="text-xs text-[#77716A]">
-            {assignment?.instructions}
+            {assignment?.instructions || "Review attached document and submit your completed lab work."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 pt-3">
+          {/* Teacher Uploaded Assignment File Card */}
+          {(assignment?.fileName || assignment?.fileUrl) && (
+            <Card className="p-3 bg-white border border-[#E5DCD0] rounded-xl flex items-center justify-between shadow-2xs">
+              <div className="flex items-center space-x-3">
+                <FileText className="w-6 h-6 text-[#E76F51] shrink-0" />
+                <div>
+                  <h4 className="text-xs font-bold text-[#292724]">{assignment.fileName || `${assignment.title}_Assignment.pdf`}</h4>
+                  <p className="text-[10px] text-[#77716A] font-semibold">{assignment.fileSize || "Official Course Document"}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    toast.info(`Opening "${assignment.fileName || assignment.title}"...`)
+                    viewDocumentFile(assignment.fileName || `${assignment.title}.pdf`, assignment.fileUrl)
+                  }}
+                  className="text-xs border-[#8B7EC8] text-[#8B7EC8] hover:bg-[#8B7EC8] hover:text-white font-bold h-7 px-3 rounded-lg cursor-pointer flex items-center gap-1"
+                >
+                  <Eye className="w-3.5 h-3.5" /> View Assignment
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    toast.info(`Downloading "${assignment.fileName || assignment.title}"...`)
+                    downloadDocumentFile(assignment.fileName || `${assignment.title}.pdf`, assignment.fileUrl)
+                    toast.success("Downloaded assignment document!")
+                  }}
+                  className="text-xs bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold h-7 px-3 rounded-lg cursor-pointer flex items-center gap-1 shadow-2xs"
+                >
+                  <Download className="w-3.5 h-3.5" /> Download Assignment
+                </Button>
+              </div>
+            </Card>
+          )}
+
           {userRole === 'student' && !existingSubmission && (
             <div className="space-y-3">
               <label className="text-xs font-bold text-[#292724]">Solution Submission (Code / Text Response):</label>
