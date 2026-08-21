@@ -106,19 +106,9 @@ export function AssignmentSubmissionModal({
       content: solutionContent.trim() || `Submitted PDF document: ${fileName || "Assignment_Submission.pdf"}`,
       fileUrl: fileUrl,
       status: "Submitted",
-      comments: [
-        {
-          id: `c-1`,
-          assignmentId: assignment.id,
-          submissionId: `sub-${assignment.id}-${Date.now()}`,
-          authorId: "student-demo",
-          authorName: studentName,
-          authorRole: "student",
-          content: fileName ? `Uploaded PDF assignment: ${fileName}` : "Initial solution submitted for evaluation.",
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]
+      comments: []
     }
+
 
     saveSubmission(sub)
     setExistingSubmission(sub)

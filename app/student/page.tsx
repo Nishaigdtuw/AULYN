@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useEffect, useState, useCallback, useRef } from "react"
-import { FileText, Download, ArrowUpRight, Menu, LogOut, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Eye, Bell, User, Save, BookOpen, Sparkles, Award, ArrowLeft, RefreshCw, HelpCircle, Plus } from "lucide-react"
+import { FileText, Download, ArrowUpRight, Menu, LogOut, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Eye, Bell, User, Save, BookOpen, Sparkles, Award, ArrowLeft, RefreshCw, HelpCircle, Plus, MessageSquare } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -406,26 +407,15 @@ export default function StudentPortal() {
 
             {expandedSections.ecosystem && (
               <div className="ml-4 pl-2 border-l border-[#E5DCD0] space-y-1 mt-1">
-                <button onClick={() => { setAiTutorOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
-                  🤖 AI Tutor & Product Help
-                </button>
-                <button onClick={() => { setAdaptiveQuizOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
-                  ⚡ Take Adaptive Quiz
-                </button>
-                <button onClick={() => { setAiVivaOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
-                  🎙️ AI Oral Viva Defense
-                </button>
                 <button onClick={() => { setDoubtThreadsOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
-                  ❓ Contextual Doubt Threads
+                  <HelpCircle className="w-3.5 h-3.5 text-[#75B798]" /> Contextual Doubt Threads
                 </button>
                 <button onClick={() => { setPeerStudyOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
-                  🔥 Peer Study Room & Streaks
-                </button>
-                <button onClick={() => { setStudentGroupsOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
-                  👥 Group Collaborations
+                  <MessageSquare className="w-3.5 h-3.5 text-[#8B7EC8]" /> Discussion Group
                 </button>
               </div>
             )}
+
           </div>
 
           {/* Practice Workflows */}
@@ -795,12 +785,12 @@ export default function StudentPortal() {
                 >
                   <CardHeader className="pb-2">
                     <CardTitle className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center justify-between">
-                      Take Adaptive Quiz <ArrowUpRight className="w-4 h-4 text-[#E76F51] group-hover:translate-x-0.5 transition-transform" />
+                      Adaptive Quiz <ArrowUpRight className="w-4 h-4 text-[#E76F51] group-hover:translate-x-0.5 transition-transform" />
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-xl font-serif font-bold text-[#E76F51]">Dynamic Difficulty</div>
-                    <p className="text-xs text-[#77716A] font-semibold mt-1">Adapts to your mastery level</p>
+                    <div className="text-xl font-serif font-bold text-[#E76F51]">Classroom Quiz</div>
+                    <p className="text-xs text-[#77716A] font-semibold mt-1">Grounded in course materials</p>
                   </CardContent>
                 </Card>
 
@@ -810,30 +800,31 @@ export default function StudentPortal() {
                 >
                   <CardHeader className="pb-2">
                     <CardTitle className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center justify-between">
-                      AI Oral Viva Defense <ArrowUpRight className="w-4 h-4 text-[#8B7EC8] group-hover:translate-x-0.5 transition-transform" />
+                      AI Oral Viva <ArrowUpRight className="w-4 h-4 text-[#8B7EC8] group-hover:translate-x-0.5 transition-transform" />
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-xl font-serif font-bold text-[#8B7EC8]">Conceptual Oral Q&A</div>
-                    <p className="text-xs text-[#77716A] font-semibold mt-1">Defend your assignment logic</p>
+                    <p className="text-xs text-[#77716A] font-semibold mt-1">Defend assignment reasoning</p>
                   </CardContent>
                 </Card>
 
                 <Card
-                  onClick={() => setDoubtThreadsOpen(true)}
+                  onClick={() => setPeerStudyOpen(true)}
                   className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl cursor-pointer group"
                 >
                   <CardHeader className="pb-2">
                     <CardTitle className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center justify-between">
-                      Contextual Doubt Threads <ArrowUpRight className="w-4 h-4 text-[#75B798] group-hover:translate-x-0.5 transition-transform" />
+                      Discussion Group <ArrowUpRight className="w-4 h-4 text-[#75B798] group-hover:translate-x-0.5 transition-transform" />
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-xl font-serif font-bold text-[#75B798]">Doubt Bounty (+10 Pts)</div>
-                    <p className="text-xs text-[#77716A] font-semibold mt-1">Ask questions & earn points</p>
+                    <div className="text-xl font-serif font-bold text-[#75B798]">Peer Class Discussion</div>
+                    <p className="text-xs text-[#77716A] font-semibold mt-1">Q&A and solution sharing</p>
                   </CardContent>
                 </Card>
               </div>
+
 
               {/* Active Course Assignments */}
               <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">

@@ -314,7 +314,7 @@ export default function TeacherPortal() {
           onClick={() => { setCreateAssignmentOpen(true); setMobileDrawerOpen(false) }}
           className="w-full bg-[#8B7EC8] hover:bg-[#7a6db7] text-white font-bold py-2 rounded-xl shadow-2xs hover:shadow-md transition-all duration-200 text-xs flex items-center justify-center gap-1.5 cursor-pointer"
         >
-          <Plus className="w-4 h-4" /> Create Assignment (AI Assisted)
+          <Plus className="w-4 h-4" /> Create Assignment
         </Button>
 
         {/* Upload Notes PDF Trigger */}
@@ -325,7 +325,6 @@ export default function TeacherPortal() {
         >
           <FileText className="w-4 h-4 text-[#E76F51]" /> Upload Course Notes PDF
         </Button>
-
 
         {/* Navigation Items */}
         <nav className="space-y-1 text-xs">
@@ -373,29 +372,13 @@ export default function TeacherPortal() {
             )}
           </div>
 
-          {/* Intelligent Ecosystem Submenu (Clean Text & Lucide Icons - No Emojis) */}
-          <div>
-            <button
-              onClick={() => toggleSection("ecosystem")}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724] transition-all duration-200 cursor-pointer"
-            >
-              <span className="flex items-center">
-                <Sparkles className="w-4 h-4 mr-2.5 text-[#8B7EC8]" /> Intelligent Tools
-              </span>
-              {expandedSections.ecosystem ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-            </button>
-
-            {expandedSections.ecosystem && (
-              <div className="ml-4 pl-2 border-l border-[#E5DCD0] space-y-1 mt-1">
-                <button onClick={() => { setAiTutorOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
-                  <HelpCircle className="w-3.5 h-3.5 text-[#8B7EC8]" /> AI Quiz Generator & Assistant
-                </button>
-                <button onClick={() => { setDoubtThreadsOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
-                  <TrendingUp className="w-3.5 h-3.5 text-[#75B798]" /> Teaching Insights
-                </button>
-              </div>
-            )}
-          </div>
+          {/* Doubt Threads */}
+          <button
+            onClick={() => { setDoubtThreadsOpen(true); setMobileDrawerOpen(false) }}
+            className="w-full flex items-center px-3 py-2 rounded-xl font-bold text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724] transition-all duration-200 cursor-pointer"
+          >
+            <HelpCircle className="w-4 h-4 mr-2.5 text-[#8B7EC8]" /> Doubt Threads
+          </button>
 
           {/* Settings */}
           <button
@@ -406,6 +389,7 @@ export default function TeacherPortal() {
           >
             <Settings className="w-4 h-4 mr-2.5 text-[#77716A]" /> Settings & Profile
           </button>
+
 
         </nav>
       </div>
@@ -761,8 +745,8 @@ export default function TeacherPortal() {
                     <div className="text-3xl font-serif font-bold text-[#292724]">
                       {activeClassroom?.students?.length || 0} Active
                     </div>
-                    <p className="text-xs text-[#75B798] font-bold mt-1 flex items-center">
-                      <TrendingUp className="w-3.5 h-3.5 mr-1" /> +2 this week
+                    <p className="text-xs text-[#77716A] font-semibold mt-1">
+                      {activeClassroom?.students?.length ? `${activeClassroom.students.length} student(s) enrolled` : "No students enrolled yet"}
                     </p>
                   </CardContent>
                 </Card>
@@ -773,9 +757,20 @@ export default function TeacherPortal() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-3xl font-serif font-bold text-[#8B7EC8]">
-                      {activeClassroom?.students?.[0]?.score || 88}%
+                      {(() => {
+                        const scored = activeClassroom?.students?.filter(s => s.score > 0) || []
+                        if (scored.length === 0) return "0%"
+                        const avg = Math.round(scored.reduce((acc, s) => acc + s.score, 0) / scored.length)
+                        return `${avg}%`
+                      })()}
                     </div>
-                    <p className="text-xs text-[#292724] font-semibold mt-1">Synced across real quiz attempts</p>
+                    <p className="text-xs text-[#77716A] font-semibold mt-1">
+                      {(() => {
+                        const scored = activeClassroom?.students?.filter(s => s.score > 0) || []
+                        if (scored.length === 0) return "No quiz attempts yet"
+                        return `Calculated from ${scored.length} student attempt(s)`
+                      })()}
+                    </p>
                   </CardContent>
                 </Card>
 
@@ -787,10 +782,13 @@ export default function TeacherPortal() {
                     <div className="text-3xl font-serif font-bold text-[#E76F51]">
                       {studentSubmissions.filter((s) => s.classId === activeClassroom?.classId).length} Received
                     </div>
-                    <p className="text-xs text-[#292724] font-semibold mt-1">Real-time student submissions</p>
+                    <p className="text-xs text-[#77716A] font-semibold mt-1">
+                      {studentSubmissions.filter((s) => s.classId === activeClassroom?.classId).length ? "Real-time student submissions" : "No submissions yet"}
+                    </p>
                   </CardContent>
                 </Card>
               </div>
+
 
               {/* Class Material Downloads */}
               <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
