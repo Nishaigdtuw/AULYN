@@ -1,11 +1,12 @@
 'use client'
 
 import React, { useEffect, useState, useCallback, useRef } from "react"
-import { FileText, Download, ArrowUpRight, Menu, LogOut, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Eye, Bell, User, Save, BookOpen, Sparkles, Award, ArrowLeft, RefreshCw, HelpCircle } from "lucide-react"
+import { FileText, Download, ArrowUpRight, Menu, LogOut, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Eye, Bell, User, Save, BookOpen, Sparkles, Award, ArrowLeft, RefreshCw, HelpCircle, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
@@ -27,9 +28,7 @@ import { PeerStudyRoomModal } from "@/components/peer-study-room-modal"
 import { NotificationsDrawer } from "@/components/notifications-drawer"
 import { StudentReportModal } from "@/components/student-report-modal"
 
-
-import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile } from "@/lib/data-store"
-
+import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile, joinClassroom } from "@/lib/data-store"
 import { getAuthenticatedUser, clearAuthenticatedUser, setAuthenticatedUser } from "@/lib/auth-guard"
 
 export default function StudentPortal() {
@@ -42,7 +41,12 @@ export default function StudentPortal() {
   const activeClassroomRef = useRef<ClassroomData | null>(null)
   activeClassroomRef.current = activeClassroom
 
+  // Join Classroom Modal State
+  const [isJoinClassroomOpen, setIsJoinClassroomOpen] = useState(false)
+  const [joinCodeInput, setJoinCodeInput] = useState("")
+
   const [selectedChapterIdx, setSelectedChapterIdx] = useState<number>(0)
+
 
   // Settings State
   const [studentName, setStudentName] = useState("Alex Rivera")
@@ -214,6 +218,33 @@ export default function StudentPortal() {
 
     toast.info(`Active Class: ${cls.className} (${cls.code})`)
   }
+
+  const handleJoinClassroomSubmit = () => {
+    if (!joinCodeInput.trim()) {
+      toast.warning("Please enter a valid Classroom ID / Join Code.")
+      return
+    }
+
+    const res = joinClassroom(joinCodeInput.trim(), {
+      id: "s-1",
+      name: studentName,
+      email: studentEmail
+    })
+
+    if (res.success) {
+      toast.success(res.message)
+      const updatedClassrooms = getStoredClassrooms()
+      setClassrooms(updatedClassrooms)
+      if (res.classroom) {
+        handleSelectClassroom(res.classroom)
+      }
+      setJoinCodeInput("")
+      setIsJoinClassroomOpen(false)
+    } else {
+      toast.error(res.message)
+    }
+  }
+
 
   // Acknowledge Announcement Handler
   const handleAcknowledgeAnnouncement = (annId: string) => {
@@ -615,7 +646,7 @@ export default function StudentPortal() {
               </p>
             </div>
 
-            {/* Classroom Selector Pills */}
+            {/* Classroom Selector Pills & Join Classroom Button */}
             <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 sm:pb-0">
               {classrooms.map((cls) => (
                 <button
@@ -630,8 +661,56 @@ export default function StudentPortal() {
                   {cls.code}
                 </button>
               ))}
+
+              <Button
+                size="sm"
+                onClick={() => setIsJoinClassroomOpen(true)}
+                className="bg-[#8B7EC8] hover:bg-[#786bb8] text-white font-bold text-xs px-3 py-1.5 rounded-xl cursor-pointer shrink-0 shadow-2xs flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" /> Join Class
+              </Button>
             </div>
           </div>
+
+          {/* Join Classroom Modal Dialog */}
+          {isJoinClassroomOpen && (
+            <Dialog open={isJoinClassroomOpen} onOpenChange={setIsJoinClassroomOpen}>
+              <DialogContent className="sm:max-w-md bg-[#FFF9F1] border border-[#E5DCD0] rounded-2xl p-6 text-[#292724]">
+                <DialogHeader>
+                  <DialogTitle className="text-lg font-bold text-[#292724] flex items-center gap-2">
+                    <Plus className="w-5 h-5 text-[#8B7EC8]" /> Join Classroom with Code
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-[#77716A]">
+                    Enter the unique Classroom ID or Join Code provided by your professor.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 pt-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-[#292724]">Classroom ID / Join Code</Label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. AULYN-CS201-X7K9 or CS201"
+                      value={joinCodeInput}
+                      onChange={(e) => setJoinCodeInput(e.target.value)}
+                      className="bg-white border-[#E5DCD0] text-xs font-mono font-bold rounded-xl uppercase"
+                    />
+                    <p className="text-[10px] text-[#77716A]">Ask your instructor for the classroom code if you don&apos;t have one.</p>
+                  </div>
+                </div>
+
+                <div className="pt-4 flex justify-end space-x-2">
+                  <Button variant="ghost" onClick={() => setIsJoinClassroomOpen(false)} className="text-xs font-bold h-8">
+                    Cancel
+                  </Button>
+                  <Button onClick={handleJoinClassroomSubmit} className="bg-[#8B7EC8] hover:bg-[#786bb8] text-white font-bold text-xs h-8 px-4 rounded-xl shadow-2xs">
+                    Join Classroom
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+
 
           {/* LIVE SESSION ACTIVE NOTIFICATION BANNER */}
           <div className="p-4 bg-gradient-to-r from-red-50 to-amber-50 border-2 border-red-300 rounded-2xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -782,8 +861,9 @@ export default function StudentPortal() {
                             }}
                             className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs rounded-xl shadow-2xs cursor-pointer self-start sm:self-auto"
                           >
-                            Open Submission & Discussion Thread
+                            Open Assignment
                           </Button>
+
                         </div>
                       </div>
                     ))

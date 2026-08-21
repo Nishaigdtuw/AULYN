@@ -28,7 +28,8 @@ import { TeacherReviewModal } from "@/components/teacher-review-modal"
 
 
 
-import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, AnnouncementData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile } from "@/lib/data-store"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, AnnouncementData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile, createClassroom } from "@/lib/data-store"
 import { getAuthenticatedUser, clearAuthenticatedUser, setAuthenticatedUser } from "@/lib/auth-guard"
 
 export default function TeacherPortal() {
@@ -42,6 +43,14 @@ export default function TeacherPortal() {
   const activeClassroomRef = useRef<ClassroomData | null>(null)
   activeClassroomRef.current = activeClassroom
 
+  // Create Classroom Modal State
+  const [isCreateClassroomOpen, setIsCreateClassroomOpen] = useState(false)
+  const [newClassName, setNewClassName] = useState("")
+  const [newSubject, setNewSubject] = useState("")
+  const [newCourseCode, setNewCourseCode] = useState("")
+  const [newClassDescription, setNewClassDescription] = useState("")
+  const [newSemester, setNewSemester] = useState("Fall 2026")
+
   // Settings State
   const [profileName, setProfileName] = useState("Prof. Sarah Jenkins")
   const [profileEmail, setProfileEmail] = useState("sarah.jenkins@aulyn.edu")
@@ -53,6 +62,7 @@ export default function TeacherPortal() {
   const [pricingOpen, setPricingOpen] = useState(false)
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false)
   const [uploadMaterialOpen, setUploadMaterialOpen] = useState(false)
+
 
 
   // Ecosystem Modals
@@ -191,6 +201,36 @@ export default function TeacherPortal() {
     toast.success(`Downloaded "${fileName}" successfully!`)
   }
 
+  const handleCreateClassroomSubmit = () => {
+
+    if (!newClassName.trim() || !newCourseCode.trim()) {
+      toast.warning("Please enter Classroom Name and Course Code.")
+      return
+    }
+
+    const created = createClassroom({
+      className: newClassName.trim(),
+      subject: newSubject.trim() || "Computer Science",
+      code: newCourseCode.trim(),
+      description: newClassDescription.trim(),
+      instructor: profileName,
+      instructorEmail: profileEmail,
+      semester: newSemester
+    })
+
+    toast.success(`Classroom "${created.className}" created! Classroom ID: ${created.classId}`)
+    const updated = getStoredClassrooms()
+    setClassrooms(updated)
+    setActiveClassroom(created)
+
+    setNewClassName("")
+    setNewSubject("")
+    setNewCourseCode("")
+    setNewClassDescription("")
+    setIsCreateClassroomOpen(false)
+  }
+
+
 
   // Publish Announcement Broadcast
   const handlePublishAnnouncement = () => {
@@ -323,11 +363,17 @@ export default function TeacherPortal() {
                     {cls.code}: {cls.className}
                   </button>
                 ))}
+                <button
+                  onClick={() => { setIsCreateClassroomOpen(true); setMobileDrawerOpen(false) }}
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold text-[#E76F51] hover:bg-[#E76F51]/10 transition-all duration-200 cursor-pointer flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Create Classroom
+                </button>
               </div>
             )}
           </div>
 
-          {/* Intelligent Ecosystem Submenu */}
+          {/* Intelligent Ecosystem Submenu (Clean Text & Lucide Icons - No Emojis) */}
           <div>
             <button
               onClick={() => toggleSection("ecosystem")}
@@ -342,41 +388,14 @@ export default function TeacherPortal() {
             {expandedSections.ecosystem && (
               <div className="ml-4 pl-2 border-l border-[#E5DCD0] space-y-1 mt-1">
                 <button onClick={() => { setAiTutorOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
-                  🤖 AI Educator & Product Help
+                  <HelpCircle className="w-3.5 h-3.5 text-[#8B7EC8]" /> AI Quiz Generator & Assistant
                 </button>
-                <button onClick={() => { setActiveMainTab("analytics"); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
-                  📊 Analytics
-                </button>
-
                 <button onClick={() => { setDoubtThreadsOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
-                  ❓ Doubt Threads & Bounties
-                </button>
-                <button onClick={() => { setStudentGroupsOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
-                  👥 Group Assignment Workspaces
+                  <TrendingUp className="w-3.5 h-3.5 text-[#75B798]" /> Teaching Insights
                 </button>
               </div>
             )}
           </div>
-
-          {/* Assessments & Submissions */}
-          <button
-            onClick={() => { setActiveMainTab("students"); setMobileDrawerOpen(false) }}
-            className={`w-full flex items-center px-3 py-2 rounded-xl font-bold transition-all duration-200 cursor-pointer ${
-              activeMainTab === "students" ? "bg-[#F1E8DD] text-[#8B7EC8] shadow-2xs" : "text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724]"
-            }`}
-          >
-            <FileCheck className="w-4 h-4 mr-2.5 text-[#8B7EC8]" /> Student Roster & Submissions
-          </button>
-
-          {/* AI Notes Converter */}
-          <button
-            onClick={() => { setActiveMainTab("notes"); setMobileDrawerOpen(false) }}
-            className={`w-full flex items-center px-3 py-2 rounded-xl font-bold transition-all duration-200 cursor-pointer ${
-              activeMainTab === "notes" ? "bg-[#F1E8DD] text-[#E9B949] shadow-2xs" : "text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724]"
-            }`}
-          >
-            <Sparkles className="w-4 h-4 mr-2.5 text-[#E9B949]" /> Notes AI Converter
-          </button>
 
           {/* Settings */}
           <button
@@ -387,6 +406,7 @@ export default function TeacherPortal() {
           >
             <Settings className="w-4 h-4 mr-2.5 text-[#77716A]" /> Settings & Profile
           </button>
+
         </nav>
       </div>
 
@@ -528,18 +548,37 @@ export default function TeacherPortal() {
 
         {/* Main Command Center */}
         <main className="flex-1 p-4 sm:p-8 overflow-y-auto space-y-6">
-          {/* Header Greeting Pill */}
+          {/* Header Greeting & Active Classroom Pill */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#FFF9F1]/90 backdrop-blur-md p-5 rounded-2xl border border-[#E5DCD0] shadow-sm">
             <div>
               <h2 className="text-2xl sm:text-3xl font-serif font-black text-[#292724] tracking-tight">
-                Welcome back, {profileName.split(" ")[1] || profileName}.
+                {activeClassroom?.className || "Educator Command Center"}
               </h2>
-              <p className="text-xs font-bold text-[#292724] mt-1">
-                Active Classroom: <span className="text-[#E76F51] font-bold">{activeClassroom?.className || "Loading..."}</span> ({activeClassroom?.code})
-              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <span className="text-xs font-bold text-[#E76F51]">
+                  Code: {activeClassroom?.code}
+                </span>
+                <span className="text-xs text-[#77716A]">•</span>
+                <span className="text-xs font-bold text-[#292724]">
+                  Classroom ID: <code className="bg-white px-2 py-0.5 rounded border border-[#E5DCD0] font-mono text-xs text-[#8B7EC8]">{activeClassroom?.classId}</code>
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    if (activeClassroom?.classId) {
+                      navigator.clipboard.writeText(activeClassroom.classId)
+                      toast.success(`Copied Classroom ID "${activeClassroom.classId}" to clipboard!`)
+                    }
+                  }}
+                  className="text-[11px] h-6 px-2 border-[#8B7EC8] text-[#8B7EC8] font-bold rounded-lg cursor-pointer hover:bg-[#8B7EC8] hover:text-white"
+                >
+                  Copy ID
+                </Button>
+              </div>
             </div>
 
-            {/* Classroom Selector Pills */}
+            {/* Classroom Selector Pills & Create Classroom Button */}
             <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 sm:pb-0">
               {classrooms.map((cls) => (
                 <button
@@ -554,28 +593,119 @@ export default function TeacherPortal() {
                   {cls.code}
                 </button>
               ))}
+
+              <Button
+                size="sm"
+                onClick={() => setIsCreateClassroomOpen(true)}
+                className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs px-3 py-1.5 rounded-xl cursor-pointer shrink-0 shadow-2xs flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" /> Create Class
+              </Button>
             </div>
           </div>
+
+          {/* Create Classroom Modal Dialog */}
+          {isCreateClassroomOpen && (
+            <Dialog open={isCreateClassroomOpen} onOpenChange={setIsCreateClassroomOpen}>
+              <DialogContent className="sm:max-w-lg bg-[#FFF9F1] border border-[#E5DCD0] rounded-2xl p-6 text-[#292724]">
+                <DialogHeader>
+                  <DialogTitle className="text-lg font-bold text-[#292724] flex items-center gap-2">
+                    <Plus className="w-5 h-5 text-[#E76F51]" /> Create New Classroom
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-[#77716A]">
+                    Generate a unique Classroom ID and join code for your students.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-3 pt-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-[#292724]">Classroom Name *</Label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. Advanced Operating Systems"
+                      value={newClassName}
+                      onChange={(e) => setNewClassName(e.target.value)}
+                      className="bg-white border-[#E5DCD0] text-xs font-bold rounded-xl"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-bold text-[#292724]">Course Code *</Label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. CS401"
+                        value={newCourseCode}
+                        onChange={(e) => setNewCourseCode(e.target.value)}
+                        className="bg-white border-[#E5DCD0] text-xs font-mono font-bold rounded-xl uppercase"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-bold text-[#292724]">Subject / Field</Label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. Computer Science"
+                        value={newSubject}
+                        onChange={(e) => setNewSubject(e.target.value)}
+                        className="bg-white border-[#E5DCD0] text-xs font-bold rounded-xl"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-[#292724]">Semester / Term</Label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. Fall 2026"
+                      value={newSemester}
+                      onChange={(e) => setNewSemester(e.target.value)}
+                      className="bg-white border-[#E5DCD0] text-xs font-bold rounded-xl"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-[#292724]">Description (Optional)</Label>
+                    <Input
+                      type="text"
+                      placeholder="Brief overview of course objectives..."
+                      value={newClassDescription}
+                      onChange={(e) => setNewClassDescription(e.target.value)}
+                      className="bg-white border-[#E5DCD0] text-xs font-medium rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4 flex justify-end space-x-2">
+                  <Button variant="ghost" onClick={() => setIsCreateClassroomOpen(false)} className="text-xs font-bold h-8">
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreateClassroomSubmit} className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs h-8 px-4 rounded-xl shadow-2xs">
+                    Generate Classroom ID
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
 
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full flex flex-col">
             <TabsList className="grid w-full grid-cols-5 max-w-2xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6">
               <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Overview
               </TabsTrigger>
-              <TabsTrigger value="analytics" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#75B798] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
-                Analytics
-              </TabsTrigger>
-
               <TabsTrigger value="students" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#8B7EC8] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Roster
               </TabsTrigger>
-              <TabsTrigger value="notes" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E9B949] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
-                Notes AI
+              <TabsTrigger value="submissions" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
+                Submissions
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#75B798] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
+                Analytics
               </TabsTrigger>
               <TabsTrigger value="settings" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Settings
               </TabsTrigger>
             </TabsList>
+
 
             {/* OVERVIEW TAB */}
             <TabsContent value="overview" className="space-y-6 animate-in fade-in-50 duration-200">
@@ -708,12 +838,12 @@ export default function TeacherPortal() {
               <EvidenceAnalytics classId={activeClassroom?.classId} />
             </TabsContent>
 
-            {/* STUDENT ROSTER & SUBMISSIONS TAB */}
+            {/* STUDENT ROSTER TAB */}
             <TabsContent value="students" className="space-y-6 animate-in fade-in-50 duration-200">
               <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
                 <CardHeader>
-                  <CardTitle className="text-[#292724] font-serif font-bold text-base">Enrolled Roster & Real-Time Submissions</CardTitle>
-                  <CardDescription className="text-xs text-[#77716A]">Student performance metrics for {activeClassroom?.className}</CardDescription>
+                  <CardTitle className="text-[#292724] font-serif font-bold text-base">Enrolled Roster ({activeClassroom?.className})</CardTitle>
+                  <CardDescription className="text-xs text-[#77716A]">Students currently enrolled in Classroom ID: {activeClassroom?.classId}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -752,28 +882,63 @@ export default function TeacherPortal() {
                   </Table>
                 </CardContent>
               </Card>
+            </TabsContent>
 
-              {/* Submissions Received from Students */}
+            {/* CLASS-SCOPED SUBMISSIONS TAB */}
+            <TabsContent value="submissions" className="space-y-6 animate-in fade-in-50 duration-200">
               <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
                 <CardHeader>
                   <CardTitle className="text-[#292724] font-serif font-bold text-base flex items-center gap-2">
-                    <FileCheck className="w-4 h-4 text-[#8B7EC8]" /> Live Student Submissions ({activeClassroom?.code})
+                    <FileCheck className="w-4 h-4 text-[#E76F51]" /> Assignment Submissions ({activeClassroom?.code})
                   </CardTitle>
+                  <CardDescription className="text-xs text-[#77716A]">Review PDF submissions, assign marks, and generate feedback reports for {activeClassroom?.className}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {studentSubmissions.filter((s) => s.classId === activeClassroom?.classId).length === 0 ? (
-                    <p className="text-xs text-[#77716A] italic">No submissions received for {activeClassroom?.className} yet.</p>
+                    <p className="text-xs text-[#77716A] italic py-4 text-center">No submissions received for {activeClassroom?.className} yet.</p>
                   ) : (
                     studentSubmissions.filter((s) => s.classId === activeClassroom?.classId).map((sub) => (
-                      <div key={sub.submissionId} className="p-3.5 bg-white border border-[#E5DCD0] rounded-xl text-xs space-y-2 font-bold shadow-2xs">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div key={sub.submissionId} className="p-4 bg-white border border-[#E5DCD0] rounded-xl text-xs space-y-3 font-bold shadow-2xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E5DCD0] pb-2">
                           <div className="flex items-center space-x-2">
-                            <span className="text-[#292724]">{sub.studentName} — {sub.assignmentTitle}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] ${
+                            <span className="text-[#292724] font-bold text-sm">{sub.studentName}</span>
+                            <span className="text-[#77716A]">•</span>
+                            <span className="text-[#E76F51]">{sub.assignmentTitle}</span>
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] ${
                               sub.status === 'Graded' ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-amber-100 text-amber-700 border border-amber-300'
                             }`}>
                               {sub.status === 'Graded' ? `Graded (${sub.marks || 45}/50)` : 'Pending Review'}
                             </span>
+                          </div>
+                          <span className="text-[10px] text-[#77716A]">Submitted: {sub.submittedAt}</span>
+                        </div>
+
+                        <p className="text-xs font-mono text-[#292724] bg-[#FFF9F1] p-3 rounded-lg border border-[#E5DCD0]">
+                          {sub.content}
+                        </p>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                viewDocumentFile("Assignment_Submission.pdf", sub.fileUrl)
+                              }}
+                              className="bg-white border-[#8B7EC8] text-[#8B7EC8] hover:bg-[#8B7EC8] hover:text-white font-bold text-xs h-7 px-3 rounded-lg cursor-pointer flex items-center gap-1"
+                            >
+                              <Eye className="w-3.5 h-3.5" /> View PDF
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                downloadDocumentFile("Assignment_Submission.pdf", sub.fileUrl)
+                              }}
+                              className="bg-white border-[#E76F51] text-[#E76F51] hover:bg-[#E76F51] hover:text-white font-bold text-xs h-7 px-3 rounded-lg cursor-pointer flex items-center gap-1"
+                            >
+                              <Download className="w-3.5 h-3.5" /> Download PDF
+                            </Button>
                           </div>
 
                           <div className="flex items-center space-x-2">
@@ -797,7 +962,7 @@ export default function TeacherPortal() {
                                 setSelectedAsgn(targetAsgn)
                                 setAsgnSubmissionOpen(true)
                               }}
-                              className="bg-white border-[#E5DCD0] text-[#292724] hover:bg-[#F1E8DD] font-bold text-[11px] h-7 rounded-lg cursor-pointer"
+                              className="bg-white border-[#E5DCD0] text-[#292724] hover:bg-[#F1E8DD] font-bold text-xs h-7 rounded-lg cursor-pointer"
                             >
                               Thread
                             </Button>
@@ -807,21 +972,19 @@ export default function TeacherPortal() {
                                 setSelectedSubForReview(sub)
                                 setTeacherReviewOpen(true)
                               }}
-                              className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-[11px] h-7 rounded-lg cursor-pointer flex items-center gap-1"
+                              className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs h-7 px-3 rounded-lg cursor-pointer flex items-center gap-1 shadow-2xs"
                             >
-                              <Sparkles className="w-3 h-3 text-[#E9B949]" /> Inspect, Grade & Generate Report
+                              <Sparkles className="w-3.5 h-3.5 text-[#E9B949]" /> Grade & Add Feedback
                             </Button>
                           </div>
-
                         </div>
-                        <p className="text-[11px] font-mono text-[#77716A] bg-[#FFF9F1] p-2.5 rounded-lg border border-[#E5DCD0]">{sub.content}</p>
                       </div>
                     ))
-
                   )}
                 </CardContent>
               </Card>
             </TabsContent>
+
 
             {/* NOTES AI TAB */}
             <TabsContent value="notes" className="animate-in fade-in-50 duration-200">

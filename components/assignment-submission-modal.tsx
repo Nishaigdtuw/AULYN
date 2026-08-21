@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from "react"
-import { Send, MessageSquare, CheckCircle, Sparkles, Award, CheckCircle2, AlertCircle, FileText, Download, Eye } from "lucide-react"
+import { Send, MessageSquare, CheckCircle, Sparkles, Award, CheckCircle2, AlertCircle, FileText, Download, Eye, Upload, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
@@ -31,16 +31,69 @@ export function AssignmentSubmissionModal({
 }: AssignmentSubmissionModalProps) {
   const [solutionContent, setSolutionContent] = useState("")
   const [newComment, setNewComment] = useState("")
+  
+  // PDF Upload State
+  const [pdfFile, setPdfFile] = useState<File | null>(null)
+  const [pdfDataUrl, setPdfDataUrl] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<number>(0)
+  const [isUploading, setIsUploading] = useState<boolean>(false)
+
   const [existingSubmission, setExistingSubmission] = useState<SubmissionData | null>(() => {
     const list = getSubmissions(assignment?.classId)
     return list.find((s) => s.assignmentId === assignment?.id) || null
   })
 
-  const handleSubmitSolution = () => {
-    if (!solutionContent.trim()) {
-      toast.warning("Please type your solution before submitting")
+  // Handle PDF File Selector / Drag & Drop
+  const handlePdfSelect = (file: File) => {
+    if (!file.type.includes("pdf") && !file.name.toLowerCase().endsWith(".pdf")) {
+      toast.error("Please upload a valid PDF document (.pdf).")
       return
     }
+
+    setPdfFile(file)
+    setIsUploading(true)
+    setUploadProgress(20)
+
+    const interval = setInterval(() => {
+      setUploadProgress((prev) => {
+        if (prev >= 90) {
+          clearInterval(interval)
+          return 90
+        }
+        return prev + 25
+      })
+    }, 100)
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      setPdfDataUrl(reader.result as string)
+      setUploadProgress(100)
+      setIsUploading(false)
+      clearInterval(interval)
+      toast.success(`PDF "${file.name}" ready for submission!`)
+    }
+    reader.onerror = () => {
+      setIsUploading(false)
+      clearInterval(interval)
+      toast.error("Failed to read PDF file.")
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemovePdf = () => {
+    setPdfFile(null)
+    setPdfDataUrl(null)
+    setUploadProgress(0)
+  }
+
+  const handleSubmitSolution = () => {
+    if (!pdfFile && !solutionContent.trim()) {
+      toast.warning("Please upload an Assignment PDF or type written solution notes before submitting.")
+      return
+    }
+
+    const fileUrl = pdfDataUrl || undefined
+    const fileName = pdfFile?.name || undefined
 
     const sub: SubmissionData = {
       submissionId: `sub-${assignment.id}-${Date.now()}`,
@@ -50,7 +103,8 @@ export function AssignmentSubmissionModal({
       studentName,
       classId: assignment.classId,
       submittedAt: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      content: solutionContent.trim(),
+      content: solutionContent.trim() || `Submitted PDF document: ${fileName || "Assignment_Submission.pdf"}`,
+      fileUrl: fileUrl,
       status: "Submitted",
       comments: [
         {
@@ -60,7 +114,7 @@ export function AssignmentSubmissionModal({
           authorId: "student-demo",
           authorName: studentName,
           authorRole: "student",
-          content: "Initial solution submitted for evaluation.",
+          content: fileName ? `Uploaded PDF assignment: ${fileName}` : "Initial solution submitted for evaluation.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]
@@ -69,6 +123,8 @@ export function AssignmentSubmissionModal({
     saveSubmission(sub)
     setExistingSubmission(sub)
     setSolutionContent("")
+    setPdfFile(null)
+    setPdfDataUrl(null)
 
     saveMasteryEvidence("student-demo", assignment.classId, "tree-traversal", {
       type: "Assignment",
@@ -76,14 +132,14 @@ export function AssignmentSubmissionModal({
       score: 45,
       maxScore: 50,
       percentage: 90,
-      notes: "Solution submitted and algorithm logic verified."
+      notes: "PDF assignment submission uploaded and logged."
     })
 
     sendNotificationEmail({
       toEmail: "sarah.jenkins@aulyn.edu",
       toName: "Prof. Sarah Jenkins",
       subject: `New Assignment Submission: ${assignment.title}`,
-      messageBody: `${studentName} submitted a solution for ${assignment.title}.`,
+      messageBody: `${studentName} submitted a PDF solution for ${assignment.title}.`,
       category: "Assignment"
     })
 
@@ -137,7 +193,7 @@ export function AssignmentSubmissionModal({
         <div className="space-y-5 pt-3">
           {/* Teacher Uploaded Assignment File Card */}
           {(assignment?.fileName || assignment?.fileUrl) && (
-            <Card className="p-3 bg-white border border-[#E5DCD0] rounded-xl flex items-center justify-between shadow-2xs">
+            <Card className="p-3.5 bg-white border border-[#E5DCD0] rounded-xl flex items-center justify-between shadow-2xs">
               <div className="flex items-center space-x-3">
                 <FileText className="w-6 h-6 text-[#E76F51] shrink-0" />
                 <div>
@@ -155,42 +211,98 @@ export function AssignmentSubmissionModal({
                   }}
                   className="text-xs border-[#8B7EC8] text-[#8B7EC8] hover:bg-[#8B7EC8] hover:text-white font-bold h-7 px-3 rounded-lg cursor-pointer flex items-center gap-1"
                 >
-                  <Eye className="w-3.5 h-3.5" /> View Assignment
+                  <Eye className="w-3.5 h-3.5" /> View
                 </Button>
                 <Button
                   size="sm"
                   onClick={() => {
                     toast.info(`Downloading "${assignment.fileName || assignment.title}"...`)
                     downloadDocumentFile(assignment.fileName || `${assignment.title}.pdf`, assignment.fileUrl)
-                    toast.success("Downloaded assignment document!")
                   }}
                   className="text-xs bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold h-7 px-3 rounded-lg cursor-pointer flex items-center gap-1 shadow-2xs"
                 >
-                  <Download className="w-3.5 h-3.5" /> Download Assignment
+                  <Download className="w-3.5 h-3.5" /> Download
                 </Button>
               </div>
             </Card>
           )}
 
+          {/* Student Upload Form: Drag & Drop PDF Upload Zone */}
           {userRole === 'student' && !existingSubmission && (
-            <div className="space-y-3">
-              <label className="text-xs font-bold text-[#292724]">Solution Submission (Code / Text Response):</label>
-              <textarea
-                value={solutionContent}
-                onChange={(e) => setSolutionContent(e.target.value)}
-                placeholder="Paste code or written answer logic here..."
-                rows={5}
-                className="w-full bg-white border border-[#E5DCD0] text-xs font-medium text-[#292724] rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-[#E76F51]"
-              />
+            <div className="space-y-4 bg-white p-4 rounded-2xl border border-[#E5DCD0] shadow-2xs">
+              <h4 className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center gap-1.5">
+                <Upload className="w-4 h-4 text-[#E76F51]" /> Submit Assignment PDF
+              </h4>
+
+              {/* Upload Dropzone */}
+              {!pdfFile ? (
+                <label className="border-2 border-dashed border-[#E76F51]/40 hover:border-[#E76F51] bg-[#FFF9F1] rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition-colors text-center space-y-2">
+                  <input
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handlePdfSelect(e.target.files[0])
+                      }
+                    }}
+                  />
+                  <FileText className="w-8 h-8 text-[#E76F51] animate-bounce" />
+                  <p className="text-xs font-bold text-[#292724]">Upload Assignment PDF</p>
+                  <p className="text-[10px] text-[#77716A]">Drag & Drop your completed PDF here or <span className="text-[#E76F51] underline">Browse File</span></p>
+                </label>
+              ) : (
+                /* Uploaded PDF Card with progress & remove button */
+                <div className="p-3 bg-[#FFF9F1] border border-[#E76F51]/50 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2.5">
+                      <FileText className="w-5 h-5 text-[#E76F51]" />
+                      <div>
+                        <p className="text-xs font-bold text-[#292724]">{pdfFile.name}</p>
+                        <p className="text-[10px] text-[#77716A]">{(pdfFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleRemovePdf}
+                      className="text-red-600 hover:text-red-800 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <X className="w-4 h-4" /> Remove
+                    </button>
+                  </div>
+
+                  {/* Upload Progress Bar */}
+                  <div className="w-full bg-[#E5DCD0] h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-[#E76F51] h-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Optional Text / Logic Response */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-[#77716A]">Optional Written Response / Notes:</label>
+                <textarea
+                  value={solutionContent}
+                  onChange={(e) => setSolutionContent(e.target.value)}
+                  placeholder="Add any notes, proof explanations, or comments for Professor..."
+                  rows={3}
+                  className="w-full bg-[#FFF9F1] border border-[#E5DCD0] text-xs font-medium text-[#292724] rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-[#E76F51]"
+                />
+              </div>
+
               <Button
                 onClick={handleSubmitSolution}
+                disabled={isUploading}
                 className="w-full bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs py-2.5 rounded-xl shadow-2xs cursor-pointer"
               >
-                <Send className="w-3.5 h-3.5 mr-1.5" /> Submit Assignment Solution
+                <Send className="w-3.5 h-3.5 mr-1.5" /> Submit Assignment
               </Button>
             </div>
           )}
 
+          {/* Submitted Assignment State Display */}
           {existingSubmission && (
             <Card className="bg-white border-2 border-emerald-300 rounded-2xl p-4 space-y-3 shadow-2xs">
               <div className="flex items-center justify-between">
@@ -208,9 +320,42 @@ export function AssignmentSubmissionModal({
                   </span>
                 </div>
               </div>
-              <p className="text-xs text-[#292724] bg-[#FFF9F1] p-3 rounded-xl border border-[#E5DCD0] font-mono">
-                {existingSubmission.content}
-              </p>
+
+              {/* View Submitted PDF if present */}
+              {existingSubmission.fileUrl && (
+                <div className="p-3 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl flex items-center justify-between">
+                  <div className="flex items-center space-x-2.5">
+                    <FileText className="w-5 h-5 text-[#E76F51]" />
+                    <div>
+                      <p className="text-xs font-bold text-[#292724]">Submitted Assignment PDF</p>
+                      <p className="text-[10px] text-[#77716A]">Verified Document Submission</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => viewDocumentFile("Assignment_Submission.pdf", existingSubmission.fileUrl)}
+                      className="text-xs border-[#8B7EC8] text-[#8B7EC8] font-bold h-7 px-3 rounded-lg cursor-pointer flex items-center gap-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" /> View PDF
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => downloadDocumentFile("Assignment_Submission.pdf", existingSubmission.fileUrl)}
+                      className="text-xs bg-[#E76F51] text-white font-bold h-7 px-3 rounded-lg cursor-pointer flex items-center gap-1 shadow-2xs"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Download PDF
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {existingSubmission.content && (
+                <p className="text-xs text-[#292724] bg-[#FFF9F1] p-3 rounded-xl border border-[#E5DCD0] font-mono">
+                  {existingSubmission.content}
+                </p>
+              )}
 
               {/* Evaluation Report Display */}
               {existingSubmission.evaluationReport && (
@@ -280,6 +425,7 @@ export function AssignmentSubmissionModal({
             </Card>
           )}
 
+          {/* Threaded Discussion */}
           {existingSubmission && (
             <div className="space-y-3 pt-2 border-t border-[#E5DCD0]">
               <h4 className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center gap-1.5">

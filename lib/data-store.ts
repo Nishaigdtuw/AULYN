@@ -1058,6 +1058,83 @@ export function downloadDocumentFile(fileName: string, fileUrl?: string) {
   }
 }
 
+export function createClassroom(data: {
+  className: string
+  subject: string
+  code: string
+  description: string
+  instructor: string
+  instructorEmail: string
+  semester?: string
+}): ClassroomData {
+  const classrooms = getStoredClassrooms()
+  const rawCode = data.code.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'CLASS'
+  const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase()
+  const classId = `AULYN-${rawCode}-${randomSuffix}`
+
+  const newClassroom: ClassroomData = {
+    classId,
+    className: data.className,
+    code: data.code.toUpperCase(),
+    subject: data.subject,
+    instructor: data.instructor || "Prof. Sarah Jenkins",
+    instructorEmail: data.instructorEmail || "sarah.jenkins@aulyn.edu",
+    description: data.description || `Course workspace for ${data.className}.`,
+    bannerColor: ["#E76F51", "#8B7EC8", "#75B798", "#E9B949"][classrooms.length % 4],
+    chapters: [],
+    quizzes: [],
+    flashcards: [],
+    assignments: [],
+    announcements: [],
+    materials: [],
+    students: []
+  }
+
+  classrooms.unshift(newClassroom)
+  saveStoredClassrooms(classrooms)
+  return newClassroom
+}
+
+export function joinClassroom(
+  classIdOrCode: string,
+  student: { id: string; name: string; email: string }
+): { success: boolean; message: string; classroom?: ClassroomData } {
+  const classrooms = getStoredClassrooms()
+  const trimmed = classIdOrCode.trim().toLowerCase()
+
+  const target = classrooms.find((c) =>
+    c.classId.toLowerCase() === trimmed ||
+    c.code.toLowerCase() === trimmed
+  )
+
+  if (!target) {
+    return { success: false, message: "Invalid classroom ID. Please check the code provided by your teacher." }
+  }
+
+  const alreadyEnrolled = target.students.some(
+    (s) => s.id === student.id || (s.email && s.email.toLowerCase() === student.email.toLowerCase())
+  )
+
+  if (alreadyEnrolled) {
+    return { success: false, message: "You have already joined this classroom." }
+  }
+
+  target.students.push({
+    id: student.id,
+    name: student.name,
+    email: student.email,
+    status: "Enrolled",
+    score: 0,
+    completion: 0,
+    lastActive: "Just now",
+    weakTopics: []
+  })
+
+  saveStoredClassrooms(classrooms)
+  return { success: true, message: `Successfully joined ${target.className}!`, classroom: target }
+}
+
+
 
 
 
