@@ -2,11 +2,10 @@
 
 import React, { useState, useEffect } from "react"
 import {
-  FileText, Upload, Sparkles, BookOpen, HelpCircle,
-  CheckCircle2, ArrowRight, Trash2, Plus, RefreshCw, Eye, MessageSquare, Layers
+  FileText, Upload, BookOpen, CheckCircle2, Trash2, MessageSquare, Layers
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
@@ -43,6 +42,8 @@ interface NoteChatMessage {
   isOutOfScope?: boolean
 }
 
+type WorkspaceSubTab = "summary" | "quiz" | "practice" | "ask" | "flashcards"
+
 export function StudentNotesAI({
   userId = "student-demo",
   studentName = "Alex Rivera",
@@ -53,11 +54,10 @@ export function StudentNotesAI({
   
   // Upload State
   const [isUploading, setIsUploading] = useState(false)
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'processing' | 'ready'>('idle')
   const [selectedClassId, setSelectedClassId] = useState<string>("general")
 
   // Active Workspace Sub-Tab
-  const [activeSubTab, setActiveSubTab] = useState<"summary" | "quiz" | "practice" | "ask" | "flashcards">("summary")
+  const [activeSubTab, setActiveSubTab] = useState<WorkspaceSubTab>("summary")
 
   // Quiz State
   const [quizQuestions, setQuizQuestions] = useState<NoteQuizQuestion[]>([])
@@ -79,6 +79,7 @@ export function StudentNotesAI({
     if (list.length > 0 && !selectedNote) {
       setSelectedNote(list[0])
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
 
   // Re-generate content when selected note changes
@@ -117,7 +118,6 @@ export function StudentNotesAI({
     }
 
     setIsUploading(true)
-    setUploadStatus('processing')
     const toastId = toast.loading(`Parsing "${fileName}"...`)
 
     try {
@@ -140,13 +140,11 @@ export function StudentNotesAI({
       const updatedList = getStudentPersonalNotes(userId)
       setNotes(updatedList)
       setSelectedNote(newNote)
-      setUploadStatus('ready')
       setIsUploading(false)
       toast.success(`Notes "${fileName}" ready for study!`, { id: toastId })
     } catch (err) {
       console.error(err)
       setIsUploading(false)
-      setUploadStatus('idle')
       toast.error("Failed to parse file. Please try another PDF, DOCX, or TXT note.", { id: toastId })
     }
   }
@@ -209,7 +207,7 @@ export function StudentNotesAI({
           <div>
             <h2 className="text-lg font-serif font-black text-[#292724]">Student Personal Notes AI Workspace</h2>
             <p className="text-xs text-[#77716A] font-semibold mt-0.5">
-              Upload your private study notes (PDF, DOCX, TXT) and generate instant summaries, quizzes, and grounded Q&A.
+              Welcome, <strong>{studentName}</strong>. Upload your private study notes (PDF, DOCX, TXT) and generate instant summaries, quizzes, and grounded Q&A.
             </p>
           </div>
         </div>
@@ -232,13 +230,14 @@ export function StudentNotesAI({
               type="file"
               accept=".pdf,.docx,.doc,.txt,.md"
               className="hidden"
+              disabled={isUploading}
               onChange={(e) => {
                 if (e.target.files && e.target.files[0]) {
                   handleFileUpload(e.target.files[0])
                 }
               }}
             />
-            <Upload className="w-3.5 h-3.5" /> Upload Notes
+            <Upload className="w-3.5 h-3.5" /> {isUploading ? "Processing..." : "Upload Notes"}
           </label>
         </div>
       </div>
@@ -336,7 +335,7 @@ export function StudentNotesAI({
               </Card>
 
               {/* Action System Navigation Sub-Tabs */}
-              <Tabs value={activeSubTab} onValueChange={(val) => setActiveSubTab(val as any)} className="w-full">
+              <Tabs value={activeSubTab} onValueChange={(val) => setActiveSubTab(val as WorkspaceSubTab)} className="w-full">
                 <TabsList className="grid w-full grid-cols-5 bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs">
                   <TabsTrigger value="summary" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs">
                     Summary
@@ -358,7 +357,7 @@ export function StudentNotesAI({
                 {/* TAB 1: SUMMARY */}
                 <TabsContent value="summary" className="pt-4 space-y-4">
                   <Card className="bg-white border border-[#E5DCD0] shadow-2xs rounded-2xl p-6 space-y-5">
-                    <h3 className="text-sm font-serif font-black text-[#292724] uppercase tracking-wider text-[#E76F51] border-b border-[#E5DCD0] pb-2">
+                    <h3 className="text-sm font-serif font-black uppercase tracking-wider text-[#E76F51] border-b border-[#E5DCD0] pb-2">
                       Structured Study Notebook Summary
                     </h3>
 

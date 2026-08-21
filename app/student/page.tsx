@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useEffect, useState, useCallback, useRef } from "react"
-import { FileText, Download, ArrowUpRight, Menu, LogOut, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Eye, Bell, User, Save, BookOpen, Sparkles, Award, ArrowLeft, RefreshCw, HelpCircle, Plus, MessageSquare, CheckSquare, Layers, Timer } from "lucide-react"
+import { FileText, Download, ArrowUpRight, Menu, LogOut, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Eye, Bell, User, Save, BookOpen, Award, ArrowLeft, RefreshCw, HelpCircle, Plus, MessageSquare, CheckSquare, Layers, Timer } from "lucide-react"
+
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"

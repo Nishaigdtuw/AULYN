@@ -1,14 +1,13 @@
 'use client'
 
 import React, { useState } from "react"
-import { Send, MessageSquare, CheckCircle, Sparkles, Award, CheckCircle2, AlertCircle, FileText, Download, Eye, Upload, X } from "lucide-react"
+import { Send, CheckCircle, Sparkles, Award, CheckCircle2, AlertCircle, FileText, Download, Eye, Upload, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
-import { AssignmentData, SubmissionData, saveSubmission, getSubmissions, AssignmentComment, viewDocumentFile, downloadDocumentFile } from "@/lib/data-store"
+import { AssignmentData, SubmissionData, saveSubmission, getSubmissions, viewDocumentFile, downloadDocumentFile } from "@/lib/data-store"
 import { sendNotificationEmail } from "@/lib/email-service"
 import { saveMasteryEvidence } from "@/lib/mastery-engine"
 
@@ -30,8 +29,7 @@ export function AssignmentSubmissionModal({
   onStartViva
 }: AssignmentSubmissionModalProps) {
   const [solutionContent, setSolutionContent] = useState("")
-  const [newComment, setNewComment] = useState("")
-  
+
   // PDF Upload State
   const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [pdfDataUrl, setPdfDataUrl] = useState<string | null>(null)
@@ -136,33 +134,8 @@ export function AssignmentSubmissionModal({
     toast.success(`Assignment "${assignment.title}" submitted successfully!`)
   }
 
-  const handleAddThreadComment = () => {
-    if (!newComment.trim() || !existingSubmission) return
-
-    const commentObj: AssignmentComment = {
-      id: `comm-${Date.now()}`,
-      assignmentId: assignment.id,
-      submissionId: existingSubmission.submissionId,
-      authorId: userRole === 'teacher' ? 'teacher-demo' : 'student-demo',
-      authorName: userRole === 'teacher' ? 'Prof. Sarah Jenkins' : studentName,
-      authorRole: userRole,
-      content: newComment.trim(),
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }
-
-    const updatedSub = {
-      ...existingSubmission,
-      comments: [...(existingSubmission.comments || []), commentObj]
-    }
-
-    saveSubmission(updatedSub)
-    setExistingSubmission(updatedSub)
-    setNewComment("")
-
-    toast.success("Comment added to submission thread!")
-  }
-
   return (
+
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl bg-[#FFF9F1] border border-[#E5DCD0] shadow-2xl rounded-2xl p-6 text-[#292724] max-h-[90vh] overflow-y-auto">
         <DialogHeader className="pb-3 border-b border-[#E5DCD0]">

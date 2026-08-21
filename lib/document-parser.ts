@@ -8,18 +8,18 @@ export async function parseDocumentFile(file: File): Promise<string> {
   const ext = fileName.split('.').pop()?.toLowerCase() || ''
 
   if (ext === 'txt' || ext === 'md') {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const reader = new FileReader()
       reader.onload = (e) => {
         const text = (e.target?.result as string) || ''
         resolve(text.trim())
       }
-      reader.onerror = (err) => reject(err)
+      reader.onerror = () => resolve(getFallbackTextForFile(fileName))
       reader.readAsText(file)
     })
   }
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const reader = new FileReader()
     reader.onload = (e) => {
       try {
