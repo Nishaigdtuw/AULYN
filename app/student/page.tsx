@@ -25,6 +25,7 @@ import { AdaptiveQuizModal } from "@/components/adaptive-quiz-modal"
 import { AiVivaModal } from "@/components/ai-viva-modal"
 import { AssignmentSubmissionModal } from "@/components/assignment-submission-modal"
 import { StudentNotesAI } from "@/components/student-notes-ai"
+import { StudentLectureSummaryModal } from "@/components/student-lecture-summary-modal"
 
 import { DoubtThreadsModal } from "@/components/doubt-threads-modal"
 import { StudentGroupsModal } from "@/components/student-groups-modal"
@@ -32,7 +33,8 @@ import { PeerStudyRoomModal } from "@/components/peer-study-room-modal"
 import { NotificationsDrawer } from "@/components/notifications-drawer"
 import { StudentReportModal } from "@/components/student-report-modal"
 
-import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile, joinClassroom } from "@/lib/data-store"
+import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile, joinClassroom, FinalLectureSummary, getLectureSummaries } from "@/lib/data-store"
+
 import { getAuthenticatedUser, clearAuthenticatedUser, setAuthenticatedUser } from "@/lib/auth-guard"
 
 export default function StudentPortal() {
@@ -92,11 +94,13 @@ export default function StudentPortal() {
   const [activeNoteText, setActiveNoteText] = useState<string>("")
   const [activeNoteFile, setActiveNoteFile] = useState<string>("Trees_Lecture_Notes.pdf")
 
-
-
+  // Lecture Summary State
+  const [selectedSummary, setSelectedSummary] = useState<FinalLectureSummary | null>(null)
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false)
 
   // Submission Form State
   const [, setUserSubmissions] = useState<SubmissionData[]>([])
+
 
   // Sidebar Submenus State
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -958,9 +962,64 @@ export default function StudentPortal() {
                       <p className="text-xs text-[#77716A] italic">No course materials uploaded yet.</p>
                     )}
                   </div>
+
+
+                  {/* PUBLISHED LECTURE SUMMARIES */}
+                  <div className="pt-4 border-t border-[#E5DCD0] space-y-3">
+                    <h4 className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center justify-between">
+                      <span>Published Lecture Summaries</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                        Verified Study Notes
+                      </span>
+                    </h4>
+
+                    {getLectureSummaries(activeClassroom?.classId).length > 0 ? (
+                      getLectureSummaries(activeClassroom?.classId).map((sum) => (
+                        <div key={sum.summaryId} className="p-4 bg-white border border-[#E5DCD0] rounded-xl space-y-2.5 shadow-2xs">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                              <h5 className="font-bold text-sm text-[#292724] flex items-center gap-1.5">
+                                <FileText className="w-4 h-4 text-[#8B7EC8]" /> {sum.topic} — Lecture Summary
+                              </h5>
+                              <p className="text-xs text-[#77716A] font-semibold mt-0.5">
+                                Instructor: {sum.teacherName} • Date: {sum.lectureDate}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedSummary(sum)
+                                  setIsSummaryModalOpen(true)
+                                }}
+                                className="text-xs border-[#8B7EC8] text-[#8B7EC8] hover:bg-[#8B7EC8] hover:text-white font-bold h-7 px-3 rounded-lg cursor-pointer"
+                              >
+                                View Summary
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedSummary(sum)
+                                  setIsSummaryModalOpen(true)
+                                }}
+                                className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs h-7 px-3 rounded-lg shadow-2xs cursor-pointer"
+                              >
+                                Ask AI Tutor
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-[#77716A] italic">No lecture summaries published yet for this class.</p>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
+
 
             {/* STUDENT PERSONAL NOTES AI TAB */}
             <TabsContent value="notes-ai" className="animate-in fade-in-50 duration-200">
@@ -1024,8 +1083,21 @@ export default function StudentPortal() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* STUDENT LECTURE SUMMARY MODAL */}
+
+            <StudentLectureSummaryModal
+              open={isSummaryModalOpen}
+              onOpenChange={setIsSummaryModalOpen}
+              summary={selectedSummary}
+              onAskAiTutor={() => {
+                setAiTutorOpen(true)
+              }}
+
+            />
           </Tabs>
         </main>
+
       </div>
     </div>
   )

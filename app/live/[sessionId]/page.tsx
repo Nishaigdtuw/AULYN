@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from "react"
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Users, MessageSquare, Flame, BookOpen, AlertCircle, Send, CheckCircle2, ArrowLeft, X, Sparkles, Smile } from "lucide-react"
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Users, MessageSquare, BookOpen, AlertCircle, Send, CheckCircle2, ArrowLeft, X, Sparkles, Smile, Play, Pause, RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -15,7 +15,8 @@ import {
   saveStoredMeeting,
   requestMediaStream
 } from "@/lib/webrtc-meeting"
-import { saveMasteryEvidence } from "@/lib/mastery-engine"
+import { FinalLectureSummary, saveLectureSummary } from "@/lib/data-store"
+import { TeacherLectureSummaryModal } from "@/components/teacher-lecture-summary-modal"
 
 export default function LiveMeetingRoomPage() {
   const router = useRouter()
@@ -34,10 +35,31 @@ export default function LiveMeetingRoomPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const stageVideoRef = useRef<HTMLVideoElement | null>(null)
 
-  // In-Meeting Panels State
-  const [activePanel, setActivePanel] = useState<'none' | 'chat' | 'participants' | 'notes'>('none')
+  // In-Meeting Panels State ('none' | 'chat' | 'participants' | 'notes')
+  const [activePanel, setActivePanel] = useState<'none' | 'chat' | 'participants' | 'notes'>('notes')
   const [chatInput, setChatInput] = useState("")
-  const [cooldown, setCooldown] = useState(0)
+
+  // Live "Notes So Far" Engine State
+  const [isNotesPaused, setIsNotesPaused] = useState(false)
+  const [isUpdatingNotes, setIsUpdatingNotes] = useState(false)
+  const [lastUpdatedTime, setLastUpdatedTime] = useState<string>(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+  const [liveNotesContent] = useState({
+
+    currentTopic: "Tree Traversal (DFS & BFS)",
+    keyPoints: [
+      "A tree contains nodes connected hierarchically from a root node.",
+      "Depth-First Search (DFS) explores one branch completely before backtracking.",
+      "Recursive DFS uses the system call stack frames.",
+      "Breadth-First Search (BFS) explores nodes level-by-level using a FIFO Queue."
+    ],
+    importantDefinition: "Inorder Traversal (BST): Left -> Root -> Right yields strictly sorted node keys.",
+    example: "BST nodes [5, 3, 7] -> Inorder yields [3, 5, 7].",
+    codeOrFormula: "def inorder(root):\n  if not root: return\n  inorder(root.left)\n  print(root.val)\n  inorder(root.right)"
+  })
+
+  // Final Lecture Summary Teacher Review Modal State
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false)
+  const [generatedSummary, setGeneratedSummary] = useState<FinalLectureSummary | null>(null)
 
   // Live Real-Time Meeting Reactions State
   const [activeReactions, setActiveReactions] = useState<Array<{ id: string; emoji: string; senderName: string }>>([])
@@ -104,6 +126,21 @@ export default function LiveMeetingRoomPage() {
     }
   }, [sessionId])
 
+  // Periodic Live "Notes So Far" Simulation Engine (Updates every 60s if not paused)
+  useEffect(() => {
+    if (isNotesPaused) return
+
+    const interval = setInterval(() => {
+      setIsUpdatingNotes(true)
+      setTimeout(() => {
+        setLastUpdatedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+        setIsUpdatingNotes(false)
+      }, 800)
+    }, 60000)
+
+    return () => clearInterval(interval)
+  }, [isNotesPaused])
+
   useEffect(() => {
     const user = getAuthenticatedUser()
     if (user) {
@@ -115,7 +152,6 @@ export default function LiveMeetingRoomPage() {
     const s = getStoredMeeting(sessionId)
     setSession(s)
   }, [sessionId])
-
 
   // Initialize Local Media Stream
   useEffect(() => {
@@ -149,14 +185,6 @@ export default function LiveMeetingRoomPage() {
     }
   }, [mediaStream, joined])
 
-  // Confusion Signal Cooldown Timer
-  useEffect(() => {
-    if (cooldown > 0) {
-      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [cooldown])
-
   const handleJoinMeeting = () => {
     setJoined(true)
     toast.success(`Joined virtual classroom session!`)
@@ -174,32 +202,6 @@ export default function LiveMeetingRoomPage() {
     if (mediaStream) {
       mediaStream.getVideoTracks().forEach((t) => (t.enabled = !cameraOn))
     }
-  }
-
-  const handleConfusionSignal = () => {
-    if (cooldown > 0 || !session) return
-
-    setCooldown(6)
-    const updatedSignals = session.confusionSignalsCount + 1
-    const updatedSession: LiveMeetingSession = {
-      ...session,
-      confusionSignalsCount: updatedSignals,
-      lastSpikeTopic: "DFS Call Stack Execution"
-    }
-
-    setSession(updatedSession)
-    saveStoredMeeting(updatedSession)
-
-    saveMasteryEvidence("student-demo", session.classId, "tree-traversal", {
-      type: "Confusion",
-      title: "Live Virtual Classroom Confusion Signal",
-      score: 4,
-      maxScore: 10,
-      percentage: 40,
-      notes: `Reported confusion during live explanation of ${session.topic}`
-    })
-
-    toast.success("Confusion signal sent anonymously to professor.", { icon: "🤫" })
   }
 
   const handleSendChatMessage = () => {
@@ -231,15 +233,69 @@ export default function LiveMeetingRoomPage() {
     router.push(self?.role === 'teacher' ? '/teacher' : '/student')
   }
 
+  // End Class For Everyone -> Triggers Final Lecture Summary Review Flow
   const handleEndClassForEveryone = () => {
     if (!session) return
+
     const endedSession: LiveMeetingSession = {
       ...session,
       status: 'Ended'
     }
     saveStoredMeeting(endedSession)
-    toast.success("Ended live meeting for all students. Session summary saved.")
-    router.push('/teacher')
+
+    // Generate Final Lecture Summary based on live lecture content
+    const summary: FinalLectureSummary = {
+      summaryId: `sum-${session.sessionId}-${Date.now()}`,
+      sessionId: session.sessionId,
+      classId: session.classId,
+      className: session.className,
+      teacherId: "teacher-demo",
+      teacherName: session.teacherName,
+      topic: session.topic,
+      lectureDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+      status: 'Draft',
+      overview: `In this live session on ${session.topic}, we covered binary trees, tree hierarchy, and contrasted Depth-First Search (DFS) with Breadth-First Search (BFS).`,
+      coreConcepts: [
+        { title: "Binary Search Tree (BST) Invariant", explanation: "For every node N, left subtree values < N.val and right subtree values > N.val." },
+        { title: "DFS Traversal Orders", explanation: "Preorder (Root->L->R), Inorder (L->Root->R), Postorder (L->R->Root). Inorder of BST yields sorted elements." },
+        { title: "BFS Level Order Processing", explanation: "Uses a FIFO Queue to traverse tree levels sequentially from top to bottom." }
+      ],
+      importantDefinitions: [
+        { term: "Depth-First Search (DFS)", definition: "Traverses down a tree branch completely using recursion/stack frames before backtracking." },
+        { term: "Breadth-First Search (BFS)", definition: "Traverses tree nodes level-by-level using an explicit queue data structure." }
+      ],
+      codeLogic: `def inorder(root):\n    if not root: return\n    inorder(root.left)   # Visit Left Subtree\n    print(root.val)      # Process Current Node\n    inorder(root.right)  # Visit Right Subtree`,
+      examplesCovered: [
+        "Inorder traversal on BST with nodes [5, 3, 7, 2, 4] producing sorted array [2, 3, 4, 5, 7]",
+        "Level order queue trace for complete binary tree of height 3"
+      ],
+      commonMistakes: [
+        "Confusing call stack depth with queue size during BFS implementation",
+        "Forgetting base case (if not root: return) causing StackOverflow recursion errors"
+      ],
+      quickRevision: [
+        "DFS -> Stack / Recursion",
+        "BFS -> Queue (FIFO)",
+        "Inorder BST -> Sorted Output"
+      ],
+      keyTakeaways: [
+        "Use DFS when space is constrained or deep path exploration is needed.",
+        "Use BFS for finding shortest paths in unweighted graphs or level-by-level processing."
+      ]
+    }
+
+    saveLectureSummary(summary)
+    setGeneratedSummary(summary)
+    setIsSummaryModalOpen(true)
+  }
+
+  const handleManualRefreshNotes = () => {
+    setIsUpdatingNotes(true)
+    setTimeout(() => {
+      setLastUpdatedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+      setIsUpdatingNotes(false)
+      toast.success("Live Notes refreshed!")
+    }, 600)
   }
 
   if (!session) return null
@@ -340,18 +396,10 @@ export default function LiveMeetingRoomPage() {
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-3">
-          {/* Teacher Class Pulse Indicator */}
-          {self?.role === 'teacher' ? (
-            <div className="px-3 py-1 bg-amber-500/20 border border-amber-500/40 rounded-full text-xs font-bold text-amber-300 flex items-center gap-1.5">
-              <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-              <span>Confusion Pulse: {session.confusionSignalsCount} Signals ({session.lastSpikeTopic})</span>
-            </div>
-          ) : (
-            <div className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/40 rounded-full text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Live Meeting Connected</span>
-            </div>
-          )}
+          <div className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/40 rounded-full text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Live Class Active</span>
+          </div>
 
           <Button
             variant="destructive"
@@ -406,7 +454,7 @@ export default function LiveMeetingRoomPage() {
             </div>
           </div>
 
-          {/* Instructor Tile */}
+          {/* Instructor / Roster Tiles */}
           {session.participants.filter((p) => p.id !== (self?.role === 'teacher' ? 'teacher-demo' : 'student-demo')).map((p) => (
             <div key={p.id} className="relative bg-[#242220] border border-[#3E3A35] rounded-2xl overflow-hidden flex items-center justify-center group shadow-md min-h-[220px]">
               <div className="text-center space-y-2">
@@ -427,14 +475,18 @@ export default function LiveMeetingRoomPage() {
           ))}
         </div>
 
-        {/* Side Panels (Chat, Participants, Notes) */}
+        {/* Side Panels (Chat, Participants, Notes So Far) */}
         {activePanel !== 'none' && (
           <div className="w-80 sm:w-96 bg-[#1E1C1A] border border-[#3E3A35] rounded-2xl flex flex-col overflow-hidden shadow-2xl shrink-0">
             <div className="p-3 border-b border-[#3E3A35] flex items-center justify-between">
-              <h3 className="text-xs font-serif font-bold text-white uppercase tracking-wider">
+              <h3 className="text-xs font-serif font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                 {activePanel === 'chat' && 'In-Meeting Live Chat'}
                 {activePanel === 'participants' && `Class Roster (${session.participants.length})`}
-                {activePanel === 'notes' && 'Live AI Lecture Notes'}
+                {activePanel === 'notes' && (
+                  <>
+                    <BookOpen className="w-4 h-4 text-[#8B7EC8]" /> Notes So Far
+                  </>
+                )}
               </h3>
               <Button variant="ghost" size="icon" onClick={() => setActivePanel('none')} className="text-[#A19A91] hover:text-white h-7 w-7">
                 <X className="w-4 h-4" />
@@ -488,14 +540,87 @@ export default function LiveMeetingRoomPage() {
               </div>
             )}
 
-            {/* LIVE NOTES PANEL */}
+            {/* REAL-TIME "NOTES SO FAR" PANEL */}
             {activePanel === 'notes' && (
               <div className="p-3 space-y-3 overflow-y-auto flex-1 text-xs">
-                <div className="p-3 bg-[#242220] border border-[#3E3A35] rounded-xl space-y-2">
-                  <h4 className="font-bold text-[#E76F51] flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-[#E9B949]" /> Real-Time Lecture Notes Summary
-                  </h4>
-                  <p className="text-[#A19A91] font-medium leading-relaxed">{session.publishedNotes}</p>
+                {/* Teacher Control Bar */}
+                {self?.role === 'teacher' && (
+                  <div className="p-2.5 bg-[#242220] border border-[#3E3A35] rounded-xl flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-[#A19A91] uppercase">Teacher Controls:</span>
+                    <div className="flex items-center space-x-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setIsNotesPaused(!isNotesPaused)
+                          toast.info(isNotesPaused ? "Resumed live notes updates" : "Paused live notes updates")
+                        }}
+                        className="text-[10px] font-bold h-6 px-2 border-[#3E3A35] text-white hover:bg-[#3E3A35] rounded-lg cursor-pointer flex items-center gap-1"
+                      >
+                        {isNotesPaused ? <Play className="w-3 h-3 text-emerald-400" /> : <Pause className="w-3 h-3 text-amber-400" />}
+                        {isNotesPaused ? "Resume" : "Pause"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleManualRefreshNotes}
+                        className="text-[10px] font-bold h-6 px-2 border-[#3E3A35] text-[#8B7EC8] hover:bg-[#3E3A35] rounded-lg cursor-pointer flex items-center gap-1"
+                      >
+                        <RefreshCw className="w-3 h-3" /> Refresh
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="p-3.5 bg-[#242220] border border-[#3E3A35] rounded-xl space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#3E3A35] pb-2">
+                    <span className="text-[10px] font-mono text-[#8B7EC8] font-bold uppercase tracking-wider flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-[#E9B949]" /> Notes So Far
+                    </span>
+                    <span className="text-[10px] text-[#A19A91] font-mono">
+                      {isUpdatingNotes ? "Updating notes..." : `Last updated: ${lastUpdatedTime}`}
+                    </span>
+                  </div>
+
+                  {/* Current Topic */}
+                  <div>
+                    <h4 className="font-bold text-[#E76F51] text-[11px] uppercase tracking-wide">Current Topic</h4>
+                    <p className="text-white font-serif font-bold text-xs mt-0.5">{liveNotesContent.currentTopic}</p>
+                  </div>
+
+                  {/* Key Points */}
+                  <div>
+                    <h4 className="font-bold text-[#8B7EC8] text-[11px] uppercase tracking-wide">Key Points</h4>
+                    <ul className="list-disc list-inside mt-1 space-y-1 text-[#A19A91] font-medium leading-relaxed">
+                      {liveNotesContent.keyPoints.map((pt, i) => (
+                        <li key={i}>{pt}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Important Definition */}
+                  <div>
+                    <h4 className="font-bold text-[#75B798] text-[11px] uppercase tracking-wide">Important Definition</h4>
+                    <p className="text-white font-medium bg-[#1E1C1A] p-2 rounded-lg border border-[#3E3A35] mt-1 text-[11px]">
+                      {liveNotesContent.importantDefinition}
+                    </p>
+                  </div>
+
+                  {/* Example */}
+                  <div>
+                    <h4 className="font-bold text-[#E9B949] text-[11px] uppercase tracking-wide">Example</h4>
+                    <p className="text-[#A19A91] font-medium mt-0.5 text-[11px]">
+                      {liveNotesContent.example}
+                    </p>
+                  </div>
+
+                  {/* Code / Formula */}
+                  <div>
+                    <h4 className="font-bold text-slate-300 text-[11px] uppercase tracking-wide">Code / Formula</h4>
+                    <pre className="mt-1 p-2 bg-[#181716] text-slate-200 font-mono text-[10px] rounded-lg border border-[#3E3A35] overflow-x-auto">
+                      {liveNotesContent.codeOrFormula}
+                    </pre>
+                  </div>
                 </div>
               </div>
             )}
@@ -564,25 +689,13 @@ export default function LiveMeetingRoomPage() {
           </div>
         </div>
 
-
-        {/* Center Actions: Anonymous Confusion Signal */}
+        {/* Center Actions */}
         <div className="flex items-center space-x-2">
-          {self?.role === 'student' && (
-            <Button
-              onClick={handleConfusionSignal}
-              disabled={cooldown > 0}
-              className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow-md cursor-pointer disabled:opacity-50"
-            >
-              <Flame className="w-4 h-4 mr-1.5 text-amber-300 animate-pulse" />
-              {cooldown > 0 ? `Cooldown (${cooldown}s)` : `🤔 I'm Confused`}
-            </Button>
-          )}
-
           {self?.role === 'teacher' && (
             <Button
               onClick={handleEndClassForEveryone}
               variant="destructive"
-              className="font-bold text-xs py-2.5 px-4 rounded-xl cursor-pointer"
+              className="font-bold text-xs py-2.5 px-5 rounded-xl cursor-pointer shadow-md"
             >
               End Class for Everyone
             </Button>
@@ -618,10 +731,20 @@ export default function LiveMeetingRoomPage() {
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            <span className="hidden sm:inline">Notes</span>
+            <span className="hidden sm:inline">Notes So Far</span>
           </button>
         </div>
       </footer>
+
+      {/* Teacher Lecture Summary Review Modal */}
+      <TeacherLectureSummaryModal
+        open={isSummaryModalOpen}
+        onOpenChange={setIsSummaryModalOpen}
+        summary={generatedSummary}
+        onPublished={() => {
+          router.push('/teacher')
+        }}
+      />
     </div>
   )
 }

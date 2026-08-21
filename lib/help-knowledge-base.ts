@@ -264,15 +264,15 @@ export const PRODUCT_KNOWLEDGE_BASE: ProductHelpEntry[] = [
   },
   {
     id: 'student_join_live_session',
-    title: 'Join Live Session & Report Confusion',
+    title: 'Join Live Session & View Notes So Far',
     role: 'student',
     category: 'Classroom',
-    keywords: ['join live session', 'live lecture', 'confused button', 'anonymous signal', 'live class'],
-    shortDescription: 'Participate in active live lectures and anonymously signal when you need clarification.',
+    keywords: ['join live session', 'live lecture', 'notes so far', 'live class', 'real-time notes'],
+    shortDescription: 'Participate in active live lectures and view real-time Notes So Far.',
     steps: [
       'Click **🔴 Join Live Classroom Session** in the sidebar or top banner.',
-      'If you get stuck during lecture explanations, click **🤔 I\'m Confused**.',
-      'Your signal notifies the professor on their live heatmap with 100% privacy.'
+      'Open the **Notes So Far** panel to view real-time structured notes updated as the professor teaches.',
+      'Participate in in-meeting live chat and reactions.'
     ],
     actionButtons: [
       { label: 'Join Live Session', actionTarget: 'modal:live_session' }
@@ -317,36 +317,37 @@ export const PRODUCT_KNOWLEDGE_BASE: ProductHelpEntry[] = [
   },
   {
     id: 'teacher_start_live_lecture',
-    title: 'Start Live Session & Monitor Confusion',
+    title: 'Start Live Session & Lecture Notes',
     role: 'teacher',
     category: 'Classroom',
-    keywords: ['start live lecture', 'live session teacher', 'confusion heatmap', 'confusion signals', 'publish live notes'],
-    shortDescription: 'Host live lectures, monitor real-time student confusion spikes, and publish AI live notes.',
+    keywords: ['start live lecture', 'live session teacher', 'live notes', 'publish lecture summary', 'live class'],
+    shortDescription: 'Host live lectures, manage real-time Live Notes, and publish final lecture summaries after class.',
     steps: [
       'Click **🔴 Start Live Classroom Session** in the left sidebar.',
-      'Monitor the **Real-Time Confusion Heatmap** to see where students get stuck.',
-      'Click **Generate AI Notes** to draft lecture notes from transcript and click **Publish Notes to Students**.'
+      'Monitor real-time **Notes So Far** and use pause/refresh controls if needed.',
+      'Click **End Class for Everyone** to generate, review, and publish the Final Lecture Summary.'
     ],
     actionButtons: [
       { label: 'Start Live Session', actionTarget: 'modal:live_session' }
     ]
   },
   {
-    id: 'teacher_confusion_signals_explain',
-    title: 'How Anonymous Confusion Signals Work',
+    id: 'teacher_notes_so_far_explain',
+    title: 'How Real-Time Live Notes & Summaries Work',
     role: 'teacher',
     category: 'Classroom',
-    keywords: ['confusion signals', 'anonymous signal', 'heatmap', 'confusion spike', 'student confusion'],
-    shortDescription: 'Understands how live student confusion signals are aggregated into real-time teacher heatmaps.',
+    keywords: ['live notes', 'notes so far', 'lecture summary', 'end class summary', 'publish notes'],
+    shortDescription: 'Explains how live lecture notes update during class and how final lecture summaries are generated.',
     steps: [
-      'When students tap **I\'m Confused** during a live lecture, their identity remains 100% private.',
-      'Signals are aggregated by timestamp and topic into your **Live Classroom Heatmap**.',
-      'When a spike occurs (>50%), AULYN alerts you with quick intervention buttons (e.g. *Explain Visually*, *Quick Check*).'
+      'As you teach, AULYN continuously builds structured **Notes So Far** for your students.',
+      'You can pause or refresh live notes from your meeting control bar at any time.',
+      'When you click **End Class for Everyone**, AULYN generates a complete structured summary for your review before publishing.'
     ],
     actionButtons: [
       { label: 'Open Live Session Controls', actionTarget: 'modal:live_session' }
     ]
   },
+
   {
     id: 'teacher_check_submissions',
     title: 'Review Student Submissions & Grade',

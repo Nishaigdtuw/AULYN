@@ -204,6 +204,27 @@ export interface LiveSessionData {
   publishedNotes?: LiveLectureNote
 }
 
+export interface FinalLectureSummary {
+  summaryId: string
+  sessionId: string
+  classId: string
+  className: string
+  teacherId: string
+  teacherName: string
+  topic: string
+  lectureDate: string
+  status: 'Draft' | 'Published'
+  overview: string
+  coreConcepts: { title: string; explanation: string }[]
+  importantDefinitions: { term: string; definition: string }[]
+  codeLogic?: string
+  examplesCovered: string[]
+  commonMistakes: string[]
+  quickRevision: string[]
+  keyTakeaways: string[]
+}
+
+
 export interface ConfusionTimelinePoint {
   timeLabel: string
   topic: string
@@ -1198,6 +1219,83 @@ export function deleteStudentPersonalNote(userId: string, noteId: string): void 
     console.error("Error deleting student personal note:", err)
   }
 }
+
+export function getLectureSummaries(classId?: string): FinalLectureSummary[] {
+  if (typeof window === 'undefined') return []
+  const str = localStorage.getItem('aulyn_lecture_summaries')
+  let list: FinalLectureSummary[] = []
+  if (str) {
+    try {
+      list = JSON.parse(str)
+    } catch {
+      list = []
+    }
+  }
+
+  // Seed default summary if empty
+  if (list.length === 0) {
+    const defaultSummary: FinalLectureSummary = {
+      summaryId: "sum-dsa-trees-1",
+      sessionId: "sess-dsa-1",
+      classId: "dsa-2026",
+      className: "Data Structures & Algorithms",
+      teacherId: "teacher-demo",
+      teacherName: "Prof. Sarah Jenkins",
+      topic: "Trees & Tree Traversal",
+      lectureDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+      status: "Published",
+      overview: "In this lecture, we explored binary trees, tree terminology (nodes, root, leaves, height), and contrasted Depth-First Search (DFS) with Breadth-First Search (BFS).",
+      coreConcepts: [
+        { title: "Binary Search Tree Invariant", explanation: "For every node N, left subtree values < N.val and right subtree values > N.val." },
+        { title: "DFS Traversal Orders", explanation: "Preorder (Root->L->R), Inorder (L->Root->R), Postorder (L->R->Root). Inorder traversal of BST yields sorted values." },
+        { title: "BFS Level Order Traversal", explanation: "Uses a Queue FIFO structure to process nodes level by level from top to bottom." }
+      ],
+      importantDefinitions: [
+        { term: "Depth-First Search (DFS)", definition: "An algorithm for traversing tree/graph structures by exploring as deep as possible along each branch before backtracking." },
+        { term: "Call Stack Overhead", definition: "Memory allocated for recursive function calls during DFS, equal to O(H) where H is tree height." }
+      ],
+      codeLogic: `def inorder(root):\n    if not root: return\n    inorder(root.left)   # Process Left Subtree\n    print(root.val)      # Process Current Node\n    inorder(root.right)  # Process Right Subtree`,
+      examplesCovered: [
+        "Inorder traversal on BST with nodes [5, 3, 7, 2, 4] producing sorted sequence [2, 3, 4, 5, 7]",
+        "Level order queue trace for complete binary tree of height 3"
+      ],
+      commonMistakes: [
+        "Confusing call stack depth with queue size during BFS implementation",
+        "Forgetting base case (if not root: return) causing StackOverflow recursion errors"
+      ],
+      quickRevision: [
+        "DFS -> Stack / Recursion",
+        "BFS -> Queue (FIFO)",
+        "Inorder BST -> Sorted Array Output"
+      ],
+      keyTakeaways: [
+        "Use DFS when space is constrained or path-finding requires deep exploration.",
+        "Use BFS when looking for the shortest path in unweighted graphs or level-by-level processing."
+      ]
+    }
+    list = [defaultSummary]
+    localStorage.setItem('aulyn_lecture_summaries', JSON.stringify(list))
+  }
+
+  if (classId) {
+    return list.filter((s) => s.classId === classId)
+  }
+  return list
+}
+
+export function saveLectureSummary(summary: FinalLectureSummary) {
+  if (typeof window === 'undefined') return
+  const list = getLectureSummaries()
+  const idx = list.findIndex((s) => s.summaryId === summary.summaryId)
+  if (idx >= 0) {
+    list[idx] = summary
+  } else {
+    list.unshift(summary)
+  }
+  localStorage.setItem('aulyn_lecture_summaries', JSON.stringify(list))
+  window.dispatchEvent(new Event('aulyn-summary-update'))
+}
+
 
 
 

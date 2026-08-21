@@ -87,9 +87,10 @@ export default function TeacherPortal() {
 
   // Notifications List
   const [notifications] = useState<NotificationItem[]>([
-    { id: "tn1", recipientRole: "teacher", title: "Confusion Spike Detected", message: "68% of recent signals occurred during Tree Traversal.", timestamp: "5 mins ago", read: false },
+    { id: "tn1", recipientRole: "teacher", title: "Live Class Summary Generated", message: "Final lecture summary for Trees & Tree Traversal is ready for review.", timestamp: "5 mins ago", read: false },
     { id: "tn2", recipientRole: "teacher", title: "New Assignment Submission", message: "Alex Rivera submitted solution for BST Implementation Lab.", timestamp: "30 mins ago", read: false }
   ])
+
 
   // Sidebar Submenus State
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
