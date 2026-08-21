@@ -40,6 +40,7 @@ export interface QuizQuestion {
   id: string
   type?: 'MCQ' | 'TrueFalse' | 'ShortAnswer' | 'Coding'
   question: string
+  questionText?: string
   options?: string[]
   correctAnswer: number | string
   explanation?: string
@@ -66,6 +67,7 @@ export interface QuizData {
   endTime?: string
   published?: boolean
   releaseResults?: 'IMMEDIATELY' | 'MANUALLY'
+  releaseResultsMode?: 'IMMEDIATELY' | 'MANUALLY'
   questions: QuizQuestion[]
   createdAt?: string
 }
@@ -153,8 +155,9 @@ export interface QuizAttemptData {
   startedAt: string
   expiresAt: string
   submittedAt?: string
-  status: 'IN_PROGRESS' | 'SUBMITTED' | 'AUTO_SUBMITTED' | 'GRADED'
+  status: 'IN_PROGRESS' | 'SUBMITTED' | 'AUTO_SUBMITTED' | 'NEEDS_REVIEW' | 'GRADED'
   userAnswers?: Record<string, string | number>
+  questionStates?: Record<string, { answered: boolean; markedForReview: boolean; visited: boolean }>
   score: number
   totalMarks: number
   percentage: number

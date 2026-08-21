@@ -23,6 +23,7 @@ model user {
   classrooms classroom[]
   enrolled enrolled[]
   chapter chapter[]
+  quiz_attempts quiz_attempt[]
 }
 
 model classroom {
@@ -32,6 +33,8 @@ model classroom {
   ownerUser user @relation(fields: [ownerId], references: [userId])
   enrolled enrolled[]
   chapter chapter[]
+  quizzes quiz[]
+  quiz_attempts quiz_attempt[]
 }
 
 model enrolled {
@@ -53,7 +56,6 @@ model chapter {
   content content[]
 }
 
-
 model content {
   fileId String @id @default(cuid())
   chapterId String
@@ -62,4 +64,77 @@ model content {
   fileType String
   classId String @default("Hello")
   chapter chapter @relation(fields: [chapterId], references: [chapterId])
+}
+
+model quiz {
+  quizId String @id @default(cuid())
+  classId String
+  createdBy String
+  title String
+  topic String
+  description String?
+  instructions String?
+  durationMinutes Int @default(30)
+  totalMarks Int @default(0)
+  passingMarks Int? @default(10)
+  mode String @default("OPEN_NOW")
+  startDate String?
+  startTime String?
+  endDate String?
+  endTime String?
+  published Boolean @default(false)
+  releaseResultsMode String @default("IMMEDIATELY")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  classroom classroom @relation(fields: [classId], references: [classId])
+  questions quiz_question[]
+  attempts quiz_attempt[]
+}
+
+model quiz_question {
+  questionId String @id @default(cuid())
+  quizId String
+  type String @default("MCQ")
+  questionText String
+  options String?
+  correctAnswer String
+  explanation String?
+  marks Int @default(5)
+  order Int @default(0)
+  quiz quiz @relation(fields: [quizId], references: [quizId], onDelete: Cascade)
+  answers quiz_answer[]
+}
+
+model quiz_attempt {
+  attemptId String @id @default(cuid())
+  quizId String
+  studentId String
+  classId String
+  startedAt DateTime @default(now())
+  expiresAt DateTime
+  submittedAt DateTime?
+  status String @default("IN_PROGRESS")
+  score Int @default(0)
+  totalMarks Int @default(0)
+  percentage Int @default(0)
+  resultPublishedAt DateTime?
+  quiz quiz @relation(fields: [quizId], references: [quizId], onDelete: Cascade)
+  user user @relation(fields: [studentId], references: [userId])
+  classroom classroom @relation(fields: [classId], references: [classId])
+  answers quiz_answer[]
+}
+
+model quiz_answer {
+  answerId String @id @default(cuid())
+  attemptId String
+  questionId String
+  studentAnswer String?
+  marksAwarded Int?
+  reviewStatus String @default("PENDING")
+  feedback String?
+  markedForReview Boolean @default(false)
+  visited Boolean @default(true)
+  savedAt DateTime @default(now())
+  attempt quiz_attempt @relation(fields: [attemptId], references: [attemptId], onDelete: Cascade)
+  question quiz_question @relation(fields: [questionId], references: [questionId], onDelete: Cascade)
 }

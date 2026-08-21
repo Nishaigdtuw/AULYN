@@ -27,7 +27,7 @@ import { AiVivaModal } from "@/components/ai-viva-modal"
 import { AssignmentSubmissionModal } from "@/components/assignment-submission-modal"
 import { StudentNotesAI } from "@/components/student-notes-ai"
 import { StudentLectureSummaryModal } from "@/components/student-lecture-summary-modal"
-import { StudentQuizModal } from "@/components/student-quiz-modal"
+import { ExamInterfaceModal } from "@/components/exam-interface-modal"
 
 import { DoubtThreadsModal } from "@/components/doubt-threads-modal"
 import { StudentGroupsModal } from "@/components/student-groups-modal"
@@ -620,7 +620,7 @@ export default function StudentPortal() {
           )}
 
           <QuizModal open={quizModalOpen} onOpenChange={setQuizModalOpen} quiz={activeClassroom.quizzes?.[0] || { quizId: `quiz-${activeClassroom.classId}`, chapterId: "c1", title: `${activeClassroom.code} Quiz`, topic: activeClassroom.subject || "Core", timeMinutes: 10, totalMarks: 20, questions: [] }} classroom={activeClassroom} studentName={studentName} />
-          <StudentQuizModal open={studentQuizOpen} onOpenChange={setStudentQuizOpen} quiz={selectedQuizForStudent} classroom={activeClassroom} studentName={studentName} />
+          <ExamInterfaceModal open={studentQuizOpen} onOpenChange={setStudentQuizOpen} quiz={selectedQuizForStudent} classroom={activeClassroom} studentName={studentName} />
           <FlashcardsModal open={flashcardsModalOpen} onOpenChange={setFlashcardsModalOpen} flashcards={activeClassroom.flashcards || []} classroom={activeClassroom} />
           <MockTestModal open={mockTestModalOpen} onOpenChange={setMockTestModalOpen} classroom={activeClassroom} studentName={studentName} />
           <AiTutorDialog

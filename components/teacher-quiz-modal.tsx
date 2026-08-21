@@ -210,30 +210,36 @@ export function TeacherQuizModal({
   }
 
   const handleGenerateAiQuestions = () => {
-    const toastId = toast.loading("Generating conceptual quiz questions from uploaded course materials...")
+    const hasMaterials = (classroom.materials && classroom.materials.length > 0) || (classroom.chapters && classroom.chapters.some((c) => c.materials && c.materials.length > 0))
+    if (!hasMaterials) {
+      toast.warning("No course material available yet. Upload course material or create the quiz manually.")
+      return
+    }
+
+    const toastId = toast.loading(`Generating conceptual quiz questions from ${classroom.className} uploaded course materials...`)
     setTimeout(() => {
       const generated: QuizQuestion[] = [
         {
           id: `ai-q-1-${Date.now()}`,
           type: "MCQ",
-          question: `Which of the following describes the key invariant property of ${topic || 'Data Structures'}?`,
+          question: `Which core theorem or principle forms the foundation of ${topic || classroom.subject}?`,
           options: [
-            "All elements must be sorted in descending order at all times",
-            "Left subtree nodes are strictly less than root, right subtree nodes are strictly greater",
-            "Root node contains maximum height value",
-            "Every leaf node must have 2 children"
+            `Primary Invariant Property of ${classroom.subject}`,
+            "Unbounded Iteration Reduction",
+            "Static Memory Allocation Bound",
+            "Random State Approximation"
           ],
-          correctAnswer: 1,
-          explanation: "BST property requires left < root < right invariant for fast lookup.",
+          correctAnswer: 0,
+          explanation: `Derived directly from ${classroom.className} uploaded lecture notes.`,
           marks: 5
         },
         {
           id: `ai-q-2-${Date.now()}`,
           type: "TrueFalse",
-          question: `An AVL tree rebalances itself automatically using tree rotations whenever balance factor exceeds 1 or -1.`,
+          question: `All operational constraints in ${topic || classroom.subject} must be verified before executing system state transitions.`,
           options: ["True", "False"],
           correctAnswer: 0,
-          explanation: "AVL trees strictly maintain height balance difference of at most 1.",
+          explanation: `Verified based on ${classroom.className} course material.`,
           marks: 5
         }
       ]
