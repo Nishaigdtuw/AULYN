@@ -1134,6 +1134,72 @@ export function joinClassroom(
   return { success: true, message: `Successfully joined ${target.className}!`, classroom: target }
 }
 
+// Student Personal Notes Data Model & Persistence
+export interface StudentPersonalNote {
+  noteId: string
+  userId: string
+  title: string
+  fileName: string
+  fileType: string
+  fileUrl?: string
+  extractedText: string
+  createdAt: string
+  classId?: string
+  className?: string
+  chapterName?: string
+}
+
+export function getStudentPersonalNotes(userId: string = "student-demo"): StudentPersonalNote[] {
+  if (typeof window === "undefined") return []
+  try {
+    const raw = localStorage.getItem(`aulyn_personal_notes_${userId}`)
+    if (raw) return JSON.parse(raw)
+  } catch (err) {
+    console.error("Error reading student personal notes:", err)
+  }
+  return [
+    {
+      noteId: "note-sample-1",
+      userId: userId,
+      title: "Computer Networks & OSI Model",
+      fileName: "Computer_Networks_Notes.pdf",
+      fileType: "pdf",
+      extractedText: "Computer Networks Notes: Introduction to OSI 7 Layer Model. Physical Layer handles raw bits transmission. Data Link Layer provides framing, MAC addressing, and error detection using CRC. Network Layer handles IP routing and congestion control. Transport Layer provides reliable end-to-end communication via TCP (three-way handshake) and unreliable fast datagrams via UDP. Application Layer includes HTTP, DNS, SMTP, and FTP protocols. Deadlocks and TCP flow control sliding window mechanisms ensure reliable data transmission across packet-switched networks.",
+      createdAt: "21 Aug 2026",
+      className: "CS201 — Computer Networks"
+    }
+  ]
+}
+
+export function saveStudentPersonalNote(note: StudentPersonalNote): void {
+  if (typeof window === "undefined") return
+  try {
+    const notes = getStudentPersonalNotes(note.userId)
+    const existingIdx = notes.findIndex((n) => n.noteId === note.noteId)
+    if (existingIdx >= 0) {
+      notes[existingIdx] = note
+    } else {
+      notes.unshift(note)
+    }
+    localStorage.setItem(`aulyn_personal_notes_${note.userId}`, JSON.stringify(notes))
+    window.dispatchEvent(new Event("aulyn-personal-notes-update"))
+  } catch (err) {
+    console.error("Error saving student personal note:", err)
+  }
+}
+
+export function deleteStudentPersonalNote(userId: string, noteId: string): void {
+  if (typeof window === "undefined") return
+  try {
+    const notes = getStudentPersonalNotes(userId).filter((n) => n.noteId !== noteId)
+    localStorage.setItem(`aulyn_personal_notes_${userId}`, JSON.stringify(notes))
+    window.dispatchEvent(new Event("aulyn-personal-notes-update"))
+  } catch (err) {
+    console.error("Error deleting student personal note:", err)
+  }
+}
+
+
 
 
 

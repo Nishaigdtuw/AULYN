@@ -297,7 +297,7 @@ export function AssignmentSubmissionModal({
             <Card className="bg-white border-2 border-emerald-300 rounded-2xl p-4 space-y-3 shadow-2xs">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
-                  <CheckCircle className="w-4 h-4 text-emerald-600" /> Submitted on {existingSubmission.submittedAt}
+                  <CheckCircle className="w-4 h-4 text-emerald-600" /> Assignment Submitted
                 </span>
                 <div className="flex items-center space-x-2">
                   {existingSubmission.marks !== undefined && (
@@ -311,35 +311,41 @@ export function AssignmentSubmissionModal({
                 </div>
               </div>
 
-              {/* View Submitted PDF if present */}
-              {existingSubmission.fileUrl && (
-                <div className="p-3 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl flex items-center justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <FileText className="w-5 h-5 text-[#E76F51]" />
-                    <div>
-                      <p className="text-xs font-bold text-[#292724]">Submitted Assignment PDF</p>
-                      <p className="text-[10px] text-[#77716A]">Verified Document Submission</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => viewDocumentFile("Assignment_Submission.pdf", existingSubmission.fileUrl)}
-                      className="text-xs border-[#8B7EC8] text-[#8B7EC8] font-bold h-7 px-3 rounded-lg cursor-pointer flex items-center gap-1"
-                    >
-                      <Eye className="w-3.5 h-3.5" /> View PDF
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => downloadDocumentFile("Assignment_Submission.pdf", existingSubmission.fileUrl)}
-                      className="text-xs bg-[#E76F51] text-white font-bold h-7 px-3 rounded-lg cursor-pointer flex items-center gap-1 shadow-2xs"
-                    >
-                      <Download className="w-3.5 h-3.5" /> Download PDF
-                    </Button>
+              {/* View Submitted PDF & Actions */}
+              <div className="p-3 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center space-x-2.5">
+                  <FileText className="w-6 h-6 text-[#E76F51] shrink-0" />
+                  <div>
+                    <p className="text-xs font-bold text-[#292724]">solution.pdf</p>
+                    <p className="text-[10px] text-[#77716A]">Submitted: {existingSubmission.submittedAt}</p>
                   </div>
                 </div>
-              )}
+                <div className="flex items-center space-x-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => viewDocumentFile(`${existingSubmission.assignmentTitle || "solution"}.pdf`, existingSubmission.fileUrl)}
+
+                    className="text-xs border-[#8B7EC8] text-[#8B7EC8] font-bold h-7 px-3 rounded-lg cursor-pointer flex items-center gap-1"
+                  >
+                    <Eye className="w-3.5 h-3.5" /> View Submission
+                  </Button>
+                  {userRole === 'student' && (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setExistingSubmission(null)
+                        setPdfFile(null)
+                        setPdfDataUrl(null)
+                        toast.info("Select a new PDF to replace your current submission.")
+                      }}
+                      className="text-xs bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold h-7 px-3 rounded-lg cursor-pointer flex items-center gap-1 shadow-2xs"
+                    >
+                      <Upload className="w-3.5 h-3.5" /> Replace PDF
+                    </Button>
+                  )}
+                </div>
+              </div>
 
               {existingSubmission.content && (
                 <p className="text-xs text-[#292724] bg-[#FFF9F1] p-3 rounded-xl border border-[#E5DCD0] font-mono">
@@ -415,48 +421,6 @@ export function AssignmentSubmissionModal({
             </Card>
           )}
 
-          {/* Threaded Discussion */}
-          {existingSubmission && (
-            <div className="space-y-3 pt-2 border-t border-[#E5DCD0]">
-              <h4 className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center gap-1.5">
-                <MessageSquare className="w-4 h-4 text-[#8B7EC8]" /> Threaded Assignment Discussion
-              </h4>
-
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {existingSubmission.comments?.map((c) => (
-                  <div
-                    key={c.id}
-                    className={`p-3 rounded-xl border text-xs space-y-1 ${
-                      c.authorRole === 'teacher' ? 'bg-[#FFF9F1] border-[#8B7EC8]/40' : 'bg-white border-[#E5DCD0]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between font-bold">
-                      <span className={c.authorRole === 'teacher' ? 'text-[#8B7EC8]' : 'text-[#292724]'}>
-                        {c.authorName} ({c.authorRole === 'teacher' ? 'Instructor' : 'Student'})
-                      </span>
-                      <span className="text-[10px] text-[#77716A]">{c.timestamp}</span>
-                    </div>
-                    <p className="text-[#292724] text-xs font-medium">{c.content}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                <Input
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Type a comment or question about this submission..."
-                  className="bg-white border-[#E5DCD0] text-xs font-medium rounded-xl"
-                />
-                <Button
-                  onClick={handleAddThreadComment}
-                  className="bg-[#8B7EC8] hover:bg-[#7a6db7] text-white font-bold text-xs rounded-xl cursor-pointer shrink-0"
-                >
-                  <Send className="w-3.5 h-3.5 mr-1" /> Post
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
       </DialogContent>
     </Dialog>

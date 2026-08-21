@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback, useRef } from "react"
-import { FileText, Download, ArrowUpRight, Menu, LogOut, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Eye, Bell, User, Save, BookOpen, Sparkles, Award, ArrowLeft, RefreshCw, HelpCircle, Plus, MessageSquare } from "lucide-react"
+import { FileText, Download, ArrowUpRight, Menu, LogOut, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Eye, Bell, User, Save, BookOpen, Sparkles, Award, ArrowLeft, RefreshCw, HelpCircle, Plus, MessageSquare, CheckSquare, Layers, Timer } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -23,6 +23,8 @@ import { LiveSessionModal } from "@/components/live-session-modal"
 import { AdaptiveQuizModal } from "@/components/adaptive-quiz-modal"
 import { AiVivaModal } from "@/components/ai-viva-modal"
 import { AssignmentSubmissionModal } from "@/components/assignment-submission-modal"
+import { StudentNotesAI } from "@/components/student-notes-ai"
+
 import { DoubtThreadsModal } from "@/components/doubt-threads-modal"
 import { StudentGroupsModal } from "@/components/student-groups-modal"
 import { PeerStudyRoomModal } from "@/components/peer-study-room-modal"
@@ -393,57 +395,15 @@ export default function StudentPortal() {
             )}
           </div>
 
-          {/* Intelligent Ecosystem Workflows Submenu */}
-          <div>
-            <button
-              onClick={() => toggleSection("ecosystem")}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724] transition-all duration-200 cursor-pointer"
-            >
-              <span className="flex items-center">
-                <Sparkles className="w-4 h-4 mr-2.5 text-[#8B7EC8]" /> Intelligent Ecosystem
-              </span>
-              {expandedSections.ecosystem ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-            </button>
-
-            {expandedSections.ecosystem && (
-              <div className="ml-4 pl-2 border-l border-[#E5DCD0] space-y-1 mt-1">
-                <button onClick={() => { setDoubtThreadsOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
-                  <HelpCircle className="w-3.5 h-3.5 text-[#75B798]" /> Contextual Doubt Threads
-                </button>
-                <button onClick={() => { setPeerStudyOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
-                  <MessageSquare className="w-3.5 h-3.5 text-[#8B7EC8]" /> Discussion Group
-                </button>
-              </div>
-            )}
-
-          </div>
-
-          {/* Practice Workflows */}
-          <div>
-            <button
-              onClick={() => toggleSection("practice")}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724] transition-all duration-200 cursor-pointer"
-            >
-              <span className="flex items-center">
-                <Award className="w-4 h-4 mr-2.5 text-[#75B798]" /> Practice Assessment
-              </span>
-              {expandedSections.practice ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-            </button>
-
-            {expandedSections.practice && (
-              <div className="ml-4 pl-2 border-l border-[#E5DCD0] space-y-1 mt-1">
-                <button onClick={() => { setQuizModalOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer">
-                  🎯 Chapter Quiz MCQs
-                </button>
-                <button onClick={() => { setFlashcardsModalOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer">
-                  🃏 3D Flip Flashcards
-                </button>
-                <button onClick={() => { setMockTestModalOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer">
-                  ⏱️ Timed Mock Examination
-                </button>
-              </div>
-            )}
-          </div>
+          {/* Notes AI (Personal Student Notes Workspace) */}
+          <button
+            onClick={() => { setActiveMainTab("notes-ai"); setMobileDrawerOpen(false) }}
+            className={`w-full flex items-center px-3 py-2 rounded-xl font-bold transition-all duration-200 cursor-pointer ${
+              activeMainTab === "notes-ai" ? "bg-[#F1E8DD] text-[#8B7EC8] shadow-2xs" : "text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724]"
+            }`}
+          >
+            <BookOpen className="w-4 h-4 mr-2.5 text-[#8B7EC8]" /> Notes AI
+          </button>
 
           {/* Code Visualizer */}
           <button
@@ -455,6 +415,49 @@ export default function StudentPortal() {
             <FolderOpen className="w-4 h-4 mr-2.5 text-[#8B7EC8]" /> Code Trace Visualizer
           </button>
 
+          {/* Practical Assessment */}
+          <div>
+            <button
+              onClick={() => toggleSection("practice")}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724] transition-all duration-200 cursor-pointer"
+            >
+              <span className="flex items-center">
+                <Award className="w-4 h-4 mr-2.5 text-[#75B798]" /> Practical Assessment
+              </span>
+              {expandedSections.practice ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            </button>
+
+            {expandedSections.practice && (
+              <div className="ml-4 pl-2 border-l border-[#E5DCD0] space-y-1 mt-1">
+                <button onClick={() => { setQuizModalOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center">
+                  <CheckSquare className="w-3.5 h-3.5 mr-1.5 text-[#E76F51]" /> Chapter Quiz
+                </button>
+                <button onClick={() => { setFlashcardsModalOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center">
+                  <Layers className="w-3.5 h-3.5 mr-1.5 text-[#8B7EC8]" /> 3D Flashcards
+                </button>
+                <button onClick={() => { setMockTestModalOpen(true); setMobileDrawerOpen(false) }} className="w-full text-left px-2.5 py-1.5 text-xs text-[#77716A] hover:text-[#292724] font-semibold transition-colors cursor-pointer flex items-center">
+                  <Timer className="w-3.5 h-3.5 mr-1.5 text-[#75B798]" /> Timed Mock Examination
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Doubt Threads */}
+          <button
+            onClick={() => { setDoubtThreadsOpen(true); setMobileDrawerOpen(false) }}
+            className="w-full flex items-center px-3 py-2 rounded-xl font-bold text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724] transition-all duration-200 cursor-pointer"
+          >
+            <HelpCircle className="w-4 h-4 mr-2.5 text-[#75B798]" /> Doubt Threads
+          </button>
+
+          {/* Discussion Group */}
+          <button
+            onClick={() => { setPeerStudyOpen(true); setMobileDrawerOpen(false) }}
+            className="w-full flex items-center px-3 py-2 rounded-xl font-bold text-[#77716A] hover:bg-[#F1E8DD]/40 hover:text-[#292724] transition-all duration-200 cursor-pointer"
+          >
+            <MessageSquare className="w-4 h-4 mr-2.5 text-[#8B7EC8]" /> Discussion Group
+          </button>
+
           {/* Settings */}
           <button
             onClick={() => { setActiveMainTab("settings"); setMobileDrawerOpen(false) }}
@@ -464,6 +467,7 @@ export default function StudentPortal() {
           >
             <Settings className="w-4 h-4 mr-2.5 text-[#77716A]" /> Settings & Profile
           </button>
+
         </nav>
       </div>
 
@@ -722,12 +726,17 @@ export default function StudentPortal() {
           </div>
 
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-4 max-w-xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6">
+
+            <TabsList className="grid w-full grid-cols-5 max-w-2xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6">
+
               <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Overview
               </TabsTrigger>
               <TabsTrigger value="materials" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
-                Materials & Notes
+                Course Materials
+              </TabsTrigger>
+              <TabsTrigger value="notes-ai" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#8B7EC8] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
+                Notes AI
               </TabsTrigger>
               <TabsTrigger value="visualizer" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#8B7EC8] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Code IDE
@@ -736,6 +745,7 @@ export default function StudentPortal() {
                 Settings
               </TabsTrigger>
             </TabsList>
+
 
             {/* OVERVIEW TAB */}
             <TabsContent value="overview" className="space-y-6 animate-in fade-in-50 duration-200">
@@ -951,10 +961,20 @@ export default function StudentPortal() {
               </Card>
             </TabsContent>
 
+            {/* STUDENT PERSONAL NOTES AI TAB */}
+            <TabsContent value="notes-ai" className="animate-in fade-in-50 duration-200">
+              <StudentNotesAI
+                userId="student-demo"
+                studentName={studentName}
+                classrooms={classrooms}
+              />
+            </TabsContent>
+
             {/* CODE IDE TAB */}
             <TabsContent value="visualizer" className="animate-in fade-in-50 duration-200">
               <CodeVisualizer />
             </TabsContent>
+
 
 
             {/* SETTINGS TAB */}

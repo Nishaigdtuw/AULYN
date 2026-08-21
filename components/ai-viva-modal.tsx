@@ -167,10 +167,10 @@ export function AiVivaModal({
             </span>
           </div>
           <DialogTitle className="text-xl font-serif font-black text-[#292724] mt-2">
-            AI Oral Viva Defense — {targetClassroom?.className || assignmentTitle}
+            Conceptual Oral Question — {targetClassroom?.className || assignmentTitle}
           </DialogTitle>
           <DialogDescription className="text-xs text-[#77716A]">
-            The AI Examiner asks conceptual questions based on course material.
+            Generates conceptual questions grounded in your teacher&apos;s uploaded course material.
           </DialogDescription>
         </DialogHeader>
 
@@ -181,9 +181,9 @@ export function AiVivaModal({
               <BookOpen className="w-7 h-7" />
             </div>
             <div>
-              <h3 className="text-lg font-serif font-black text-[#292724]">No source material available yet.</h3>
+              <h3 className="text-lg font-serif font-black text-[#292724]">No course material is available yet.</h3>
               <p className="text-xs text-[#77716A] font-semibold mt-1 max-w-md mx-auto">
-                Your teacher needs to upload course notes before an AI Oral Viva can be generated for <strong>{targetClassroom?.className}</strong>.
+                Your teacher needs to upload notes before conceptual questions can be generated.
               </p>
             </div>
             <Button
@@ -193,6 +193,7 @@ export function AiVivaModal({
               Back to Workspace
             </Button>
           </Card>
+
         ) : !isCompleted ? (
           <div className="space-y-5 pt-3">
             {vivaQuestions[step] && (
