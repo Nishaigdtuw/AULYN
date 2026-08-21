@@ -180,14 +180,31 @@ export interface NotificationItem {
 }
 
 export interface SubscriptionData {
-  plan: 'free' | 'pro' | 'institution'
+  plan: 'free' | 'pro' | 'student_pro' | 'teacher_pro' | 'institution'
   status: 'active' | 'inactive'
+  role?: 'student' | 'teacher'
   razorpayOrderId?: string
   razorpayPaymentId?: string
   amount?: number
+  currency?: string
   startedAt?: string
   expiresAt?: string
 }
+
+export interface PaymentRecord {
+  id: string
+  userId: string
+  role: 'student' | 'teacher'
+  plan: string
+  amount: number
+  currency: string
+  razorpayOrderId: string
+  razorpayPaymentId?: string
+  status: 'CREATED' | 'PAID' | 'FAILED'
+  createdAt: string
+  verifiedAt?: string
+}
+
 
 // Advanced Intelligent Ecosystem Extensions
 
@@ -816,6 +833,30 @@ export function saveSubscription(sub: SubscriptionData) {
   localStorage.setItem(SUB_STORE_KEY, JSON.stringify(sub))
   window.dispatchEvent(new Event("aulyn-subscription-update"))
 }
+
+const PAYMENT_RECORDS_KEY = "aulyn_payment_records"
+
+export function getPaymentRecords(userId?: string): PaymentRecord[] {
+  if (typeof window === "undefined") return []
+  const data = localStorage.getItem(PAYMENT_RECORDS_KEY)
+  if (!data) return []
+  try {
+    const list: PaymentRecord[] = JSON.parse(data)
+    if (userId) return list.filter(r => r.userId === userId)
+    return list
+  } catch {
+    return []
+  }
+}
+
+export function savePaymentRecord(record: PaymentRecord) {
+  if (typeof window === "undefined") return
+  const current = getPaymentRecords()
+  const filtered = current.filter(r => r.id !== record.id)
+  filtered.unshift(record)
+  localStorage.setItem(PAYMENT_RECORDS_KEY, JSON.stringify(filtered))
+}
+
 
 // Live Session Helpers
 export function getLiveSession(classId: string): LiveSessionData | null {

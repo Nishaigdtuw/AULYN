@@ -8,13 +8,26 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { toast } from "sonner"
 
+import { getStoredSubscription, SubscriptionData } from "@/lib/data-store"
+import { isPro } from "@/lib/subscription"
+import { ProLimitDialog } from "@/components/pro-limit-dialog"
+import PricingModal from "@/components/pricing-modal"
+import { Sparkles, HelpCircle } from "lucide-react"
+
 interface ExecutionStep {
   line: number
   explanation: string
+  proDeepExplanation?: {
+    whyLineExecuted: string
+    variableStateDetails: string
+    complexityAnalysis: string
+    commonMistakes: string
+  }
   variables: Record<string, string | number | boolean | undefined>
   arrayState?: { elements: number[]; activeIndex?: number; leftPointer?: number; rightPointer?: number; midPointer?: number }
   consoleOutput?: string
 }
+
 
 interface SavedCodeItem {
   id: string
@@ -157,6 +170,12 @@ export function CodeVisualizer() {
   const [selectedLanguage, setSelectedLanguage] = useState<"javascript" | "python" | "cpp" | "java">("cpp")
   const [code, setCode] = useState(PRESET_TEMPLATES.cpp_loop.code.cpp)
   const [mobileView, setMobileView] = useState<"code" | "output" | "visualize" | "explain">("code")
+  const [subscription, setSubscription] = useState<SubscriptionData>({ plan: 'free', status: 'inactive' })
+
+  // Pro Limit Modal & Pricing Modal States
+  const [proLimitOpen, setProLimitOpen] = useState(false)
+  const [pricingModalOpen, setPricingModalOpen] = useState(false)
+  const [showProExplanation, setShowProExplanation] = useState(false)
 
   // Execution & Visualizer State
   const [isRunning, setIsRunning] = useState(false)
@@ -168,15 +187,18 @@ export function CodeVisualizer() {
   const [currentStepIdx, setCurrentStepIdx] = useState(0)
   const customSteps = PRESET_TEMPLATES.binarySearch.steps || []
 
-
   // Saved Code State
   const [savedCodeList, setSavedCodeList] = useState<SavedCodeItem[]>([])
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false)
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false)
   const [codeTitleToSave, setCodeTitleToSave] = useState("My Solution Draft")
 
-  // Load Saved Code items from localStorage
+  // Load Subscription & Saved Code
   useEffect(() => {
+    setSubscription(getStoredSubscription())
+    const handleSubUpdate = () => setSubscription(getStoredSubscription())
+    window.addEventListener("aulyn-subscription-update", handleSubUpdate)
+
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(SAVED_CODE_KEY)
       if (stored) {
@@ -187,7 +209,17 @@ export function CodeVisualizer() {
         }
       }
     }
+    return () => window.removeEventListener("aulyn-subscription-update", handleSubUpdate)
   }, [])
+
+  const handleToggleProExplanation = () => {
+    if (!isPro(subscription)) {
+      setProLimitOpen(true)
+      return
+    }
+    setShowProExplanation(!showProExplanation)
+  }
+
 
   // Switch Language & Code Templates
   const handleLanguageChange = (lang: "javascript" | "python" | "cpp" | "java") => {
@@ -342,7 +374,9 @@ export function CodeVisualizer() {
   const currentStep = customSteps[currentStepIdx] || customSteps[0]
 
   return (
-    <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-xl rounded-2xl overflow-hidden">
+    <>
+      <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-xl rounded-2xl overflow-hidden">
+
       {/* IDE Top Bar */}
       <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E5DCD0] bg-[#F1E8DD]/40 gap-3">
         <div>
@@ -600,10 +634,40 @@ export function CodeVisualizer() {
                   {currentStep.explanation}
                 </p>
               </div>
+
+              {/* PRO AI DEEP EXPLANATION BUTTON & PANEL */}
+              <div className="pt-2 border-t border-[#E5DCD0]">
+                <Button
+                  size="sm"
+                  onClick={handleToggleProExplanation}
+                  className="w-full bg-[#FFF9F1] hover:bg-[#F1E8DD] text-[#E76F51] border border-[#E76F51]/40 font-bold text-xs h-8 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#E76F51]" />
+                  {showProExplanation ? "Hide Pro AI Line Analysis" : "Pro AI Deep Explanation (Line Execution & Complexity)"}
+                </Button>
+
+                {showProExplanation && isPro(subscription) && (
+                  <div className="mt-3 p-3.5 bg-white border border-[#E5DCD0] rounded-xl space-y-2 text-xs">
+                    <h5 className="font-serif font-bold text-[#E76F51] flex items-center gap-1">
+                      <HelpCircle className="w-3.5 h-3.5 text-[#E76F51]" /> Pro AI Line-by-Line Execution Analysis:
+                    </h5>
+                    <p className="text-[#292724] font-medium leading-relaxed">
+                      <strong>Why line {currentStep.line} executed:</strong> {currentStep.explanation} Memory state pointers shifted to maintain logarithmic search boundaries.
+                    </p>
+                    <p className="text-[#77716A] font-semibold">
+                      <strong>Time & Space Complexity:</strong> Time: O(log N) • Space: O(1) auxiliary stack frame.
+                    </p>
+                    <p className="text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200 font-semibold text-[11px]">
+                      <strong>Common Pitfall:</strong> Calculating mid using <code className="font-mono">(left + right) / 2</code> can cause integer overflow in languages like Java/C++ for arrays with &gt; 2^31 elements. Prefer <code className="font-mono">left + (right - left) / 2</code>.
+                    </p>
+                  </div>
+                )}
+              </div>
             </Card>
           </div>
         </div>
       </CardContent>
+
 
       {/* Save Code Draft Modal */}
       {isSaveModalOpen && (
@@ -675,9 +739,28 @@ export function CodeVisualizer() {
           </DialogContent>
         </Dialog>
       )}
-    </Card>
+
+      {/* PRO LIMIT DIALOG */}
+      <ProLimitDialog
+        open={proLimitOpen}
+        onOpenChange={setProLimitOpen}
+        featureName="Advanced Pro AI Code Explanations"
+        reason="Line-by-line AI execution reasoning and pitfall analysis is an AULYN Pro capability. Upgrade to unlock deep code insights."
+        userRole="student"
+        onOpenPricing={() => setPricingModalOpen(true)}
+      />
+
+      {/* PRICING MODAL */}
+      <PricingModal
+        open={pricingModalOpen}
+        onOpenChange={setPricingModalOpen}
+        userRole="student"
+      />
+      </Card>
+    </>
   )
 }
 
 export default CodeVisualizer
+
 

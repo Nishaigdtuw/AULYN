@@ -9,6 +9,12 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { ClassroomData, AssignmentData, getStoredClassrooms, saveStoredClassrooms } from "@/lib/data-store"
 
+import { getStoredSubscription } from "@/lib/data-store"
+
+import { isPro } from "@/lib/subscription"
+import { ProLimitDialog } from "@/components/pro-limit-dialog"
+import PricingModal from "@/components/pricing-modal"
+
 interface CreateAssignmentModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -22,6 +28,11 @@ export function CreateAssignmentModal({ open, onOpenChange, activeClass }: Creat
   const [difficulty, setDifficulty] = useState<'Beginner' | 'Intermediate' | 'Advanced'>("Intermediate")
   const [totalMarks, setTotalMarks] = useState(50)
   const [dueDate, setDueDate] = useState("2026-08-30")
+  const [selectedMaterialFile, setSelectedMaterialFile] = useState<string>("")
+
+  // Subscription & Pro Limits State
+  const [proLimitOpen, setProLimitOpen] = useState(false)
+  const [pricingModalOpen, setPricingModalOpen] = useState(false)
 
   // Assignment File Upload state
   const [asgnFileUrl, setAsgnFileUrl] = useState<string | undefined>(undefined)
@@ -34,21 +45,29 @@ export function CreateAssignmentModal({ open, onOpenChange, activeClass }: Creat
   const [draftQuestions, setDraftQuestions] = useState<string[]>([])
 
   const handleGenerateAiDraft = () => {
+    const sub = getStoredSubscription()
+    if (!isPro(sub)) {
+      setProLimitOpen(true)
+      return
+    }
+
     if (!title.trim()) {
       toast.warning("Please enter an assignment title / topic first")
       return
     }
     setIsGenerating(true)
+    const matLabel = selectedMaterialFile || activeClass?.materials?.[0]?.fileName || "Course Notes"
     setTimeout(() => {
       setDraftQuestions([
-        `Q1. Explain the primary structural constraints of ${title} and derive its time complexity in average vs worst case.`,
-        `Q2. Implement a working code solution resolving edge cases for ${title} with proper inline documentation.`,
-        `Q3. Analyze a failure scenario where naive iteration underperforms compared to ${title}.`
+        `Q1. Based on ${matLabel}: Explain the primary structural constraints of ${title} and derive its time complexity in average vs worst case.`,
+        `Q2. Based on ${matLabel}: Implement a working code solution resolving edge cases for ${title} with proper inline documentation.`,
+        `Q3. Analyze a failure scenario in ${matLabel} where naive iteration underperforms compared to ${title}.`
       ])
       setIsGenerating(false)
-      toast.success("AI Assignment Draft generated! Preview and edit below.")
+      toast.success(`AI Assignment Draft generated from "${matLabel}"! Review and edit below.`)
     }, 800)
   }
+
 
   const handlePublishAssignment = () => {
     if (!title.trim()) {
@@ -248,23 +267,43 @@ export function CreateAssignmentModal({ open, onOpenChange, activeClass }: Creat
 
 
           {/* AI Generator Toggle */}
-          <div className="p-3 bg-white border border-[#E5DCD0] rounded-xl flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Sparkles className="w-4 h-4 text-[#E9B949]" />
-              <div>
-                <p className="text-xs font-bold text-[#292724]">AI Assistant Question Draft</p>
-                <p className="text-[11px] text-[#77716A]">Automatically generate sample problem sets based on topic & difficulty</p>
+          <div className="p-4 bg-[#FFF9F1] border border-[#E9B949]/50 rounded-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Sparkles className="w-4 h-4 text-[#E9B949]" />
+                <div>
+                  <p className="text-xs font-bold text-[#292724]">AI Assignment Generator (Teacher Pro)</p>
+                  <p className="text-[11px] text-[#77716A]">Generate grounded questions from uploaded course materials or notes</p>
+                </div>
               </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleGenerateAiDraft}
+                disabled={isGenerating}
+                className="text-xs border-[#E9B949] text-[#292724] font-bold rounded-xl hover:bg-[#E9B949]/10 shrink-0"
+              >
+                {isGenerating ? "Generating..." : "Generate AI Questions"}
+              </Button>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleGenerateAiDraft}
-              disabled={isGenerating}
-              className="text-xs border-[#E9B949] text-[#292724] font-bold rounded-xl hover:bg-[#E9B949]/10"
-            >
-              {isGenerating ? "Generating..." : "Generate AI Questions"}
-            </Button>
+
+            {/* Course Material Grounding Dropdown */}
+            {activeClass?.materials && activeClass.materials.length > 0 && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-xs font-bold text-[#292724] shrink-0">Ground In Material:</span>
+                <select
+                  value={selectedMaterialFile}
+                  onChange={(e) => setSelectedMaterialFile(e.target.value)}
+                  className="bg-white border border-[#E5DCD0] text-xs font-semibold text-[#292724] rounded-lg px-2.5 py-1 w-full"
+                >
+                  <option value="">Default (First Uploaded Material)</option>
+                  {activeClass.materials.map((m) => (
+                    <option key={m.fileId} value={m.fileName}>{m.fileName} ({m.size || 'PDF'})</option>
+                  ))}
+
+                </select>
+              </div>
+            )}
           </div>
 
           {/* AI Draft Question Preview */}
@@ -306,6 +345,24 @@ export function CreateAssignmentModal({ open, onOpenChange, activeClass }: Creat
           </Button>
         </div>
       </DialogContent>
+
+      {/* PRO LIMIT DIALOG */}
+      <ProLimitDialog
+        open={proLimitOpen}
+        onOpenChange={setProLimitOpen}
+        featureName="AI Assignment Generation"
+        reason="Generating course-grounded assignments with AI is an AULYN Teacher Pro capability. Upgrade to automate assignment draft creation."
+        userRole="teacher"
+        onOpenPricing={() => setPricingModalOpen(true)}
+      />
+
+      {/* PRICING MODAL */}
+      <PricingModal
+        open={pricingModalOpen}
+        onOpenChange={setPricingModalOpen}
+        userRole="teacher"
+      />
     </Dialog>
   )
 }
+

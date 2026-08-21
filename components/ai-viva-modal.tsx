@@ -7,8 +7,14 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Card } from "@/components/ui/card"
 import { toast } from "sonner"
-import { saveVivaSession, VivaSessionData, ClassroomData, getStoredClassrooms } from "@/lib/data-store"
+import { saveVivaSession, VivaSessionData, ClassroomData, getStoredClassrooms, SubscriptionData, getStoredSubscription } from "@/lib/data-store"
+
 import { saveMasteryEvidence } from "@/lib/mastery-engine"
+import { isPro } from "@/lib/subscription"
+import { ProLimitDialog } from "@/components/pro-limit-dialog"
+
+import PricingModal from "@/components/pricing-modal"
+
 
 interface AiVivaModalProps {
   open: boolean
@@ -54,6 +60,10 @@ export function AiVivaModal({
   studentName = "Alex Rivera"
 }: AiVivaModalProps) {
   const [targetClassroom, setTargetClassroom] = useState<ClassroomData | undefined>(passedClassroom)
+  const [subscription, setSubscription] = useState<SubscriptionData>({ plan: 'free', status: 'inactive' })
+  const [proLimitOpen, setProLimitOpen] = useState(false)
+  const [pricingModalOpen, setPricingModalOpen] = useState(false)
+
   const [currentStep, setCurrentStep] = useState<number>(0)
   const [currentAnswer, setCurrentAnswer] = useState("")
   const [qaHistory, setQaHistory] = useState<VivaQAHistory[]>([])
@@ -62,9 +72,11 @@ export function AiVivaModal({
   const [currentQuestion, setCurrentQuestion] = useState<VivaQuestionItem | null>(null)
   const [evaluationResult, setEvaluationResult] = useState<VivaFinalEvaluation | null>(null)
 
-  // Resolve active classroom dynamically
   useEffect(() => {
     if (open) {
+      const sub = getStoredSubscription()
+      setSubscription(sub)
+
       const activeClass = passedClassroom || (classId ? getStoredClassrooms().find((c) => c.classId === classId) : getStoredClassrooms()[0])
       setTargetClassroom(activeClass)
 
@@ -85,13 +97,20 @@ export function AiVivaModal({
     }
   }, [open, passedClassroom, classId])
 
+
   const hasMaterials = Boolean(targetClassroom?.materials && targetClassroom.materials.length > 0)
 
   // Handle Answer Submission & Adaptive Next Question Generation
   const handleAnswerSubmit = () => {
     if (!currentAnswer.trim() || !currentQuestion || !targetClassroom) return
 
+    if (!isPro(subscription) && currentStep >= 2) {
+      setProLimitOpen(true)
+      return
+    }
+
     setIsAnalyzing(true)
+
     const userText = currentAnswer.trim()
     const wordCount = userText.split(/\s+/).length
 
@@ -202,7 +221,9 @@ export function AiVivaModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+
       <DialogContent className="max-w-2xl bg-[#FFF9F1] border border-[#E5DCD0] shadow-2xl rounded-2xl p-6 text-[#292724] max-h-[90vh] overflow-y-auto">
         <DialogHeader className="pb-3 border-b border-[#E5DCD0]">
           <div className="flex items-center justify-between">
@@ -359,9 +380,28 @@ export function AiVivaModal({
           </div>
         )}
       </DialogContent>
-    </Dialog>
+      </Dialog>
+
+      {/* PRO LIMIT DIALOG */}
+      <ProLimitDialog
+        open={proLimitOpen}
+        onOpenChange={setProLimitOpen}
+        featureName="Higher AI Oral Viva Sessions"
+        reason="Unlimited AI Viva practice is an AULYN Pro capability. Upgrade to unlock unlimited conceptual oral Q&A sessions."
+        userRole="student"
+        onOpenPricing={() => setPricingModalOpen(true)}
+      />
+
+      {/* PRICING MODAL */}
+      <PricingModal
+        open={pricingModalOpen}
+        onOpenChange={setPricingModalOpen}
+        userRole="student"
+      />
+    </>
   )
 }
+
 
 // Generate initial question grounded in classroom materials/subject
 function generateInitialQuestion(classroom: ClassroomData): VivaQuestionItem {

@@ -12,6 +12,13 @@ import { toast } from "sonner"
 import { StudentPersonalNote, getStudentPersonalNotes, saveStudentPersonalNote, deleteStudentPersonalNote, ClassroomData } from "@/lib/data-store"
 import { parseDocumentFile } from "@/lib/document-parser"
 
+import { getStoredSubscription, SubscriptionData } from "@/lib/data-store"
+import { isPro } from "@/lib/subscription"
+import { ProLimitDialog } from "@/components/pro-limit-dialog"
+import PricingModal from "@/components/pricing-modal"
+import { Download, CheckSquare, Square } from "lucide-react"
+
+
 interface StudentNotesAIProps {
   userId?: string
   studentName?: string
@@ -51,7 +58,15 @@ export function StudentNotesAI({
 }: StudentNotesAIProps) {
   const [notes, setNotes] = useState<StudentPersonalNote[]>([])
   const [selectedNote, setSelectedNote] = useState<StudentPersonalNote | null>(null)
+  const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>([])
+  const [subscription, setSubscription] = useState<SubscriptionData>({ plan: 'free', status: 'inactive' })
   
+  // Pro Limit Modal & Pricing Modal States
+  const [proLimitOpen, setProLimitOpen] = useState(false)
+  const [proLimitFeature, setProLimitFeature] = useState("")
+  const [proLimitReason, setProLimitReason] = useState("")
+  const [pricingModalOpen, setPricingModalOpen] = useState(false)
+
   // Upload State
   const [isUploading, setIsUploading] = useState(false)
   const [selectedClassId, setSelectedClassId] = useState<string>("general")
@@ -72,13 +87,21 @@ export function StudentNotesAI({
   const [chatMessages, setChatMessages] = useState<NoteChatMessage[]>([])
   const [chatInput, setChatInput] = useState("")
 
-  // Load Student Notes
+  // Load Student Notes & Subscription
   useEffect(() => {
     const list = getStudentPersonalNotes(userId)
     setNotes(list)
+    setSubscription(getStoredSubscription())
     if (list.length > 0 && !selectedNote) {
       setSelectedNote(list[0])
+      setSelectedNoteIds([list[0].noteId])
     }
+
+    const handleSubUpdate = () => {
+      setSubscription(getStoredSubscription())
+    }
+    window.addEventListener("aulyn-subscription-update", handleSubUpdate)
+    return () => window.removeEventListener("aulyn-subscription-update", handleSubUpdate)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
 
@@ -107,6 +130,82 @@ export function StudentNotesAI({
       ])
     }
   }, [selectedNote])
+
+  // Toggle multi-doc selection for Pro users
+  const handleToggleDocSelect = (noteId: string) => {
+    if (!isPro(subscription)) {
+      if (selectedNoteIds.length >= 1 && !selectedNoteIds.includes(noteId)) {
+        setProLimitFeature("Multi-Document Study Assistant")
+        setProLimitReason("Multi-document cross-PDF analysis is an AULYN Pro capability. Upgrade to select multiple study notes simultaneously.")
+        setProLimitOpen(true)
+        return
+      }
+    }
+
+    let updated: string[]
+    if (selectedNoteIds.includes(noteId)) {
+      if (selectedNoteIds.length === 1) return // Keep at least one selected
+      updated = selectedNoteIds.filter(id => id !== noteId)
+    } else {
+      updated = [...selectedNoteIds, noteId]
+    }
+    setSelectedNoteIds(updated)
+
+    const targetNote = notes.find(n => n.noteId === noteId)
+    if (targetNote) setSelectedNote(targetNote)
+  }
+
+  // Handle Export AI Study Pack
+  const handleExportStudyPack = () => {
+    if (!isPro(subscription)) {
+      setProLimitFeature("AI Study Pack Export")
+      setProLimitReason("Exporting comprehensive AI Study Packs is an AULYN Pro capability. Upgrade to download structured revision packs.")
+      setProLimitOpen(true)
+      return
+    }
+
+    if (!selectedNote) return
+
+    const summary = generateSummaryFromNoteText(selectedNote)
+    const packContent = `# AULYN AI Study Pack: ${selectedNote.title}
+Uploaded File: ${selectedNote.fileName}
+Generated: ${new Date().toLocaleDateString()}
+Student: ${studentName}
+
+---
+
+## 1. Concise Summary
+${summary.overview}
+
+## 2. Key Concepts & Architecture
+${summary.keyConcepts.map(c => `- **${c.title}**: ${c.explanation}`).join('\n')}
+
+## 3. Core Definitions & Terminology
+${summary.definitions.map(d => `- **${d.term}**: ${d.definition}`).join('\n')}
+
+## 4. Exam-Important Concepts
+${summary.examImportant.map(e => `- ${e}`).join('\n')}
+
+## 5. Multiple-Choice Revision Questions
+${quizQuestions.map((q, i) => `${i+1}. ${q.question}\n   Options: ${q.options.join(' | ')}\n   Explanation: ${q.explanation}`).join('\n\n')}
+
+## 6. Conceptual Practice & Model Answers
+${practiceQuestions.map(p => `### [${p.category}] ${p.question}\n**Model Solution**: ${p.answer}`).join('\n\n')}
+
+## 7. Key Takeaways
+${summary.quickRevision.map(r => `- ${r}`).join('\n')}
+`
+
+    const blob = new Blob([packContent], { type: "text/markdown;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `${selectedNote.title.replace(/\s+/g, '_')}_AI_Study_Pack.md`
+    link.click()
+    URL.revokeObjectURL(url)
+    toast.success(`Exported AI Study Pack for "${selectedNote.title}"!`)
+  }
+
 
   // Handle Note File Upload
   const handleFileUpload = async (file: File) => {
@@ -225,6 +324,14 @@ export function StudentNotesAI({
             ))}
           </select>
 
+          <Button
+            onClick={handleExportStudyPack}
+            variant="outline"
+            className="border-[#8B7EC8] text-[#8B7EC8] hover:bg-[#8B7EC8] hover:text-white font-bold text-xs py-2 px-3 rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5 shrink-0"
+          >
+            <Download className="w-3.5 h-3.5" /> Export AI Study Pack
+          </Button>
+
           <label className="bg-[#8B7EC8] hover:bg-[#786bb8] text-white font-bold text-xs py-2 px-4 rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5 shrink-0 transition-all">
             <input
               type="file"
@@ -246,14 +353,20 @@ export function StudentNotesAI({
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Notes Library Sidebar */}
         <Card className="bg-[#FFF9F1] border border-[#E5DCD0] shadow-2xs rounded-2xl p-4 space-y-3 lg:col-span-1">
-          <h3 className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center gap-1.5">
               <Layers className="w-4 h-4 text-[#8B7EC8]" /> My Notes Library
-            </span>
+            </h3>
             <span className="text-[10px] bg-[#8B7EC8]/10 text-[#8B7EC8] px-2 py-0.5 rounded-full font-mono font-bold">
               {notes.length}
             </span>
-          </h3>
+          </div>
+          {selectedNoteIds.length > 1 && (
+            <div className="p-2 bg-[#8B7EC8]/10 border border-[#8B7EC8]/30 rounded-xl text-[11px] font-bold text-[#8B7EC8] flex items-center justify-between">
+              <span>Multi-Doc Analysis Active</span>
+              <span className="bg-[#8B7EC8] text-white px-1.5 py-0.5 rounded font-mono">{selectedNoteIds.length} files</span>
+            </div>
+          )}
 
           <div className="space-y-2 max-h-[500px] overflow-y-auto">
             {notes.length === 0 ? (
@@ -261,25 +374,45 @@ export function StudentNotesAI({
                 No personal notes uploaded yet. Click <strong>Upload Notes</strong> above to start!
               </div>
             ) : (
-              notes.map((note) => (
-                <div
-                  key={note.noteId}
-                  onClick={() => setSelectedNote(note)}
-                  className={`p-3 rounded-xl border text-left cursor-pointer transition-all duration-200 space-y-1 ${
-                    selectedNote?.noteId === note.noteId
-                      ? "bg-white border-[#8B7EC8] shadow-2xs ring-1 ring-[#8B7EC8]"
-                      : "bg-white/60 border-[#E5DCD0] hover:bg-white hover:border-[#8B7EC8]/40"
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <h4 className="text-xs font-serif font-bold text-[#292724] truncate max-w-[150px]">
-                      {note.title}
-                    </h4>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        deleteStudentPersonalNote(userId, note.noteId)
-                        const updated = getStudentPersonalNotes(userId)
+              notes.map((note) => {
+                const isSelectedDoc = selectedNoteIds.includes(note.noteId)
+                return (
+                  <div
+                    key={note.noteId}
+                    onClick={() => {
+                      setSelectedNote(note)
+                      if (!selectedNoteIds.includes(note.noteId)) {
+                        setSelectedNoteIds([note.noteId])
+                      }
+                    }}
+                    className={`p-3 rounded-xl border text-left cursor-pointer transition-all duration-200 space-y-1 ${
+                      selectedNote?.noteId === note.noteId
+                        ? "bg-white border-[#8B7EC8] shadow-2xs ring-1 ring-[#8B7EC8]"
+                        : "bg-white/60 border-[#E5DCD0] hover:bg-white hover:border-[#8B7EC8]/40"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleToggleDocSelect(note.noteId)
+                          }}
+                          className="text-[#8B7EC8] hover:scale-110 transition-transform"
+                          title="Select for Multi-Document Assistant"
+                        >
+                          {isSelectedDoc ? <CheckSquare className="w-4 h-4 text-[#8B7EC8]" /> : <Square className="w-4 h-4 text-slate-300" />}
+                        </button>
+                        <h4 className="text-xs font-serif font-bold text-[#292724] truncate max-w-[130px]">
+                          {note.title}
+                        </h4>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteStudentPersonalNote(userId, note.noteId)
+                          const updated = getStudentPersonalNotes(userId)
+
                         setNotes(updated)
                         if (selectedNote?.noteId === note.noteId) {
                           setSelectedNote(updated[0] || null)
@@ -301,8 +434,13 @@ export function StudentNotesAI({
                     </span>
                   )}
                 </div>
-              ))
-            )}
+              )
+            })
+          )}
+
+
+
+
           </div>
         </Card>
 
@@ -628,11 +766,56 @@ export function StudentNotesAI({
           )}
         </div>
       </div>
+
+
+      {/* PRO LIMIT DIALOG */}
+      <ProLimitDialog
+        open={proLimitOpen}
+        onOpenChange={setProLimitOpen}
+        featureName={proLimitFeature}
+        reason={proLimitReason}
+        userRole="student"
+        onOpenPricing={() => setPricingModalOpen(true)}
+      />
+
+      {/* PRICING MODAL */}
+      <PricingModal
+        open={pricingModalOpen}
+        onOpenChange={setPricingModalOpen}
+        userRole="student"
+      />
     </div>
   )
 }
 
+
+function generateSummaryFromNoteText(note: StudentPersonalNote) {
+  return {
+    overview: `This study pack summarizes "${note.title}" uploaded as "${note.fileName}". It covers core principles, boundary conditions, and algorithmic/conceptual workflows required for course mastery.`,
+    keyConcepts: [
+      { title: "Core Architecture", explanation: "Defines primary operational rules, state transitions, and memory representations." },
+      { title: "Boundary Conditions", explanation: "Ensures edge cases are validated prior to execution to prevent runtime failures." },
+      { title: "Performance Trade-offs", explanation: "Balances time complexity and memory overhead in real-world scenarios." }
+    ],
+    definitions: [
+      { term: "Determinism", definition: "A property where identical inputs produce identical outputs with zero side-effects." },
+      { term: "State Vector", definition: "A structured representation of all active system variables at a given tick." }
+    ],
+    examImportant: [
+      `Derive time & space complexity for algorithms presented in ${note.title}.`,
+      "Explain failure modes when input parameters fall outside standard ranges.",
+      "Compare implementation strategies against baseline iterative methods."
+    ],
+    quickRevision: [
+      "Review edge case validation before taking examinations.",
+      "Memorize key operational formulas and state transition graphs.",
+      "Practice multi-choice and conceptual problem sets."
+    ]
+  }
+}
+
 function generateQuizFromNoteText(note: StudentPersonalNote): NoteQuizQuestion[] {
+
   return [
     {
       id: "nq1",

@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useEffect, useState, useCallback, useRef } from "react"
-import { FileText, Download, ArrowUpRight, Menu, LogOut, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Eye, Bell, User, Save, BookOpen, Award, ArrowLeft, RefreshCw, HelpCircle, Plus, MessageSquare, CheckSquare, Layers, Timer } from "lucide-react"
+import { FileText, Download, ArrowUpRight, Menu, LogOut, ChevronDown, ChevronRight, Settings, LayoutDashboard, FolderOpen, Eye, Bell, User, Save, BookOpen, Award, ArrowLeft, RefreshCw, HelpCircle, Plus, MessageSquare, CheckSquare, Layers, Timer, Crown } from "lucide-react"
+
 
 
 import { Button } from "@/components/ui/button"
@@ -33,13 +34,22 @@ import { PeerStudyRoomModal } from "@/components/peer-study-room-modal"
 import { NotificationsDrawer } from "@/components/notifications-drawer"
 import { StudentReportModal } from "@/components/student-report-modal"
 
-import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile, joinClassroom, FinalLectureSummary, getLectureSummaries } from "@/lib/data-store"
-
+import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile, joinClassroom, FinalLectureSummary, getLectureSummaries, getStoredSubscription, SubscriptionData } from "@/lib/data-store"
+import { isPro } from "@/lib/subscription"
 import { getAuthenticatedUser, clearAuthenticatedUser, setAuthenticatedUser } from "@/lib/auth-guard"
 
 export default function StudentPortal() {
   const router = useRouter()
   const [self, setSelf] = useState<{ userId?: string; name?: string; email?: string; role?: string } | null>(null)
+  const [subscription, setSubscription] = useState<SubscriptionData>({ plan: 'free', status: 'inactive' })
+
+  useEffect(() => {
+    setSubscription(getStoredSubscription())
+    const handleSubUpdate = () => setSubscription(getStoredSubscription())
+    window.addEventListener("aulyn-subscription-update", handleSubUpdate)
+    return () => window.removeEventListener("aulyn-subscription-update", handleSubUpdate)
+  }, [])
+
 
   // Classrooms Data Store & State
   const [classrooms, setClassrooms] = useState<ClassroomData[]>([])
@@ -564,10 +574,14 @@ export default function StudentPortal() {
           <Button
             variant="outline"
             size="sm"
-            className="border-[#E5DCD0] bg-[#FFF9F1] text-[#292724] hover:bg-[#F1E8DD] font-bold text-xs rounded-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+            className={`border-[#E5DCD0] font-bold text-xs rounded-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer ${
+              isPro(subscription)
+                ? "bg-[#E9B949]/20 text-[#8B7EC8] border-[#E9B949]"
+                : "bg-[#FFF9F1] text-[#292724] hover:bg-[#F1E8DD]"
+            }`}
             onClick={() => setPricingOpen(true)}
           >
-            Upgrade to Pro
+            <Crown className="w-3.5 h-3.5 mr-1.5 text-[#E9B949]" /> {isPro(subscription) ? "AULYN Student Pro" : "Upgrade to Pro"}
           </Button>
 
           <Button
@@ -580,9 +594,15 @@ export default function StudentPortal() {
           </Button>
 
           <div className="text-right hidden sm:block">
-            <p className="text-xs font-bold text-[#292724]">{studentName}</p>
+            <div className="flex items-center gap-1.5 justify-end">
+              <p className="text-xs font-bold text-[#292724]">{studentName}</p>
+              {isPro(subscription) && (
+                <span className="bg-[#E9B949] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase font-mono">PRO</span>
+              )}
+            </div>
             <p className="text-[10px] font-semibold text-[#4A453F]">{studentEmail}</p>
           </div>
+
 
           <Button variant="outline" size="sm" onClick={handleExitDemo} className="text-[#77716A] hover:text-red-600 border-[#E5DCD0] text-xs font-semibold rounded-xl cursor-pointer">
             <LogOut className="w-4 h-4 mr-1.5" /> Logout

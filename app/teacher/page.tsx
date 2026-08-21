@@ -30,8 +30,11 @@ import { TeacherReviewModal } from "@/components/teacher-review-modal"
 
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, AnnouncementData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile, createClassroom } from "@/lib/data-store"
+import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, AnnouncementData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile, createClassroom, getStoredSubscription, SubscriptionData } from "@/lib/data-store"
+import { isPro } from "@/lib/subscription"
+import { ProLimitDialog } from "@/components/pro-limit-dialog"
 import { getAuthenticatedUser, clearAuthenticatedUser, setAuthenticatedUser } from "@/lib/auth-guard"
+
 
 export default function TeacherPortal() {
 
@@ -57,6 +60,57 @@ export default function TeacherPortal() {
   const [profileEmail, setProfileEmail] = useState("sarah.jenkins@aulyn.edu")
   const [profileBio, setProfileBio] = useState("Senior Computer Science Lecturer & Algorithm Design Specialist")
 
+  // Subscription & Pro Limits State
+  const [subscription, setSubscription] = useState<SubscriptionData>({ plan: 'free', status: 'inactive' })
+  const [proLimitOpen, setProLimitOpen] = useState(false)
+  const [proLimitFeature, setProLimitFeature] = useState("")
+  const [proLimitReason, setProLimitReason] = useState("")
+
+  useEffect(() => {
+    setSubscription(getStoredSubscription())
+    const handleSubUpdate = () => setSubscription(getStoredSubscription())
+    window.addEventListener("aulyn-subscription-update", handleSubUpdate)
+    return () => window.removeEventListener("aulyn-subscription-update", handleSubUpdate)
+  }, [])
+
+  const handleExportClassroomReport = () => {
+    if (!isPro(subscription)) {
+      setProLimitFeature("Exportable Classroom Performance Reports")
+      setProLimitReason("Exporting comprehensive classroom performance reports (CSV/JSON) is an AULYN Teacher Pro capability.")
+      setProLimitOpen(true)
+      return
+    }
+
+    if (!activeClassroom) return
+
+    const reportContent = `AULYN Classroom Performance Report
+Classroom: ${activeClassroom.className} (${activeClassroom.code})
+Classroom ID: ${activeClassroom.classId}
+Export Date: ${new Date().toLocaleDateString()}
+Instructor: ${profileName}
+
+---
+
+STUDENT ROSTER & PERFORMANCE METRICS
+${activeClassroom.students?.map(s => `Student: ${s.name} (${s.email}) | Score: ${s.score}% | Completion: ${s.completion}% | Status: ${s.status}`).join('\n') || 'No students enrolled.'}
+
+ACTIVE ASSIGNMENTS
+${activeClassroom.assignments?.map(a => `Assignment: ${a.title} | Submissions: ${a.submissionsCount} | Marks: ${a.totalMarks}`).join('\n') || 'No assignments published.'}
+`
+
+    const blob = new Blob([reportContent], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `${activeClassroom.code}_Classroom_Report.txt`
+    link.click()
+    URL.revokeObjectURL(url)
+    toast.success(`Exported performance report for ${activeClassroom.code}!`)
+  }
+
+
+
+
   // Workspace state & navigation
   const [activeMainTab, setActiveMainTab] = useState("overview")
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
@@ -64,9 +118,8 @@ export default function TeacherPortal() {
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false)
   const [uploadMaterialOpen, setUploadMaterialOpen] = useState(false)
 
-
-
   // Ecosystem Modals
+
   const [aiTutorOpen, setAiTutorOpen] = useState(false)
   const [liveSessionOpen, setLiveSessionOpen] = useState(false)
   const [doubtThreadsOpen, setDoubtThreadsOpen] = useState(false)
@@ -473,10 +526,14 @@ export default function TeacherPortal() {
           <Button
             variant="outline"
             size="sm"
-            className="border-[#E5DCD0] bg-[#FFF9F1] text-[#292724] hover:bg-[#F1E8DD] font-bold text-xs rounded-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+            className={`border-[#E5DCD0] font-bold text-xs rounded-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer ${
+              isPro(subscription)
+                ? "bg-[#E9B949]/20 text-[#8B7EC8] border-[#E9B949]"
+                : "bg-[#FFF9F1] text-[#292724] hover:bg-[#F1E8DD]"
+            }`}
             onClick={() => setPricingOpen(true)}
           >
-            <Crown className="w-3.5 h-3.5 mr-1.5 text-[#E9B949]" /> Pro Educator
+            <Crown className="w-3.5 h-3.5 mr-1.5 text-[#E9B949]" /> {isPro(subscription) ? "AULYN Teacher Pro" : "Pro Educator"}
           </Button>
 
           <Button
@@ -489,7 +546,12 @@ export default function TeacherPortal() {
           </Button>
 
           <div className="text-right hidden sm:block">
-            <p className="text-xs font-bold text-[#292724]">{profileName}</p>
+            <div className="flex items-center gap-1.5 justify-end">
+              <p className="text-xs font-bold text-[#292724]">{profileName}</p>
+              {isPro(subscription) && (
+                <span className="bg-[#E9B949] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase font-mono">PRO</span>
+              )}
+            </div>
             <p className="text-[10px] font-semibold text-[#4A453F]">{profileEmail}</p>
           </div>
 
@@ -501,7 +563,16 @@ export default function TeacherPortal() {
 
       {/* ECOSYSTEM MODALS & DRAWERS */}
       <PricingModal open={pricingOpen} onOpenChange={setPricingOpen} userRole="teacher" />
+      <ProLimitDialog
+        open={proLimitOpen}
+        onOpenChange={setProLimitOpen}
+        featureName={proLimitFeature}
+        reason={proLimitReason}
+        userRole="teacher"
+        onOpenPricing={() => setPricingOpen(true)}
+      />
       <NotificationsDrawer open={notificationsOpen} onOpenChange={setNotificationsOpen} userRole="teacher" notifications={notifications} />
+
 
       {activeClassroom && (
         <>
@@ -587,6 +658,16 @@ export default function TeacherPortal() {
               >
                 <Plus className="w-3.5 h-3.5" /> Create Class
               </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleExportClassroomReport}
+                className="border-[#8B7EC8] text-[#8B7EC8] hover:bg-[#8B7EC8] hover:text-white font-bold text-xs px-3 py-1.5 rounded-xl cursor-pointer shrink-0 shadow-2xs flex items-center gap-1"
+              >
+                <Download className="w-3.5 h-3.5" /> Export Report
+              </Button>
+
             </div>
           </div>
 
