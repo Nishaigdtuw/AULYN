@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useState, useEffect } from "react"
-import { Award, CheckCircle2, ArrowRight, BookOpen, AlertCircle } from "lucide-react"
+import { Award, CheckCircle2, ArrowRight, BookOpen } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Card } from "@/components/ui/card"
