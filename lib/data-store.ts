@@ -320,6 +320,8 @@ export interface StudyGroup {
   members: GroupMember[]
   assignmentId?: string
   assignmentTitle?: string
+  description?: string
+  maxMembers?: number
   workspaceNotes: string
   submissionContent?: string
   submittedAt?: string
@@ -327,6 +329,7 @@ export interface StudyGroup {
   createdAt?: string
   creatorId?: string
 }
+
 
 
 export interface StudyStreakData {
@@ -879,6 +882,35 @@ export function deleteStudyGroup(groupId: string) {
   localStorage.setItem(GROUPS_KEY, JSON.stringify(filtered))
   window.dispatchEvent(new Event("aulyn-data-update"))
 }
+
+export function joinStudyGroup(groupId: string, user: { id: string; name: string; email: string }) {
+  if (typeof window === "undefined") return
+  const list = getStudyGroups()
+  const target = list.find((g) => g.groupId === groupId)
+  if (target) {
+    const alreadyMember = target.members.some((m) => m.id === user.id || m.email === user.email)
+    if (!alreadyMember) {
+      target.members.push({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: "member"
+      })
+      saveStudyGroup(target)
+    }
+  }
+}
+
+export function leaveStudyGroup(groupId: string, userId: string) {
+  if (typeof window === "undefined") return
+  const list = getStudyGroups()
+  const target = list.find((g) => g.groupId === groupId)
+  if (target) {
+    target.members = target.members.filter((m) => m.id !== userId)
+    saveStudyGroup(target)
+  }
+}
+
 
 
 // Teacher Material Upload Helper

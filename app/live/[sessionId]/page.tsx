@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from "react"
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Users, MessageSquare, Flame, BookOpen, AlertCircle, Send, CheckCircle2, ArrowLeft, X, Sparkles } from "lucide-react"
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Users, MessageSquare, Flame, BookOpen, AlertCircle, Send, CheckCircle2, ArrowLeft, X, Sparkles, Smile } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -38,6 +39,70 @@ export default function LiveMeetingRoomPage() {
   const [chatInput, setChatInput] = useState("")
   const [cooldown, setCooldown] = useState(0)
 
+  // Live Real-Time Meeting Reactions State
+  const [activeReactions, setActiveReactions] = useState<Array<{ id: string; emoji: string; senderName: string }>>([])
+  const [showReactionsMenu, setShowReactionsMenu] = useState(false)
+  const [reactionCooldown, setReactionCooldown] = useState(false)
+
+  const triggerReactionAnimation = (emoji: string, senderName: string) => {
+    const reactionId = `react-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`
+    setActiveReactions((prev) => [...prev, { id: reactionId, emoji, senderName }])
+    setTimeout(() => {
+      setActiveReactions((prev) => prev.filter((r) => r.id !== reactionId))
+    }, 2500)
+  }
+
+  const handleSendReaction = (emoji: string) => {
+    if (reactionCooldown) return
+    setReactionCooldown(true)
+    setTimeout(() => setReactionCooldown(false), 800)
+
+    const sender = self?.name || "Participant"
+    triggerReactionAnimation(emoji, sender)
+
+    try {
+      const channel = new BroadcastChannel(`aulyn_meeting_reactions_${sessionId}`)
+      channel.postMessage({ emoji, senderName: sender, timestamp: Date.now() })
+      channel.close()
+    } catch {
+      localStorage.setItem(`aulyn_reaction_${sessionId}`, JSON.stringify({ emoji, senderName: sender, timestamp: Date.now() }))
+    }
+    setShowReactionsMenu(false)
+  }
+
+  // Real-time broadcast listener for meeting reactions
+  useEffect(() => {
+    let channel: BroadcastChannel | null = null
+    try {
+      channel = new BroadcastChannel(`aulyn_meeting_reactions_${sessionId}`)
+      channel.onmessage = (event) => {
+        if (event.data?.emoji && event.data?.senderName) {
+          triggerReactionAnimation(event.data.emoji, event.data.senderName)
+        }
+      }
+    } catch {
+      // fallback
+    }
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === `aulyn_reaction_${sessionId}`) {
+        try {
+          const data = JSON.parse(e.newValue || '{}')
+          if (data.emoji && data.senderName) {
+            triggerReactionAnimation(data.emoji, data.senderName)
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+    window.addEventListener("storage", handleStorage)
+
+    return () => {
+      if (channel) channel.close()
+      window.removeEventListener("storage", handleStorage)
+    }
+  }, [sessionId])
 
   useEffect(() => {
     const user = getAuthenticatedUser()
@@ -50,6 +115,7 @@ export default function LiveMeetingRoomPage() {
     const s = getStoredMeeting(sessionId)
     setSession(s)
   }, [sessionId])
+
 
   // Initialize Local Media Stream
   useEffect(() => {
@@ -299,9 +365,27 @@ export default function LiveMeetingRoomPage() {
       </header>
 
       {/* Main Video Stage & Side Panel */}
-      <div className="flex-1 flex overflow-hidden p-3 gap-3">
+      <div className="flex-1 flex overflow-hidden p-3 gap-3 relative">
+        {/* Floating Live Reactions Layer */}
+        <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden">
+          {activeReactions.map((r, idx) => (
+            <div
+              key={r.id}
+              className="absolute bottom-20 flex items-center space-x-2 bg-[#1E1C1A]/95 text-white px-3 py-1.5 rounded-full border border-[#E9B949]/50 shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-300"
+              style={{
+                left: `${(idx * 25 + 20) % 70}%`,
+                animationDuration: '2.5s'
+              }}
+            >
+              <span className="text-2xl animate-bounce">{r.emoji}</span>
+              <span className="text-xs font-bold text-[#E9B949]">{r.senderName}</span>
+            </div>
+          ))}
+        </div>
+
         {/* Responsive Video Stage Grid */}
         <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 overflow-y-auto">
+
           {/* Local User Tile */}
           <div className="relative bg-[#242220] border-2 border-[#E76F51]/60 rounded-2xl overflow-hidden flex items-center justify-center group shadow-md min-h-[220px]">
             {cameraOn && !mediaError ? (
@@ -441,7 +525,45 @@ export default function LiveMeetingRoomPage() {
             {cameraOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
             <span className="hidden sm:inline">{cameraOn ? "Stop Video" : "Start Video"}</span>
           </button>
+
+          {/* Live Meeting Reactions Menu */}
+          <div className="relative">
+            <button
+              onClick={() => setShowReactionsMenu(!showReactionsMenu)}
+              className="p-2.5 bg-[#242220] hover:bg-[#3E3A35] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-[#3E3A35]"
+            >
+              <Smile className="w-4 h-4 text-[#E9B949]" />
+              <span className="hidden sm:inline">Reactions</span>
+            </button>
+
+            {showReactionsMenu && (
+              <div className="absolute bottom-12 left-0 bg-[#1E1C1A] border border-[#3E3A35] rounded-xl p-2 shadow-2xl flex items-center space-x-2 z-50 animate-in fade-in slide-in-from-bottom-2">
+                <button
+                  onClick={() => handleSendReaction("👍")}
+                  className="text-xl p-1.5 hover:bg-[#242220] rounded-lg transition-transform hover:scale-125 cursor-pointer"
+                  title="Thumbs Up"
+                >
+                  👍
+                </button>
+                <button
+                  onClick={() => handleSendReaction("❤️")}
+                  className="text-xl p-1.5 hover:bg-[#242220] rounded-lg transition-transform hover:scale-125 cursor-pointer"
+                  title="Heart"
+                >
+                  ❤️
+                </button>
+                <button
+                  onClick={() => handleSendReaction("👏")}
+                  className="text-xl p-1.5 hover:bg-[#242220] rounded-lg transition-transform hover:scale-125 cursor-pointer"
+                  title="Clap"
+                >
+                  👏
+                </button>
+              </div>
+            )}
+          </div>
         </div>
+
 
         {/* Center Actions: Anonymous Confusion Signal */}
         <div className="flex items-center space-x-2">

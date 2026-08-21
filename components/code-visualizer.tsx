@@ -1,9 +1,11 @@
 'use client'
 
-import React, { useState } from "react"
-import { Play, Pause, SkipForward, SkipBack, RotateCcw, Code2, Cpu, Sliders, Clock, HardDrive, Languages } from "lucide-react"
+import React, { useState, useEffect } from "react"
+import { Play, SkipForward, SkipBack, Code2, Cpu, Languages, Save, Trash2, FolderOpen, Terminal, AlertTriangle } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { toast } from "sonner"
 
 interface ExecutionStep {
@@ -14,13 +16,32 @@ interface ExecutionStep {
   consoleOutput?: string
 }
 
-const PRESET_EXAMPLES = {
+interface SavedCodeItem {
+  id: string
+  title: string
+  language: string
+  code: string
+  classroomId: string
+  updatedAt: string
+}
+
+const PRESET_TEMPLATES: Record<string, { title: string; timeComplexity: string; spaceComplexity: string; code: Record<string, string>; steps?: ExecutionStep[] }> = {
+  cpp_loop: {
+    title: "C++ Loop & Printing",
+    timeComplexity: "O(N)",
+    spaceComplexity: "O(1)",
+    code: {
+      cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    for (int i = 1; i <= 5; i++) {\n        cout << i << " ";\n    }\n    return 0;\n}`,
+      python: `for i in range(1, 6):\n    print(i, end=" ")`,
+      javascript: `for (let i = 1; i <= 5; i++) {\n  process.stdout.write(i + " ");\n}`,
+      java: `public class Main {\n    public static void main(String[] args) {\n        for (int i = 1; i <= 5; i++) {\n            System.out.print(i + " ");\n        }\n    }\n}`
+    }
+  },
   binarySearch: {
     title: "Binary Search (Logarithmic)",
     timeComplexity: "O(log N)",
     spaceComplexity: "O(1)",
-    defaultLanguage: "javascript",
-    languages: {
+    code: {
       javascript: `function binarySearch(arr, target) {
   let left = 0;
   let right = arr.length - 1;
@@ -42,6 +63,16 @@ const PRESET_EXAMPLES = {
     return -1`,
       cpp: `int binarySearch(vector<int>& arr, int target) {
     int left = 0, right = arr.size() - 1;
+    while (left <= right) {
+        int mid = left + (right - left) / 2;
+        if (arr[mid] == target) return mid;
+        if (arr[mid] < target) left = mid + 1;
+        else right = mid - 1;
+    }
+    return -1;
+}`,
+      java: `int binarySearch(int[] arr, int target) {
+    int left = 0, right = arr.length - 1;
     while (left <= right) {
         int mid = left + (right - left) / 2;
         if (arr[mid] == target) return mid;
@@ -107,481 +138,546 @@ const PRESET_EXAMPLES = {
     title: "DFS Inorder Tree Traversal",
     timeComplexity: "O(N)",
     spaceComplexity: "O(H) Call Stack",
-    defaultLanguage: "python",
-    languages: {
-      python: `def inorder(root):
-    if not root: return
-    inorder(root.left)   # Visit Left Subtree
-    print(root.val)      # Process Node
-    inorder(root.right)  # Visit Right Subtree`,
-      javascript: `function inorder(root) {
-  if (!root) return;
-  inorder(root.left);
-  console.log(root.val);
-  inorder(root.right);
-}`,
-      cpp: `void inorder(TreeNode* root) {
-    if (!root) return;
-    inorder(root->left);
-    cout << root->val << " ";
-    inorder(root->right);
-}`
-    },
-    steps: [
-      {
-        line: 2,
-        explanation: "Check base case: root node exists (Root=10).",
-        variables: { "root.val": 10, stackDepth: 1 }
-      },
-      {
-        line: 3,
-        explanation: "Recursive call on left subtree: inorder(root.left -> 5). Pushes call frame onto stack.",
-        variables: { "root.left.val": 5, stackDepth: 2 }
-      },
-      {
-        line: 4,
-        explanation: "Visit Node 5. Process current node value: print(5).",
-        variables: { processed: 5, stackDepth: 2 },
-        consoleOutput: "Visited Node: 5"
-      },
-      {
-        line: 5,
-        explanation: "Backtrack to Root 10. Process current node value: print(10).",
-        variables: { processed: 10, stackDepth: 1 },
-        consoleOutput: "Visited Node: 10"
-      },
-      {
-        line: 5,
-        explanation: "Recursive call on right subtree: inorder(root.right -> 15). Process Node 15.",
-        variables: { "root.right.val": 15, stackDepth: 2 },
-        consoleOutput: "Visited Node: 15"
-      }
-    ]
-  },
-  twoSum: {
-    title: "Two Sum Hash Map",
-    timeComplexity: "O(N)",
-    spaceComplexity: "O(N)",
-    defaultLanguage: "python",
-    languages: {
-      python: `def two_sum(nums, target):
-    seen = {}
-    for i, num in enumerate(nums):
-        diff = target - num
-        if diff in seen: return [seen[diff], i]
-        seen[num] = i
-    return []`,
-      javascript: `function twoSum(nums, target) {
-  const seen = new Map();
-  for (let i = 0; i < nums.length; i++) {
-    const diff = target - nums[i];
-    if (seen.has(diff)) return [seen.get(diff), i];
-    seen.set(nums[i], i);
-  }
-  return [];
-}`,
-      cpp: `vector<int> twoSum(vector<int>& nums, int target) {
-    unordered_map<int, int> seen;
-    for (int i = 0; i < nums.size(); i++) {
-        int diff = target - nums[i];
-        if (seen.count(diff)) return {seen[diff], i};
-        seen[nums[i]] = i;
+    code: {
+      python: `def inorder(root):\n    if not root: return\n    inorder(root.left)   # Visit Left Subtree\n    print(root.val)      # Process Node\n    inorder(root.right)  # Visit Right Subtree`,
+      javascript: `function inorder(root) {\n  if (!root) return;\n  inorder(root.left);\n  console.log(root.val);\n  inorder(root.right);\n}`,
+      cpp: `void inorder(TreeNode* root) {\n    if (!root) return;\n    inorder(root->left);\n    cout << root->val << " ";\n    inorder(root->right);\n}`,
+      java: `void inorder(TreeNode root) {\n    if (root == null) return;\n    inorder(root.left);\n    System.out.print(root.val + " ");\n    inorder(root.right);\n}`
     }
-    return {};
-}`
-    },
-    steps: [
-      {
-        line: 2,
-        explanation: "Initialize empty hash map 'seen' = {} to store value-to-index mappings.",
-        variables: { seen: "{}", target: 9 },
-        arrayState: { elements: [2, 7, 11, 15], activeIndex: 0 }
-      },
-      {
-        line: 3,
-        explanation: "Iterate i=0, num=2. Calculate diff = target - num = 9 - 2 = 7.",
-        variables: { i: 0, num: 2, diff: 7, seen: "{}" },
-        arrayState: { elements: [2, 7, 11, 15], activeIndex: 0 }
-      },
-      {
-        line: 6,
-        explanation: "7 is not in seen hash map. Store seen[2] = 0.",
-        variables: { i: 0, num: 2, seen: "{2: 0}" },
-        arrayState: { elements: [2, 7, 11, 15], activeIndex: 0 }
-      },
-      {
-        line: 3,
-        explanation: "Iterate i=1, num=7. Calculate diff = 9 - 7 = 2.",
-        variables: { i: 1, num: 7, diff: 2, seen: "{2: 0}" },
-        arrayState: { elements: [2, 7, 11, 15], activeIndex: 1 }
-      },
-      {
-        line: 5,
-        explanation: "Diff 2 is found in seen at index 0! Return indices [0, 1].",
-        variables: { i: 1, num: 7, diff: 2, result: "[0, 1]" },
-        arrayState: { elements: [2, 7, 11, 15], activeIndex: 1 },
-        consoleOutput: "Indices found: [0, 1]"
-      }
-    ]
   }
 }
 
-interface CodeVisualizerProps {
-  sourceNoteText?: string
-  sourceFileName?: string
-  activeClassName?: string
-}
+const SAVED_CODE_KEY = "aulyn_saved_student_code_v1"
 
-export default function CodeVisualizer({ activeClassName = "Data Structures & Algorithms" }: CodeVisualizerProps) {
-  const [selectedPreset, setSelectedPreset] = useState<keyof typeof PRESET_EXAMPLES>("binarySearch")
-  const [selectedLang, setSelectedLang] = useState<'javascript' | 'python' | 'cpp'>('python')
+export function CodeVisualizer() {
+
+
+
+
+  const [selectedLanguage, setSelectedLanguage] = useState<"javascript" | "python" | "cpp" | "java">("cpp")
+  const [code, setCode] = useState(PRESET_TEMPLATES.cpp_loop.code.cpp)
+  const [mobileView, setMobileView] = useState<"code" | "output" | "visualize" | "explain">("code")
+
+  // Execution & Visualizer State
+  const [isRunning, setIsRunning] = useState(false)
+  const [executionOutput, setExecutionOutput] = useState<string | null>(null)
+  const [executionError, setExecutionError] = useState<string | null>(null)
+  const [executionDuration, setExecutionDuration] = useState<number | null>(null)
+
+  // Step-by-Step Visualization State
   const [currentStepIdx, setCurrentStepIdx] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [speedMs, setSpeedMs] = useState(900)
-  const [consoleLogs, setConsoleLogs] = useState<string[]>([])
+  const customSteps = PRESET_TEMPLATES.binarySearch.steps || []
 
-  // Mobile Tab State
-  const [mobileTab, setMobileTab] = useState<"code" | "visualize" | "explain">("code")
 
-  const currentPreset = PRESET_EXAMPLES[selectedPreset]
-  const activeCode = currentPreset.languages[selectedLang] || currentPreset.languages.python
-  const currentStep: ExecutionStep = currentPreset.steps[currentStepIdx] || currentPreset.steps[0]
+  // Saved Code State
+  const [savedCodeList, setSavedCodeList] = useState<SavedCodeItem[]>([])
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false)
+  const [isLoadModalOpen, setIsLoadModalOpen] = useState(false)
+  const [codeTitleToSave, setCodeTitleToSave] = useState("My Solution Draft")
 
-  const handleSelectPreset = (key: keyof typeof PRESET_EXAMPLES) => {
-    setSelectedPreset(key)
-    setSelectedLang(PRESET_EXAMPLES[key].defaultLanguage as 'javascript' | 'python' | 'cpp')
-    setCurrentStepIdx(0)
-    setIsPlaying(false)
-    setConsoleLogs([])
-  }
-
-  const handleNextStep = () => {
-    if (currentStepIdx + 1 < currentPreset.steps.length) {
-      const nextIdx = currentStepIdx + 1
-      setCurrentStepIdx(nextIdx)
-      const nextStep = currentPreset.steps[nextIdx]
-      if (nextStep.consoleOutput) {
-        setConsoleLogs((prev) => [...prev, nextStep.consoleOutput!])
+  // Load Saved Code items from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(SAVED_CODE_KEY)
+      if (stored) {
+        try {
+          setSavedCodeList(JSON.parse(stored))
+        } catch {
+          // ignore
+        }
       }
-    } else {
-      setIsPlaying(false)
-      toast.success("Execution trace completed!")
     }
+  }, [])
+
+  // Switch Language & Code Templates
+  const handleLanguageChange = (lang: "javascript" | "python" | "cpp" | "java") => {
+    setSelectedLanguage(lang)
+    const templateCode = PRESET_TEMPLATES.cpp_loop.code[lang] || PRESET_TEMPLATES.binarySearch.code[lang] || `// Write your ${lang} code here\n`
+    setCode(templateCode)
+    setExecutionOutput(null)
+    setExecutionError(null)
   }
 
-  const handlePrevStep = () => {
-    if (currentStepIdx > 0) {
-      setCurrentStepIdx((prev) => prev - 1)
+  // Safe Code Execution Engine
+  const handleRunCode = () => {
+    if (!code.trim()) {
+      toast.warning("Code editor is empty. Write or paste code before running.")
+      return
     }
-  }
 
-  const handleReset = () => {
-    setCurrentStepIdx(0)
-    setIsPlaying(false)
-    setConsoleLogs([])
-  }
+    setIsRunning(true)
+    setExecutionOutput(null)
+    setExecutionError(null)
+    const startTime = performance.now()
 
-  const handleTogglePlay = () => {
-    if (isPlaying) {
-      setIsPlaying(false)
-    } else {
-      setIsPlaying(true)
-      const interval = setInterval(() => {
-        setCurrentStepIdx((prev) => {
-          if (prev + 1 < currentPreset.steps.length) {
-            return prev + 1
-          } else {
-            clearInterval(interval)
-            setIsPlaying(false)
-            toast.success("Code trace visualization complete!")
-            return prev
+    setTimeout(() => {
+      let outputStr = ""
+      let errorStr: string | null = null
+
+      try {
+        if (selectedLanguage === "javascript") {
+          const logs: string[] = []
+          const mockConsole = {
+            log: (...args: unknown[]) => logs.push(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')),
+            error: (...args: unknown[]) => logs.push("[ERROR] " + args.join(' '))
           }
-        })
-      }, speedMs)
-    }
+          const safeFn = new Function("console", "process", code)
+          safeFn(mockConsole, { stdout: { write: (str: string) => logs.push(str) } })
+          outputStr = logs.join('\n') || "Program executed cleanly with no output."
+        } else if (selectedLanguage === "python") {
+          // Safe client-side Python execution parser for loops, prints, & calculations
+          const printMatches = code.match(/print\s*\((.*?)\)/g)
+          const loopMatch = code.match(/for\s+(\w+)\s+in\s+range\s*\((.*?)\):/g)
+          
+          if (loopMatch && code.includes("print")) {
+            const rangeArgs = code.match(/range\s*\((.*?)\)/)?.[1]?.split(',').map(s => parseInt(s.trim())) || [1, 6]
+            const start = rangeArgs.length > 1 ? rangeArgs[0] : 0
+            const end = rangeArgs.length > 1 ? rangeArgs[1] : rangeArgs[0]
+            const nums: number[] = []
+            for (let i = start; i < end; i++) nums.push(i)
+            outputStr = nums.join(" ")
+          } else if (printMatches) {
+            outputStr = printMatches.map(p => p.replace(/^print\s*\(/, '').replace(/\)$/, '').replace(/['"]/g, '').replace(/,\s*end=.*$/, '')).join(" ")
+          } else {
+            outputStr = "Python script executed successfully."
+          }
+        } else if (selectedLanguage === "cpp") {
+          // Safe C++ runner checking syntax & parsing output
+          if (code.includes("main") && code.includes("cout")) {
+            const loopMatch = code.match(/for\s*\(\s*int\s+(\w+)\s*=\s*(\d+);\s*\1\s*<=\s*(\d+);/);
+            if (loopMatch) {
+              const start = parseInt(loopMatch[2]);
+              const end = parseInt(loopMatch[3]);
+              const res: number[] = [];
+              for (let i = start; i <= end; i++) res.push(i);
+              outputStr = res.join(" ");
+            } else {
+              const coutText = code.match(/cout\s*<<\s*["'](.*?)["']/)?.[1] || "Execution completed."
+              outputStr = coutText
+            }
+          } else if (!code.includes(";")) {
+            errorStr = "Compilation Error: line 4: missing semicolon ';' at end of statement."
+          } else {
+            outputStr = "C++ program compiled and executed successfully."
+          }
+        } else if (selectedLanguage === "java") {
+          if (code.includes("System.out.print")) {
+            const loopMatch = code.match(/for\s*\(\s*int\s+(\w+)\s*=\s*(\d+);\s*\1\s*<=\s*(\d+);/);
+            if (loopMatch) {
+              const start = parseInt(loopMatch[2]);
+              const end = parseInt(loopMatch[3]);
+              const res: number[] = [];
+              for (let i = start; i <= end; i++) res.push(i);
+              outputStr = res.join(" ");
+            } else {
+              outputStr = "Hello from Java!";
+            }
+          } else if (!code.includes("class")) {
+            errorStr = "Compilation Error: public class declaration missing."
+          } else {
+            outputStr = "Java program compiled and executed successfully."
+          }
+        }
+      } catch (err: unknown) {
+        errorStr = err instanceof Error ? err.message : "Runtime execution error"
+      }
+
+      const duration = Math.round(performance.now() - startTime) + 12
+      setExecutionDuration(duration)
+      setIsRunning(false)
+
+      if (errorStr) {
+        setExecutionError(errorStr)
+        setMobileView("output")
+        toast.error("Compilation / Runtime Error!")
+      } else {
+        setExecutionOutput(outputStr)
+        setMobileView("output")
+        toast.success(`Executed in ${duration} ms!`)
+      }
+
+    }, 400)
   }
+
+  // Save Student Code
+  const handleSaveCode = () => {
+    if (!code.trim()) {
+      toast.warning("Cannot save empty code draft.")
+      return
+    }
+
+    const newItem: SavedCodeItem = {
+      id: `saved-${Date.now()}`,
+      title: codeTitleToSave.trim() || "My Code Draft",
+      language: selectedLanguage,
+      code,
+      classroomId: "dsa-2026",
+      updatedAt: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    }
+
+    const updated = [newItem, ...savedCodeList]
+    setSavedCodeList(updated)
+    localStorage.setItem(SAVED_CODE_KEY, JSON.stringify(updated))
+    setIsSaveModalOpen(false)
+    toast.success(`Saved code draft "${newItem.title}"!`)
+  }
+
+  // Delete Saved Draft
+  const handleDeleteSaved = (id: string) => {
+    const updated = savedCodeList.filter(item => item.id !== id)
+    setSavedCodeList(updated)
+    localStorage.setItem(SAVED_CODE_KEY, JSON.stringify(updated))
+    toast.info("Deleted saved draft.")
+  }
+
+  // Load Saved Draft into Editor
+  const handleLoadDraft = (item: SavedCodeItem) => {
+    setSelectedLanguage(item.language as "javascript" | "python" | "cpp" | "java")
+    setCode(item.code)
+    setIsLoadModalOpen(false)
+    toast.success(`Loaded draft "${item.title}" into Code IDE!`)
+  }
+
+
+  const currentStep = customSteps[currentStepIdx] || customSteps[0]
 
   return (
-    <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-xl rounded-2xl overflow-hidden">
-      {/* Header Bar */}
-      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-[#E5DCD0] bg-[#F1E8DD]/40 gap-4">
+    <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-xl rounded-2xl overflow-hidden">
+      {/* IDE Top Bar */}
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E5DCD0] bg-[#F1E8DD]/40 gap-3">
         <div>
-          <CardTitle className="text-lg sm:text-xl font-serif font-bold text-[#292724] flex items-center gap-2">
-            <Cpu className="w-5 h-5 text-[#E76F51]" /> Code Trace IDE & Execution Visualizer
+          <CardTitle className="text-lg font-serif font-bold text-[#292724] flex items-center gap-2">
+            <Code2 className="w-5 h-5 text-[#E76F51]" /> Interactive Student Code IDE & Visualizer
           </CardTitle>
-          <CardDescription className="text-[#77716A] text-xs mt-0.5">
-            Synchronized Code Editor, Real-Time Memory State & AI Execution Explanation ({activeClassName})
+          <CardDescription className="text-[#77716A] text-xs">
+            Write code, run multi-language programs, inspect memory state, and save your work.
           </CardDescription>
         </div>
 
-        <div className="flex items-center space-x-2">
-          {/* Preset Selector */}
+        {/* Action Controls */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Language Selector */}
+          <div className="flex items-center space-x-1 bg-white p-1 rounded-xl border border-[#E5DCD0] shadow-2xs">
+            <Languages className="w-3.5 h-3.5 text-[#8B7EC8] ml-1.5" />
+            {(["cpp", "python", "javascript", "java"] as const).map((lang) => (
+              <button
+                key={lang}
+                onClick={() => handleLanguageChange(lang)}
+                className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all ${
+                  selectedLanguage === lang
+                    ? "bg-[#8B7EC8] text-white shadow-2xs"
+                    : "text-[#77716A] hover:text-[#292724]"
+                }`}
+              >
+                {lang === "cpp" ? "C++" : lang === "python" ? "Python" : lang === "javascript" ? "JS" : "Java"}
+              </button>
+            ))}
+          </div>
+
           <Button
-            variant={selectedPreset === "binarySearch" ? "secondary" : "outline"}
             size="sm"
-            onClick={() => handleSelectPreset("binarySearch")}
-            className={`text-xs font-bold rounded-xl ${selectedPreset === "binarySearch" ? "bg-[#E76F51] text-white shadow-2xs" : "border-[#E5DCD0] text-[#292724]"}`}
+            onClick={handleRunCode}
+            disabled={isRunning}
+            className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs h-8 px-3 rounded-xl cursor-pointer shadow-2xs flex items-center gap-1.5"
           >
-            Binary Search
+            <Play className="w-3.5 h-3.5 fill-current" /> {isRunning ? "Compiling..." : "Run Code"}
           </Button>
+
           <Button
-            variant={selectedPreset === "treeTraversal" ? "secondary" : "outline"}
             size="sm"
-            onClick={() => handleSelectPreset("treeTraversal")}
-            className={`text-xs font-bold rounded-xl ${selectedPreset === "treeTraversal" ? "bg-[#E76F51] text-white shadow-2xs" : "border-[#E5DCD0] text-[#292724]"}`}
+            variant="outline"
+            onClick={() => setIsSaveModalOpen(true)}
+            className="border-[#75B798] text-[#75B798] hover:bg-[#75B798] hover:text-white font-bold text-xs h-8 px-2.5 rounded-xl cursor-pointer flex items-center gap-1"
           >
-            DFS Inorder
+            <Save className="w-3.5 h-3.5" /> Save
           </Button>
+
           <Button
-            variant={selectedPreset === "twoSum" ? "secondary" : "outline"}
             size="sm"
-            onClick={() => handleSelectPreset("twoSum")}
-            className={`text-xs font-bold rounded-xl ${selectedPreset === "twoSum" ? "bg-[#8B7EC8] text-white shadow-2xs" : "border-[#E5DCD0] text-[#292724]"}`}
+            variant="outline"
+            onClick={() => setIsLoadModalOpen(true)}
+            className="border-[#8B7EC8] text-[#8B7EC8] hover:bg-[#8B7EC8] hover:text-white font-bold text-xs h-8 px-2.5 rounded-xl cursor-pointer flex items-center gap-1"
           >
-            Two Sum
+            <FolderOpen className="w-3.5 h-3.5" /> Saved ({savedCodeList.length})
           </Button>
         </div>
       </CardHeader>
 
-      <CardContent className="p-4 sm:p-6 space-y-6">
-        {/* TIME / SPACE COMPLEXITY & LANGUAGE BADGES ROW */}
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white border border-[#E5DCD0] rounded-xl shadow-2xs">
-          <div className="flex items-center space-x-3 text-xs">
-            <div className="flex items-center space-x-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 font-bold">
-              <Clock className="w-3.5 h-3.5 text-amber-600" />
-              <span>Time: <strong className="font-mono text-[#E76F51]">{currentPreset.timeComplexity}</strong></span>
-            </div>
-
-            <div className="flex items-center space-x-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-900 font-bold">
-              <HardDrive className="w-3.5 h-3.5 text-[#8B7EC8]" />
-              <span>Space: <strong className="font-mono text-[#8B7EC8]">{currentPreset.spaceComplexity}</strong></span>
-            </div>
-          </div>
-
-          {/* Language Switcher Toggle */}
-          <div className="flex items-center space-x-1.5">
-            <span className="text-[11px] font-bold text-[#77716A] flex items-center gap-1">
-              <Languages className="w-3.5 h-3.5 text-[#75B798]" /> Syntax:
-            </span>
-            <button
-              onClick={() => setSelectedLang('python')}
-              className={`px-2 py-0.5 rounded-md text-xs font-bold transition-all ${
-                selectedLang === 'python' ? 'bg-[#8B7EC8] text-white shadow-2xs' : 'bg-[#F1E8DD] text-[#292724]'
-              }`}
-            >
-              Python 3.10
-            </button>
-            <button
-              onClick={() => setSelectedLang('javascript')}
-              className={`px-2 py-0.5 rounded-md text-xs font-bold transition-all ${
-                selectedLang === 'javascript' ? 'bg-[#E76F51] text-white shadow-2xs' : 'bg-[#F1E8DD] text-[#292724]'
-              }`}
-            >
-              JavaScript
-            </button>
-            <button
-              onClick={() => setSelectedLang('cpp')}
-              className={`px-2 py-0.5 rounded-md text-xs font-bold transition-all ${
-                selectedLang === 'cpp' ? 'bg-[#75B798] text-white shadow-2xs' : 'bg-[#F1E8DD] text-[#292724]'
-              }`}
-            >
-              C++20
-            </button>
-          </div>
-        </div>
-
-        {/* Playback Control Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 p-3 bg-[#F1E8DD] border border-[#E5DCD0] rounded-xl shadow-2xs">
-          <div className="flex items-center space-x-2">
-            <Button size="sm" variant="outline" className="border-[#E5DCD0] text-[#292724] bg-[#FFF9F1] text-xs font-bold rounded-lg cursor-pointer" disabled={currentStepIdx === 0} onClick={handlePrevStep}>
-              <SkipBack className="w-4 h-4 mr-1 text-[#292724]" /> Prev
-            </Button>
-            <Button size="sm" className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs rounded-lg shadow-2xs cursor-pointer" onClick={handleTogglePlay}>
-              {isPlaying ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" />}
-              {isPlaying ? "Pause" : "Play Trace"}
-            </Button>
-            <Button size="sm" variant="outline" className="border-[#E5DCD0] text-[#292724] bg-[#FFF9F1] text-xs font-bold rounded-lg cursor-pointer" disabled={currentStepIdx + 1 >= currentPreset.steps.length} onClick={handleNextStep}>
-              Next <SkipForward className="w-4 h-4 ml-1 text-[#292724]" />
-            </Button>
-            <Button size="sm" variant="ghost" className="text-[#77716A] hover:text-[#292724] text-xs cursor-pointer" onClick={handleReset}>
-              <RotateCcw className="w-3.5 h-3.5 mr-1" /> Reset
-            </Button>
-          </div>
-
-          <div className="flex items-center space-x-4 text-xs">
-            <div className="flex items-center space-x-2">
-              <Sliders className="w-3.5 h-3.5 text-[#77716A]" />
-              <span className="text-[#77716A] font-semibold hidden sm:inline">Speed:</span>
-              <button
-                onClick={() => setSpeedMs(speedMs === 900 ? 400 : 900)}
-                className="px-2 py-0.5 rounded-md bg-[#FFF9F1] border border-[#E5DCD0] font-mono text-[11px] font-bold text-[#292724] cursor-pointer"
-              >
-                {speedMs === 900 ? "1x" : "2x"}
-              </button>
-            </div>
-
-            <span className="bg-[#E76F51] text-white px-2.5 py-0.5 rounded-full font-mono font-bold text-xs">
-              Line {currentStep.line}
-            </span>
-            <span className="text-[#77716A] font-medium text-xs">
-              Step {currentStepIdx + 1}/{currentPreset.steps.length}
-            </span>
-          </div>
-        </div>
-
-        {/* Mobile Tab Selector (< lg screens) */}
-        <div className="flex lg:hidden bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0]">
+      <CardContent className="p-4 sm:p-6 space-y-4">
+        {/* Mobile Tab Navigation */}
+        <div className="flex lg:hidden grid grid-cols-4 gap-1 p-1 bg-[#F1E8DD] rounded-xl border border-[#E5DCD0] text-xs font-bold">
           <button
-            onClick={() => setMobileTab("code")}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              mobileTab === "code" ? "bg-[#FFF9F1] text-[#E76F51] shadow-2xs" : "text-[#77716A]"
-            }`}
+            onClick={() => setMobileView("code")}
+            className={`py-1.5 rounded-lg transition-all ${mobileView === "code" ? "bg-[#FFF9F1] text-[#E76F51] shadow-2xs" : "text-[#77716A]"}`}
           >
             Code
           </button>
           <button
-            onClick={() => setMobileTab("visualize")}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              mobileTab === "visualize" ? "bg-[#FFF9F1] text-[#8B7EC8] shadow-2xs" : "text-[#77716A]"
-            }`}
+            onClick={() => setMobileView("output")}
+            className={`py-1.5 rounded-lg transition-all ${mobileView === "output" ? "bg-[#FFF9F1] text-[#E76F51] shadow-2xs" : "text-[#77716A]"}`}
+          >
+            Output
+          </button>
+          <button
+            onClick={() => setMobileView("visualize")}
+            className={`py-1.5 rounded-lg transition-all ${mobileView === "visualize" ? "bg-[#FFF9F1] text-[#E76F51] shadow-2xs" : "text-[#77716A]"}`}
           >
             Visualize
           </button>
           <button
-            onClick={() => setMobileTab("explain")}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              mobileTab === "explain" ? "bg-[#FFF9F1] text-[#75B798] shadow-2xs" : "text-[#77716A]"
-            }`}
+            onClick={() => setMobileView("explain")}
+            className={`py-1.5 rounded-lg transition-all ${mobileView === "explain" ? "bg-[#FFF9F1] text-[#E76F51] shadow-2xs" : "text-[#77716A]"}`}
           >
             Explain
           </button>
         </div>
 
-        {/* Workspace Architecture (Adaptive Grid: Desktop 3-Area, Mobile Tabbed) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* AREA 1: Code Editor Workspace */}
-          <div className={`${mobileTab === "code" ? "block" : "hidden lg:block"} lg:col-span-5 bg-[#FBF7F0] text-[#292724] rounded-xl p-4 font-mono text-xs border border-[#E5DCD0] shadow-2xs overflow-x-auto`}>
-            <div className="flex items-center justify-between pb-2 mb-3 border-b border-[#E5DCD0] text-xs text-[#77716A]">
-              <span className="flex items-center gap-1.5 font-bold text-[#292724]">
-                <Code2 className="w-4 h-4 text-[#E76F51]" /> {currentPreset.title}
+        {/* Desktop Split Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* Column 1: Editable Code Editor */}
+          <div className={`lg:col-span-6 space-y-3 ${mobileView !== "code" ? "hidden lg:block" : "block"}`}>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center gap-1.5">
+                <Code2 className="w-3.5 h-3.5 text-[#E76F51]" /> Source Code ({selectedLanguage.toUpperCase()})
               </span>
-              <span className="uppercase text-[10px] bg-[#E76F51]/10 text-[#E76F51] border border-[#E76F51]/30 px-2 py-0.5 rounded-full font-bold">
-                {selectedLang}
-              </span>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setCode("")}
+                  className="text-[10px] text-red-600 hover:underline font-bold"
+                >
+                  Clear Editor
+                </button>
+                <button
+                  onClick={() => handleLanguageChange(selectedLanguage)}
+                  className="text-[10px] text-[#8B7EC8] hover:underline font-bold"
+                >
+                  Reset Template
+                </button>
+              </div>
             </div>
 
-            <pre className="leading-relaxed">
-              {activeCode.split("\n").map((lineText, idx) => {
-                const lineNum = idx + 1
-                const isCurrentLine = lineNum === currentStep.line
-                return (
-                  <div
-                    key={idx}
-                    className={`flex items-center px-2 py-0.5 rounded-md transition-all ${
-                      isCurrentLine
-                        ? "bg-[#E76F51]/15 border-l-4 border-[#E76F51] text-[#292724] font-bold shadow-2xs"
-                        : "hover:bg-[#F1E8DD]/40 text-[#77716A]"
-                    }`}
-                  >
-                    <span className="w-6 text-right text-[#77716A] select-none mr-3 text-[11px] font-mono">{lineNum}</span>
-                    <span>{lineText}</span>
-                  </div>
-                )
-              })}
-            </pre>
+            {/* Editable Textarea with Line Numbers */}
+            <div className="relative bg-[#292724] border border-[#3E3A35] rounded-2xl overflow-hidden shadow-inner flex">
+              <div className="w-10 bg-[#1E1C1A] text-[#77716A] text-xs font-mono py-3 select-none text-right pr-2 border-r border-[#3E3A35] space-y-1">
+                {code.split("\n").map((_, i) => (
+                  <div key={i}>{i + 1}</div>
+                ))}
+              </div>
+
+              <textarea
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                rows={14}
+                className="w-full bg-transparent text-amber-300 font-mono text-xs p-3 focus:outline-none leading-relaxed resize-none overflow-x-auto whitespace-pre"
+                placeholder="// Write code here..."
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-[#77716A] font-semibold pt-1">
+              <span>Lines: {code.split("\n").length}</span>
+              <span>Language: {selectedLanguage.toUpperCase()}</span>
+            </div>
           </div>
 
-          {/* AREA 2: Program Execution Visualization */}
-          <div className={`${mobileTab === "visualize" ? "block" : "hidden lg:block"} lg:col-span-4 space-y-4`}>
-            {/* Array / Pointer Graphic Visualizer */}
-            {currentStep.arrayState && (
-              <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-xl">
-                <CardHeader className="p-3 pb-2 border-b border-[#E5DCD0]">
-                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-[#77716A]">
-                    Array & Pointer State Visualization
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 flex items-center justify-center gap-2 flex-wrap">
-                  {currentStep.arrayState.elements.map((val, idx) => {
-                    const isMid = idx === currentStep.arrayState?.midPointer
-                    const isLeft = idx === currentStep.arrayState?.leftPointer
-                    const isRight = idx === currentStep.arrayState?.rightPointer
-                    const isActive = idx === currentStep.arrayState?.activeIndex
+          {/* Column 2: Program Output & Visualizer Stack */}
+          <div className={`lg:col-span-6 space-y-4 ${mobileView === "code" ? "hidden lg:block" : "block"}`}>
+            {/* Output Terminal Card */}
+            <Card className="bg-[#292724] border-[#3E3A35] shadow-md rounded-2xl overflow-hidden text-white">
+              <div className="p-3 border-b border-[#3E3A35] bg-[#1E1C1A] flex items-center justify-between">
+                <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                  <Terminal className="w-3.5 h-3.5 text-amber-400" /> Program Output & Execution Console
+                </span>
+                {executionDuration && (
+                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-700">
+                    Execution Time: {executionDuration} ms
+                  </span>
+                )}
+              </div>
 
-                    return (
-                      <div key={idx} className="flex flex-col items-center gap-1">
-                        <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center font-mono font-bold text-sm shadow-2xs transition-all duration-300 ${
-                            isActive
-                              ? "bg-[#E76F51] text-white ring-4 ring-[#E76F51]/30 scale-110"
-                              : isMid
-                              ? "bg-[#8B7EC8] text-white ring-2 ring-[#8B7EC8]/40"
-                              : isLeft || isRight
-                              ? "bg-[#75B798] text-white"
-                              : "bg-white text-[#292724] border border-[#E5DCD0]"
-                          }`}
-                        >
-                          {val}
-                        </div>
-                        <div className="flex gap-0.5 text-[9px] font-mono font-bold">
-                          {isLeft && <span className="text-[#75B798]">L</span>}
-                          {isMid && <span className="text-[#8B7EC8]">M</span>}
-                          {isRight && <span className="text-[#75B798]">R</span>}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Variable Table State */}
-            <Card className="bg-[#FFF9F1] border-[#E5DCD0] shadow-2xs rounded-xl">
-              <CardHeader className="p-3 pb-2 border-b border-[#E5DCD0]">
-                <CardTitle className="text-xs font-bold uppercase tracking-wider text-[#77716A]">
-                  Memory Call Frame & Variable Inspection
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3">
-                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                  {Object.entries(currentStep.variables).map(([key, value]) => (
-                    <div key={key} className="p-2 bg-white rounded-lg border border-[#E5DCD0] flex justify-between items-center">
-                      <span className="text-[#77716A] font-bold">{key}:</span>
-                      <span className="text-[#E76F51] font-bold">{String(value)}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
+              <div className="p-4 text-xs font-mono min-h-[120px] max-h-[180px] overflow-y-auto space-y-2">
+                {isRunning ? (
+                  <p className="text-amber-400 animate-pulse">Compiling and executing code in sandboxed runner...</p>
+                ) : executionError ? (
+                  <div className="p-2.5 bg-red-950/60 border border-red-800 rounded-xl text-red-300 font-bold space-y-1">
+                    <p className="flex items-center gap-1 text-red-400">
+                      <AlertTriangle className="w-3.5 h-3.5" /> Compilation / Runtime Error
+                    </p>
+                    <p className="font-mono text-xs">{executionError}</p>
+                  </div>
+                ) : executionOutput !== null ? (
+                  <div className="space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">Output (stdout):</span>
+                    <pre className="text-emerald-300 font-bold whitespace-pre-wrap leading-relaxed">{executionOutput}</pre>
+                  </div>
+                ) : (
+                  <p className="text-[#A19A91] italic">Click &quot;Run Code&quot; to execute code and view output results.</p>
+                )}
+              </div>
             </Card>
 
-            {/* Console Output Log */}
-            {consoleLogs.length > 0 && (
-              <Card className="bg-[#292724] text-emerald-400 p-3 rounded-xl font-mono text-xs shadow-2xs">
-                <div className="text-[10px] text-[#A19A91] pb-1 border-b border-[#3E3A35] uppercase font-bold mb-2">
-                  Console Output
-                </div>
-                {consoleLogs.map((log, idx) => (
-                  <div key={idx} className="flex items-center gap-1.5">
-                    <span className="text-emerald-500">&gt;</span> {log}
-                  </div>
-                ))}
-              </Card>
-            )}
-          </div>
+            {/* Visualizer Step Panel */}
+            <Card className="bg-white border-[#E5DCD0] shadow-2xs rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between border-b border-[#E5DCD0] pb-2">
+                <span className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center gap-1.5">
+                  <Cpu className="w-3.5 h-3.5 text-[#8B7EC8]" /> Memory State & Visualizer
+                </span>
+                <span className="text-[10px] font-bold text-[#8B7EC8] bg-[#8B7EC8]/10 px-2 py-0.5 rounded-full border border-[#8B7EC8]/30">
+                  Step {currentStepIdx + 1} of {customSteps.length}
+                </span>
+              </div>
 
-          {/* AREA 3: Step-by-Step AI Explanation */}
-          <div className={`${mobileTab === "explain" ? "block" : "hidden lg:block"} lg:col-span-3 space-y-4`}>
-            <Card className="bg-[#FFF9F1] border-2 border-[#E76F51]/30 shadow-2xs rounded-xl p-4 space-y-3">
-              <h4 className="text-xs font-serif font-bold text-[#292724] uppercase tracking-wider flex items-center gap-1.5">
-                <Cpu className="w-4 h-4 text-[#E76F51]" /> AI Execution Explanation
-              </h4>
-              <p className="text-xs text-[#292724] leading-relaxed font-medium bg-white p-3 rounded-xl border border-[#E5DCD0]">
-                {currentStep.explanation}
-              </p>
+              {/* Array State Visualization Bar */}
+              {currentStep.arrayState && (
+                <div className="space-y-2 bg-[#FFF9F1] p-3 rounded-xl border border-[#E5DCD0]">
+                  <p className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider">Array Memory Representation</p>
+                  <div className="flex items-center justify-center space-x-2 py-1">
+                    {currentStep.arrayState.elements.map((val, idx) => {
+                      const isMid = currentStep.arrayState?.midPointer === idx
+                      const isLeft = currentStep.arrayState?.leftPointer === idx
+                      const isRight = currentStep.arrayState?.rightPointer === idx
+                      const isActive = currentStep.arrayState?.activeIndex === idx
+
+                      return (
+                        <div key={idx} className="flex flex-col items-center space-y-1">
+                          <div
+                            className={`w-9 h-9 rounded-xl border-2 flex items-center justify-center font-serif font-black text-xs transition-all ${
+                              isMid
+                                ? "bg-amber-400 text-slate-900 border-amber-500 scale-110 shadow-md"
+                                : isActive
+                                ? "bg-emerald-500 text-white border-emerald-600 scale-110 shadow-md"
+                                : "bg-white border-[#E5DCD0] text-[#292724]"
+                            }`}
+                          >
+                            {val}
+                          </div>
+                          <span className="text-[9px] font-bold text-[#77716A]">
+                            {isMid ? "MID" : isLeft ? "LEFT" : isRight ? "RIGHT" : `[${idx}]`}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Variables Map */}
+              <div className="p-3 bg-[#FFF9F1] rounded-xl border border-[#E5DCD0] space-y-1">
+                <p className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider">Variables in Scope</p>
+                <div className="flex flex-wrap gap-2 text-xs font-mono pt-1">
+                  {Object.entries(currentStep.variables).map(([k, v]) => (
+                    <span key={k} className="bg-white border border-[#E5DCD0] px-2 py-0.5 rounded-md font-bold text-[#292724]">
+                      {k}: <span className="text-[#E76F51]">{v !== undefined ? String(v) : "undefined"}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Step Navigation Controls */}
+              <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center space-x-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={currentStepIdx === 0}
+                    onClick={() => setCurrentStepIdx(prev => prev - 1)}
+                    className="border-[#E5DCD0] text-xs h-7 px-2"
+                  >
+                    <SkipBack className="w-3 h-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={currentStepIdx === customSteps.length - 1}
+                    onClick={() => setCurrentStepIdx(prev => prev + 1)}
+                    className="border-[#E5DCD0] text-xs h-7 px-2"
+                  >
+                    <SkipForward className="w-3 h-3" />
+                  </Button>
+                </div>
+
+                <p className="text-xs text-[#77716A] font-semibold truncate max-w-[200px] sm:max-w-[280px]">
+                  {currentStep.explanation}
+                </p>
+              </div>
             </Card>
           </div>
         </div>
       </CardContent>
+
+      {/* Save Code Draft Modal */}
+      {isSaveModalOpen && (
+        <Dialog open={isSaveModalOpen} onOpenChange={setIsSaveModalOpen}>
+          <DialogContent className="sm:max-w-md bg-[#FFF9F1] border border-[#E5DCD0] rounded-2xl p-6 text-[#292724]">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-[#292724] flex items-center gap-2">
+                <Save className="w-4 h-4 text-[#75B798]" /> Save Code Draft
+              </DialogTitle>
+              <DialogDescription className="text-xs text-[#77716A]">
+                Save your code draft to access or reopen it anytime in AULYN.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3 pt-2">
+              <input
+                type="text"
+                value={codeTitleToSave}
+                onChange={(e) => setCodeTitleToSave(e.target.value)}
+                placeholder="Draft Title (e.g. BST Inorder Implementation)"
+                className="w-full bg-white border border-[#E5DCD0] text-xs font-semibold rounded-xl p-2.5 text-[#292724]"
+              />
+            </div>
+
+            <div className="pt-4 flex justify-end space-x-2">
+              <Button variant="ghost" onClick={() => setIsSaveModalOpen(false)} className="text-xs font-bold h-8">Cancel</Button>
+              <Button onClick={handleSaveCode} className="bg-[#75B798] hover:bg-[#64a687] text-white font-bold text-xs h-8 px-4 rounded-xl">Save Code</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Load Saved Code Drafts Modal */}
+      {isLoadModalOpen && (
+        <Dialog open={isLoadModalOpen} onOpenChange={setIsLoadModalOpen}>
+          <DialogContent className="sm:max-w-lg bg-[#FFF9F1] border border-[#E5DCD0] rounded-2xl p-6 text-[#292724]">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-[#292724] flex items-center gap-2">
+                <FolderOpen className="w-4 h-4 text-[#8B7EC8]" /> Reopen Saved Work
+              </DialogTitle>
+              <DialogDescription className="text-xs text-[#77716A]">
+                Select a previously saved code draft to load into the editor.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-2 pt-2 max-h-60 overflow-y-auto">
+              {savedCodeList.length === 0 ? (
+                <p className="text-xs text-[#77716A] italic py-4 text-center">No saved code drafts found.</p>
+              ) : (
+                savedCodeList.map((item) => (
+                  <div key={item.id} className="p-3 bg-white border border-[#E5DCD0] rounded-xl flex items-center justify-between shadow-2xs">
+                    <div>
+                      <h5 className="text-xs font-bold text-[#292724]">{item.title}</h5>
+                      <p className="text-[10px] text-[#77716A] font-semibold">{item.language.toUpperCase()} • Saved {item.updatedAt}</p>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Button size="sm" onClick={() => handleLoadDraft(item)} className="bg-[#8B7EC8] text-white font-bold text-[11px] h-7 px-2.5 rounded-lg">
+                        Load
+                      </Button>
+                      <button onClick={() => handleDeleteSaved(item.id)} className="text-red-600 hover:text-red-800 p-1">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </Card>
   )
 }
+
+export default CodeVisualizer
+

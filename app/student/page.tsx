@@ -84,6 +84,9 @@ export default function StudentPortal() {
   const [activeNoteText, setActiveNoteText] = useState<string>("")
   const [activeNoteFile, setActiveNoteFile] = useState<string>("Trees_Lecture_Notes.pdf")
 
+
+
+
   // Submission Form State
   const [, setUserSubmissions] = useState<SubmissionData[]>([])
 
@@ -833,7 +836,14 @@ export default function StudentPortal() {
                         </option>
                       ))}
                     </select>
+
+                    {activeNoteFile && (
+                      <span className="text-[10px] font-bold text-[#8B7EC8] bg-[#8B7EC8]/10 border border-[#8B7EC8]/30 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                        <FileText className="w-3 h-3 text-[#8B7EC8]" /> Active: {activeNoteFile}
+                      </span>
+                    )}
                   </div>
+
 
                   <div className="space-y-2">
                     {activeClassroom?.materials && activeClassroom.materials.length > 0 ? (
@@ -872,12 +882,9 @@ export default function StudentPortal() {
 
             {/* CODE IDE TAB */}
             <TabsContent value="visualizer" className="animate-in fade-in-50 duration-200">
-              <CodeVisualizer
-                sourceNoteText={activeNoteText}
-                sourceFileName={activeNoteFile}
-                activeClassName={activeClassroom?.className || "Data Structures & Algorithms"}
-              />
+              <CodeVisualizer />
             </TabsContent>
+
 
             {/* SETTINGS TAB */}
             <TabsContent value="settings" className="space-y-6 animate-in fade-in-50 duration-200">

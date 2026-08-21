@@ -1,13 +1,19 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from "react"
-import { Users, Plus, Award, Trash2, Send, MessageSquare, ShieldCheck, FileText, CheckCircle2, UserPlus, ArrowLeft } from "lucide-react"
+import { Users, Plus, Award, Trash2, Send, MessageSquare, ShieldCheck, FileText, CheckCircle2, UserPlus, ArrowLeft, LogOut } from "lucide-react"
+
+
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
-import { StudyGroup, getStudyGroups, saveStudyGroup, deleteStudyGroup, GroupChatMessage } from "@/lib/data-store"
+
+
+import { StudyGroup, GroupMember, getStudyGroups, saveStudyGroup, deleteStudyGroup, joinStudyGroup, leaveStudyGroup, GroupChatMessage } from "@/lib/data-store"
+
+
 
 interface StudentGroupsModalProps {
   open: boolean
@@ -16,6 +22,8 @@ interface StudentGroupsModalProps {
   className?: string
   userRole: 'student' | 'teacher'
   studentName?: string
+  studentId?: string
+  studentEmail?: string
 }
 
 export function StudentGroupsModal({
@@ -24,7 +32,9 @@ export function StudentGroupsModal({
   classId = "dsa-2026",
   className = "Data Structures & Algorithms",
   userRole,
-  studentName = "Alex Rivera"
+  studentName = "Alex Rivera",
+  studentId = "student-demo",
+  studentEmail = "alex.rivera@aulyn.edu"
 }: StudentGroupsModalProps) {
   const [groups, setGroups] = useState<StudyGroup[]>([])
   const [activeGroup, setActiveGroup] = useState<StudyGroup | null>(null)
@@ -32,6 +42,8 @@ export function StudentGroupsModal({
   // Create Group Form State
   const [newGroupName, setNewGroupName] = useState("")
   const [newTopic, setNewTopic] = useState("")
+  const [newDescription, setNewDescription] = useState("")
+  const [newMaxMembers, setNewMaxMembers] = useState(5)
 
   // Add Member State
   const [newMemberName, setNewMemberName] = useState("")
@@ -46,36 +58,40 @@ export function StudentGroupsModal({
   const [groupToDelete, setGroupToDelete] = useState<StudyGroup | null>(null)
 
   const reloadGroups = useCallback(() => {
+    // Strictly filter groups by classId so math groups don't appear in CS201
     const data = getStudyGroups(classId)
     if (data.length === 0) {
       const defaultG: StudyGroup = {
-        groupId: "grp-1",
+        groupId: `grp-${classId}-1`,
         classId,
-        name: "Team Alpha — Binary Trees",
+        name: "Tree Traversal Team",
         assignmentTitle: "BST Implementation & Rotations Lab",
+        description: "Collaborate on Assignment 3 and discuss DFS/BFS questions.",
+        maxMembers: 5,
+        creatorId: "s-1",
         members: [
-          { id: "s-1", name: studentName, email: "alex.rivera@aulyn.edu", role: "creator" },
+          { id: "s-1", name: studentName, email: studentEmail, role: "creator" },
           { id: "s-2", name: "Bob Smith", email: "bob.smith@aulyn.edu", role: "member" },
           { id: "s-3", name: "Prof. Sarah Jenkins", email: "sarah.jenkins@aulyn.edu", role: "member" }
         ],
-        workspaceNotes: "Shared team notes for BST Rotations Lab: Make sure to check rotation height factors before balancing nodes.",
+        workspaceNotes: "Shared team notes: Verify left and right rotation pointers before balancing nodes.",
         messages: [
           {
             id: "msg-1",
-            groupId: "grp-1",
+            groupId: `grp-${classId}-1`,
             senderId: "s-2",
             senderName: "Bob Smith",
             senderRole: "student",
-            content: "Hey team! I completed the left rotation helper function.",
+            content: "I'm getting the wrong inorder traversal output. Can someone check this logic?",
             timestamp: "10:15 AM"
           },
           {
             id: "msg-2",
-            groupId: "grp-1",
+            groupId: `grp-${classId}-1`,
             senderId: "s-1",
             senderName: studentName,
             senderRole: "student",
-            content: "Awesome Bob! I'll test it against the BST balance test suite.",
+            content: "Your recursive call should happen before printing root:\n```cpp\nvoid inorder(Node* root) {\n    if (!root) return;\n    inorder(root->left);\n    cout << root->data << \" \";\n    inorder(root->right);\n}\n```",
             timestamp: "10:18 AM"
           }
         ],
@@ -86,20 +102,59 @@ export function StudentGroupsModal({
     } else {
       setGroups(data)
     }
-  }, [classId, studentName])
+  }, [classId, studentName, studentEmail])
 
+  // Real-time synchronization across browser windows/tabs using BroadcastChannel & Storage Event
   useEffect(() => {
-    if (open) {
-      reloadGroups()
-    }
-  }, [open, reloadGroups])
+    if (!open) return
+    reloadGroups()
 
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel("aulyn_groups_channel")
+      channel.onmessage = (event) => {
+        if (event.data?.classId === classId) {
+          reloadGroups()
+        }
+      }
+    } catch {
+      // Fallback to storage event listener
+    }
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "aulyn_study_groups_v1") {
+        reloadGroups()
+      }
+    }
+    window.addEventListener("storage", handleStorage)
+
+    return () => {
+      if (channel) channel.close()
+      window.removeEventListener("storage", handleStorage)
+    }
+  }, [open, classId, reloadGroups])
 
   useEffect(() => {
     if (activeGroup) {
-      setWorkspaceNotes(activeGroup.workspaceNotes || "")
+      const refreshed = groups.find(g => g.groupId === activeGroup.groupId)
+      if (refreshed && refreshed !== activeGroup) {
+        setActiveGroup(refreshed)
+        setWorkspaceNotes(refreshed.workspaceNotes || "")
+      }
     }
-  }, [activeGroup])
+  }, [groups, activeGroup])
+
+
+
+  const notifyRealtimeChange = () => {
+    try {
+      const channel = new BroadcastChannel("aulyn_groups_channel")
+      channel.postMessage({ classId, timestamp: Date.now() })
+      channel.close()
+    } catch {
+      // ignore fallback
+    }
+  }
 
   const handleCreateGroup = () => {
     if (!newGroupName.trim() || !newTopic.trim()) {
@@ -108,23 +163,25 @@ export function StudentGroupsModal({
     }
 
     const grp: StudyGroup = {
-      groupId: `grp-${Date.now()}`,
+      groupId: `grp-${classId}-${Date.now()}`,
       classId,
       name: newGroupName.trim(),
       assignmentTitle: newTopic.trim(),
-      creatorId: "student-demo",
+      description: newDescription.trim() || `Collaborate on ${newTopic.trim()}`,
+      maxMembers: newMaxMembers || 5,
+      creatorId: studentId,
       members: [
-        { id: "student-demo", name: studentName, email: "alex.rivera@aulyn.edu", role: "creator" }
+        { id: studentId, name: studentName, email: studentEmail, role: "creator" }
       ],
       workspaceNotes: `Workspace created for ${newTopic.trim()}`,
       messages: [
         {
           id: `msg-${Date.now()}`,
-          groupId: `grp-${Date.now()}`,
+          groupId: `grp-${classId}-${Date.now()}`,
           senderId: "system",
           senderName: "AULYN System",
           senderRole: "teacher",
-          content: `Group workspace "${newGroupName.trim()}" initialized for ${newTopic.trim()}.`,
+          content: `Group workspace "${newGroupName.trim()}" initialized for ${className}.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ],
@@ -132,11 +189,37 @@ export function StudentGroupsModal({
     }
 
     saveStudyGroup(grp)
+    notifyRealtimeChange()
     reloadGroups()
     setNewGroupName("")
     setNewTopic("")
+    setNewDescription("")
     setActiveGroup(grp)
-    toast.success(`Group workspace "${grp.name}" created!`)
+    toast.success(`Group workspace "${grp.name}" created inside ${className}!`)
+  }
+
+  const handleJoinGroupClick = (g: StudyGroup) => {
+    if (g.members.length >= (g.maxMembers || 5)) {
+      toast.warning("Group has reached maximum member capacity.")
+      return
+    }
+
+    joinStudyGroup(g.groupId, { id: studentId, name: studentName, email: studentEmail })
+    notifyRealtimeChange()
+    reloadGroups()
+    const updated = getStudyGroups(classId).find(grp => grp.groupId === g.groupId) || g
+    setActiveGroup(updated)
+    toast.success(`Joined "${g.name}"!`)
+  }
+
+  const handleLeaveGroupClick = (g: StudyGroup) => {
+    leaveStudyGroup(g.groupId, studentId)
+    notifyRealtimeChange()
+    reloadGroups()
+    if (activeGroup?.groupId === g.groupId) {
+      setActiveGroup(null)
+    }
+    toast.info(`Left group "${g.name}".`)
   }
 
   const handleSendMessage = () => {
@@ -145,7 +228,7 @@ export function StudentGroupsModal({
     const newMsg: GroupChatMessage = {
       id: `msg-${Date.now()}`,
       groupId: activeGroup.groupId,
-      senderId: userRole === 'teacher' ? 'teacher-demo' : 'student-demo',
+      senderId: userRole === 'teacher' ? 'teacher-demo' : studentId,
       senderName: userRole === 'teacher' ? 'Prof. Sarah Jenkins' : studentName,
       senderRole: userRole,
       content: chatInput.trim(),
@@ -158,6 +241,7 @@ export function StudentGroupsModal({
     }
 
     saveStudyGroup(updatedGroup)
+    notifyRealtimeChange()
     setActiveGroup(updatedGroup)
     setGroups(getStudyGroups(classId))
     setChatInput("")
@@ -172,9 +256,10 @@ export function StudentGroupsModal({
     }
 
     saveStudyGroup(updatedGroup)
+    notifyRealtimeChange()
     setActiveGroup(updatedGroup)
     setGroups(getStudyGroups(classId))
-    toast.success("Workspace team notes updated!")
+    toast.success("Workspace team notes saved!")
   }
 
   const handleAddMemberSubmit = () => {
@@ -196,6 +281,7 @@ export function StudentGroupsModal({
     }
 
     saveStudyGroup(updatedGroup)
+    notifyRealtimeChange()
     setActiveGroup(updatedGroup)
     setGroups(getStudyGroups(classId))
     setNewMemberName("")
@@ -208,12 +294,36 @@ export function StudentGroupsModal({
     if (!groupToDelete) return
 
     deleteStudyGroup(groupToDelete.groupId)
+    notifyRealtimeChange()
     reloadGroups()
     if (activeGroup?.groupId === groupToDelete.groupId) {
       setActiveGroup(null)
     }
     toast.success(`Group "${groupToDelete.name}" deleted successfully!`)
     setGroupToDelete(null)
+  }
+
+  // Format message content with inline code block styling
+  const renderMessageContent = (content: string) => {
+    if (content.includes("```")) {
+      const parts = content.split(/(```[\s\S]*?```)/g)
+      return (
+        <div className="space-y-1.5 mt-1">
+          {parts.map((part, idx) => {
+            if (part.startsWith("```") && part.endsWith("```")) {
+              const codeBody = part.replace(/^```[a-z]*\n?/, "").replace(/\n?```$/, "")
+              return (
+                <pre key={idx} className="bg-[#292724] text-amber-300 p-2.5 rounded-lg text-xs font-mono overflow-x-auto border border-[#E5DCD0]/30 shadow-inner">
+                  <code>{codeBody}</code>
+                </pre>
+              )
+            }
+            return <p key={idx} className="text-xs text-[#292724] leading-relaxed">{part}</p>
+          })}
+        </div>
+      )
+    }
+    return <p className="text-xs text-[#292724] leading-relaxed">{content}</p>
   }
 
   return (
@@ -223,14 +333,16 @@ export function StudentGroupsModal({
         <DialogHeader className="pb-3 border-b border-[#E5DCD0]">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-[#8B7EC8] bg-[#8B7EC8]/10 px-2.5 py-0.5 rounded-full border border-[#8B7EC8]/30 flex items-center gap-1">
-              <Users className="w-3.5 h-3.5 text-[#8B7EC8]" /> Group Collaboration Engine
+              <Users className="w-3.5 h-3.5 text-[#8B7EC8]" /> Classroom Group Workspaces
             </span>
-            <span className="text-xs font-bold text-[#77716A]">{className}</span>
+            <span className="text-xs font-bold text-[#E76F51] bg-[#E76F51]/10 px-2.5 py-0.5 rounded-full border border-[#E76F51]/30">
+              {className}
+            </span>
           </div>
 
           <div className="flex items-center justify-between mt-2">
             <DialogTitle className="text-xl font-serif font-black text-[#292724]">
-              {activeGroup ? activeGroup.name : "Student Group Assignment Workspaces"}
+              {activeGroup ? activeGroup.name : `${className} — Group Workspaces`}
             </DialogTitle>
 
             {activeGroup && (
@@ -240,86 +352,139 @@ export function StudentGroupsModal({
                 onClick={() => setActiveGroup(null)}
                 className="text-xs border-[#E5DCD0] text-[#77716A] hover:bg-[#F1E8DD] font-bold h-7 rounded-lg cursor-pointer flex items-center gap-1"
               >
-                <ArrowLeft className="w-3.5 h-3.5" /> Back to All Groups
+                <ArrowLeft className="w-3.5 h-3.5" /> Back to Classroom Groups
               </Button>
             )}
           </div>
 
           <DialogDescription className="text-xs text-[#77716A]">
-            {activeGroup ? `Project Focus: ${activeGroup.assignmentTitle}` : "Collaborate on group projects, share code drafts, and submit team solutions."}
+            {activeGroup ? activeGroup.description || `Project Focus: ${activeGroup.assignmentTitle}` : `Collaborate with classmates enrolled in ${className}.`}
           </DialogDescription>
         </DialogHeader>
 
         {!activeGroup ? (
-          /* ALL GROUPS LIST VIEW */
+          /* CLASSROOM GROUPS LIST VIEW */
           <div className="space-y-4 pt-3">
             <div className="space-y-3">
-              <h4 className="text-xs font-bold text-[#292724] uppercase tracking-wider">Active Group Workspaces</h4>
+              <h4 className="text-xs font-bold text-[#292724] uppercase tracking-wider">Active Workspace Teams in {className}</h4>
               {groups.length === 0 ? (
-                <p className="text-xs text-[#77716A] italic">No active group workspaces created yet.</p>
+                <p className="text-xs text-[#77716A] italic">No group workspaces created for {className} yet.</p>
               ) : (
-                groups.map((g) => (
-                  <Card key={g.groupId} className="bg-white border border-[#E5DCD0] shadow-2xs rounded-2xl p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <h5 className="text-base font-serif font-bold text-[#292724]">{g.name}</h5>
-                        <p className="text-xs text-[#77716A] font-semibold">Project Focus: {g.assignmentTitle}</p>
+                groups.map((g: StudyGroup) => {
+                  const isMember = g.members.some((m: GroupMember) => m.id === studentId || m.email === studentEmail)
+                  const isCreatorOrTeacher = userRole === 'teacher' || g.creatorId === studentId || g.members.some((m: GroupMember) => m.id === studentId && m.role === 'creator')
+
+
+
+                  return (
+                    <Card key={g.groupId} className="bg-white border border-[#E5DCD0] shadow-2xs rounded-2xl p-4 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center space-x-2">
+                            <h5 className="text-base font-serif font-bold text-[#292724]">{g.name}</h5>
+                            <span className="text-[10px] font-bold text-[#8B7EC8] bg-[#8B7EC8]/10 px-2 py-0.5 rounded-full border border-[#8B7EC8]/30">
+                              {g.members.length} / {g.maxMembers || 5} Members
+                            </span>
+                          </div>
+                          <p className="text-xs text-[#77716A] font-semibold">{g.assignmentTitle}</p>
+                          {g.description && <p className="text-[11px] text-[#77716A] italic">{g.description}</p>}
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          {isMember ? (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => setActiveGroup(g)}
+                                className="bg-[#8B7EC8] hover:bg-[#7a6db7] text-white font-bold text-xs h-7 px-3 rounded-lg cursor-pointer"
+                              >
+                                Open Workspace
+                              </Button>
+
+                              {!isCreatorOrTeacher && userRole === 'student' && (
+                                <button
+                                  onClick={() => handleLeaveGroupClick(g)}
+                                  title="Leave Group"
+                                  className="p-1.5 text-[#77716A] hover:text-amber-700 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer text-xs font-bold flex items-center gap-1"
+                                >
+                                  <LogOut className="w-3.5 h-3.5" /> Leave
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => handleJoinGroupClick(g)}
+                              className="bg-[#75B798] hover:bg-[#64a687] text-white font-bold text-xs h-7 px-3 rounded-lg cursor-pointer flex items-center gap-1 shadow-2xs"
+                            >
+                              <UserPlus className="w-3.5 h-3.5" /> Join Group
+                            </Button>
+                          )}
+
+                          {isCreatorOrTeacher && (
+                            <button
+                              onClick={() => setGroupToDelete(g)}
+                              title="Delete Group"
+                              className="p-1.5 text-[#77716A] hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex items-center space-x-2">
-                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
-                          {g.submissionContent ? "Submitted" : "In Progress"}
-                        </span>
-
-                        <Button
-                          size="sm"
-                          onClick={() => setActiveGroup(g)}
-                          className="bg-[#8B7EC8] hover:bg-[#7a6db7] text-white font-bold text-xs h-7 px-3 rounded-lg cursor-pointer"
-                        >
-                          Open Workspace
-                        </Button>
-
-                        <button
-                          onClick={() => setGroupToDelete(g)}
-                          title="Delete Group"
-                          className="p-1.5 text-[#77716A] hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[#E5DCD0]/60">
+                        <span className="text-[10px] font-bold text-[#77716A] mr-1">Members ({g.members.length}):</span>
+                        {g.members.map((m: GroupMember) => (
+                          <span key={m.id} className="text-[10px] font-bold text-[#8B7EC8] bg-[#8B7EC8]/10 border border-[#8B7EC8]/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            {m.role === 'creator' && <ShieldCheck className="w-3 h-3 text-[#8B7EC8]" />}
+                            {m.name} {m.role === 'creator' ? "(Creator)" : "(Member)"}
+                          </span>
+                        ))}
                       </div>
-                    </div>
 
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[#E5DCD0]/60">
-                      <span className="text-[10px] font-bold text-[#77716A] mr-1">Members ({g.members.length}):</span>
-                      {g.members.map((m) => (
-                        <span key={m.id} className="text-[10px] font-bold text-[#8B7EC8] bg-[#8B7EC8]/10 border border-[#8B7EC8]/30 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          {m.role === 'creator' && <ShieldCheck className="w-3 h-3 text-[#8B7EC8]" />}
-                          {m.name} {m.role === 'creator' ? "(Creator)" : "(Member)"}
-                        </span>
-                      ))}
-                    </div>
-                  </Card>
-                ))
+
+                    </Card>
+                  )
+                })
               )}
             </div>
 
             {/* Create Group Form */}
             <div className="p-4 bg-white border border-[#E5DCD0] rounded-2xl space-y-3 shadow-2xs">
               <h4 className="text-xs font-serif font-bold text-[#292724] flex items-center gap-1.5">
-                <Award className="w-4 h-4 text-[#E76F51]" /> Create New Student Group
+                <Award className="w-4 h-4 text-[#E76F51]" /> Create New Group in {className}
               </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Input
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
-                  placeholder="Group Name (e.g. Team Gamma)"
+                  placeholder="Group Name (e.g. Tree Traversal Team)"
                   className="bg-[#FFF9F1] border-[#E5DCD0] text-xs font-medium rounded-xl"
                 />
                 <Input
                   value={newTopic}
                   onChange={(e) => setNewTopic(e.target.value)}
-                  placeholder="Topic / Assignment Title"
+                  placeholder="Assignment / Topic Title"
+                  className="bg-[#FFF9F1] border-[#E5DCD0] text-xs font-medium rounded-xl"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <Input
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="Short Description (e.g. Discuss DFS/BFS assignment)"
+                  className="bg-[#FFF9F1] border-[#E5DCD0] text-xs font-medium rounded-xl sm:col-span-2"
+                />
+                <Input
+                  type="number"
+                  min={2}
+                  max={10}
+                  value={newMaxMembers}
+                  onChange={(e) => setNewMaxMembers(parseInt(e.target.value) || 5)}
+                  placeholder="Max Members"
                   className="bg-[#FFF9F1] border-[#E5DCD0] text-xs font-medium rounded-xl"
                 />
               </div>
@@ -336,13 +501,14 @@ export function StudentGroupsModal({
           /* ACTIVE GROUP WORKSPACE VIEW */
           <div className="space-y-5 pt-3">
             {/* Top Workspace Bar */}
-            <div className="p-3.5 bg-white border border-[#E5DCD0] rounded-2xl flex items-center justify-between shadow-2xs">
+            <div className="p-3.5 bg-white border border-[#E5DCD0] rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
               <div>
-                <span className="text-[10px] uppercase font-bold text-[#77716A] tracking-wider">Assignment Deadline: Aug 30, 2026</span>
-                <p className="text-xs font-bold text-[#292724]">{activeGroup.assignmentTitle}</p>
+                <span className="text-[10px] uppercase font-bold text-[#77716A] tracking-wider">Classroom: {className}</span>
+                <h4 className="text-sm font-bold text-[#292724]">{activeGroup.name} — {activeGroup.assignmentTitle}</h4>
+                {activeGroup.description && <p className="text-xs text-[#77716A]">{activeGroup.description}</p>}
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 shrink-0">
                 <Button
                   size="sm"
                   variant="outline"
@@ -352,14 +518,25 @@ export function StudentGroupsModal({
                   <UserPlus className="w-3.5 h-3.5" /> Add Member
                 </Button>
 
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setGroupToDelete(activeGroup)}
-                  className="text-xs border-red-300 text-red-600 hover:bg-red-600 hover:text-white font-bold h-7 rounded-lg cursor-pointer flex items-center gap-1"
-                >
-                  <Trash2 className="w-3.5 h-3.5" /> Delete Group
-                </Button>
+                {(userRole === 'teacher' || activeGroup.creatorId === studentId || activeGroup.members.some((m: GroupMember) => m.id === studentId && m.role === 'creator')) ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setGroupToDelete(activeGroup)}
+                    className="text-xs border-red-300 text-red-600 hover:bg-red-600 hover:text-white font-bold h-7 rounded-lg cursor-pointer flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete Group
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleLeaveGroupClick(activeGroup)}
+                    className="text-xs border-amber-300 text-amber-700 hover:bg-amber-600 hover:text-white font-bold h-7 rounded-lg cursor-pointer flex items-center gap-1"
+                  >
+                    <LogOut className="w-3.5 h-3.5" /> Leave Group
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -369,13 +546,13 @@ export function StudentGroupsModal({
                 <p className="text-xs font-bold text-[#292724]">Add Member to {activeGroup.name}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <Input
-                    placeholder="Member Name (e.g. Maya Lin)"
+                    placeholder="Member Name (e.g. Kabir Das)"
                     value={newMemberName}
                     onChange={(e) => setNewMemberName(e.target.value)}
                     className="bg-white border-[#E5DCD0] text-xs font-semibold rounded-lg"
                   />
                   <Input
-                    placeholder="Member Email (e.g. maya.lin@aulyn.edu)"
+                    placeholder="Member Email (e.g. kabir.das@aulyn.edu)"
                     value={newMemberEmail}
                     onChange={(e) => setNewMemberEmail(e.target.value)}
                     className="bg-white border-[#E5DCD0] text-xs font-semibold rounded-lg"
@@ -391,10 +568,10 @@ export function StudentGroupsModal({
             {/* Members Roster Card */}
             <Card className="p-3.5 bg-white border border-[#E5DCD0] rounded-2xl space-y-2 shadow-2xs">
               <h4 className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-[#8B7EC8]" /> Group Members & Roles ({activeGroup.members.length})
+                <Users className="w-3.5 h-3.5 text-[#8B7EC8]" /> Members ({activeGroup.members.length} / {activeGroup.maxMembers || 5})
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {activeGroup.members.map((m) => (
+                {activeGroup.members.map((m: GroupMember) => (
                   <div key={m.id} className="p-2 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl text-xs font-semibold flex items-center justify-between">
                     <div>
                       <p className="text-[#292724] font-bold">{m.name}</p>
@@ -410,20 +587,22 @@ export function StudentGroupsModal({
               </div>
             </Card>
 
+
             {/* Split View: Group Discussion Chat & Shared Notes */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
               {/* Group Discussion Chat */}
               <div className="lg:col-span-7 bg-white border border-[#E5DCD0] rounded-2xl p-4 space-y-3 shadow-2xs flex flex-col justify-between">
                 <div>
                   <h4 className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center gap-1.5 pb-2 border-b border-[#E5DCD0]">
-                    <MessageSquare className="w-3.5 h-3.5 text-[#E76F51]" /> Group Discussion Thread
+                    <MessageSquare className="w-3.5 h-3.5 text-[#E76F51]" /> Assignment Discussion Thread
                   </h4>
 
-                  <div className="space-y-2 mt-3 max-h-60 overflow-y-auto pr-1">
+                  <div className="space-y-2.5 mt-3 max-h-64 overflow-y-auto pr-1">
                     {(!activeGroup.messages || activeGroup.messages.length === 0) ? (
                       <p className="text-xs text-[#77716A] italic text-center py-6">No discussion messages yet. Start the conversation!</p>
                     ) : (
-                      activeGroup.messages.map((msg) => (
+                      activeGroup.messages.map((msg: GroupChatMessage) => (
+
                         <div key={msg.id} className={`p-2.5 rounded-xl border text-xs space-y-1 ${
                           msg.senderRole === 'teacher' ? 'bg-[#8B7EC8]/10 border-[#8B7EC8]/30' : 'bg-[#FFF9F1] border-[#E5DCD0]'
                         }`}>
@@ -431,28 +610,31 @@ export function StudentGroupsModal({
                             <span className="font-bold text-[#292724]">{msg.senderName} ({msg.senderRole})</span>
                             <span className="text-[10px] text-[#77716A] font-semibold">{msg.timestamp}</span>
                           </div>
-                          <p className="text-xs text-[#292724]">{msg.content}</p>
+                          {renderMessageContent(msg.content)}
                         </div>
                       ))
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2 pt-2 border-t border-[#E5DCD0]">
-                  <Input
-                    placeholder="Type discussion message to group..."
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                    className="bg-[#FFF9F1] border-[#E5DCD0] text-xs font-medium rounded-xl"
-                  />
-                  <Button
-                    size="sm"
-                    onClick={handleSendMessage}
-                    className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold h-9 px-3 rounded-xl cursor-pointer"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                  </Button>
+                <div className="space-y-1 pt-2 border-t border-[#E5DCD0]">
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      placeholder="Discuss logic, ask questions, or send code..."
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                      className="bg-[#FFF9F1] border-[#E5DCD0] text-xs font-medium rounded-xl"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleSendMessage}
+                      className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold h-9 px-3 rounded-xl cursor-pointer shrink-0"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-[#77716A]">Tip: Use ```cpp or ```py for code blocks</p>
                 </div>
               </div>
 
@@ -460,14 +642,14 @@ export function StudentGroupsModal({
               <div className="lg:col-span-5 bg-white border border-[#E5DCD0] rounded-2xl p-4 space-y-3 shadow-2xs flex flex-col justify-between">
                 <div>
                   <h4 className="text-xs font-bold text-[#292724] uppercase tracking-wider flex items-center gap-1.5 pb-2 border-b border-[#E5DCD0]">
-                    <FileText className="w-3.5 h-3.5 text-[#75B798]" /> Shared Team Notes & Solution Draft
+                    <FileText className="w-3.5 h-3.5 text-[#75B798]" /> Shared Team Notes & Code Draft
                   </h4>
 
                   <textarea
-                    rows={8}
+                    rows={9}
                     value={workspaceNotes}
                     onChange={(e) => setWorkspaceNotes(e.target.value)}
-                    placeholder="Collaborative notes, code draft logic, or team ideas..."
+                    placeholder="Collaborative team notes, algorithm logic, or draft solutions..."
                     className="w-full mt-3 p-3 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl text-xs font-mono text-[#292724] focus:outline-none focus:ring-2 focus:ring-[#8B7EC8]"
                   />
                 </div>
@@ -477,7 +659,7 @@ export function StudentGroupsModal({
                   onClick={handleSaveNotes}
                   className="w-full bg-[#75B798] hover:bg-[#64a687] text-white font-bold text-xs py-2 rounded-xl cursor-pointer shadow-2xs"
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Save Shared Notes
+                  <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Save Team Notes
                 </Button>
               </div>
             </div>
@@ -493,7 +675,7 @@ export function StudentGroupsModal({
                   <Trash2 className="w-5 h-5 text-red-600" /> Confirm Delete Group
                 </DialogTitle>
                 <DialogDescription className="text-xs text-[#77716A] pt-2">
-                  Are you sure you want to delete <strong className="text-[#292724]">{groupToDelete.name}</strong>? All workspace data and discussion messages will be permanently removed.
+                  Delete this group? This will remove the workspace and group conversation for all members.
                 </DialogDescription>
               </DialogHeader>
 
