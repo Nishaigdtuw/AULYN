@@ -30,7 +30,7 @@ import { TeacherQuizModal } from "@/components/teacher-quiz-modal"
 import { QuizAttemptsModal } from "@/components/quiz-attempts-modal"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, AnnouncementData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile, createClassroom, getStoredSubscription, SubscriptionData, QuizData, getQuizzesForClass, deleteQuiz, getQuizAttemptsForQuiz } from "@/lib/data-store"
+import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, AnnouncementData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile, createClassroom, getStoredSubscription, SubscriptionData, QuizData, getQuizzesForClass, deleteQuiz, getQuizAttemptsForQuiz, getVivaSessions } from "@/lib/data-store"
 import { isPro } from "@/lib/subscription"
 import { ProLimitDialog } from "@/components/pro-limit-dialog"
 import { getAuthenticatedUser, clearAuthenticatedUser, setAuthenticatedUser } from "@/lib/auth-guard"
@@ -1067,6 +1067,41 @@ ${activeClassroom.assignments?.map(a => `Assignment: ${a.title} | Submissions: $
                               Evaluate
                             </Button>
                           </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* STUDENT AI ORAL VIVA DEFENSE REPORTS */}
+              <Card className="bg-[#FFF9F1]/95 backdrop-blur-md border-[#E5DCD0] shadow-2xs rounded-2xl">
+                <CardHeader>
+                  <CardTitle className="text-[#292724] font-serif font-bold text-base flex items-center gap-2">
+                    <Crown className="w-4 h-4 text-[#8B7EC8]" /> Student AI Oral Viva Defenses ({activeClassroom?.className})
+                  </CardTitle>
+                  <CardDescription className="text-xs text-[#77716A]">Review real-time conceptual viva defense scores, concept mastery, and student strengths</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {getVivaSessions().filter((v) => v.classId === activeClassroom?.classId).length === 0 ? (
+                    <p className="text-xs text-[#77716A] italic py-4 text-center">No AI Oral Viva defenses completed for {activeClassroom?.className} yet.</p>
+                  ) : (
+                    getVivaSessions().filter((v) => v.classId === activeClassroom?.classId).map((viva) => (
+                      <div key={viva.vivaId} className="p-4 bg-white border border-[#E5DCD0] rounded-xl text-xs space-y-2 font-bold shadow-2xs">
+                        <div className="flex items-center justify-between border-b border-[#E5DCD0] pb-2">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-[#292724] font-bold text-sm">{viva.studentName || "Enrolled Student"}</span>
+                            <span className="text-[#77716A]">•</span>
+                            <span className="text-[#8B7EC8]">{viva.topic || "Oral Defense"}</span>
+                          </div>
+                          <span className="text-xs font-mono font-bold text-[#E76F51] bg-[#E76F51]/10 px-2.5 py-0.5 rounded-full">
+                            Score: {viva.overallScore || viva.vivaScore} / 10
+                          </span>
+                        </div>
+                        <p className="text-xs font-medium text-[#77716A]">{viva.summary || "Completed adaptive oral defense."}</p>
+                        <div className="flex items-center justify-between text-[11px] text-[#77716A]">
+                          <span>Completed: {viva.completedAt}</span>
+                          <span className="text-emerald-700 font-bold">Concept Mastery Saved ✓</span>
                         </div>
                       </div>
                     ))

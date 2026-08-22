@@ -1,20 +1,33 @@
 'use client'
 
-import React, { useState, useEffect } from "react"
-import { Sparkles, Mic, Send, Award, ShieldCheck, BookOpen } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import React, { useState, useEffect, useRef, useCallback } from "react"
+import { Sparkles, Mic, MicOff, Award, ShieldCheck, BookOpen, Volume2, RotateCcw, ArrowRight, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Card } from "@/components/ui/card"
 import { toast } from "sonner"
-import { saveVivaSession, VivaSessionData, ClassroomData, getStoredClassrooms, SubscriptionData, getStoredSubscription } from "@/lib/data-store"
+import {
+  saveVivaSession,
+  VivaSessionData,
+  ClassroomData,
+  getStoredClassrooms,
+  SubscriptionData,
+  getStoredSubscription
+} from "@/lib/data-store"
 
 import { saveMasteryEvidence } from "@/lib/mastery-engine"
 import { isPro } from "@/lib/subscription"
 import { ProLimitDialog } from "@/components/pro-limit-dialog"
-
 import PricingModal from "@/components/pricing-modal"
-
+import {
+  startVivaSessionServer,
+  submitVivaResponseServer,
+  finalizeVivaSessionServer,
+  retryWeakConceptsServer,
+  VivaQuestionItem,
+  VivaReportData
+} from "@/actions/viva/action"
 
 interface AiVivaModalProps {
   open: boolean
@@ -23,32 +36,18 @@ interface AiVivaModalProps {
   assignmentTitle?: string
   classId?: string
   classroom?: ClassroomData
+  studentId?: string
   studentName?: string
 }
 
-interface VivaQuestionItem {
-  id: string
-  questionText: string
-  difficulty: 'Core' | 'Prerequisite' | 'Advanced'
-  topic: string
-}
-
-interface VivaQAHistory {
-  question: string
-  studentAnswer: string
-  feedback: string
-  score: number
-  difficulty: string
-}
-
-interface VivaFinalEvaluation {
-  vivaScore: number
-  understandingScore: number
-  memorizationRisk: 'Low' | 'Moderate' | 'High'
-  strongAreas: string[]
-  weakAreas: string[]
-  overallFeedback: string
-}
+type VivaState =
+  | 'PREPARING'
+  | 'EXAMINER_SPEAKING'
+  | 'YOUR_TURN'
+  | 'LISTENING'
+  | 'ANSWER_CAPTURED'
+  | 'PROCESSING'
+  | 'VIVA_COMPLETED'
 
 export function AiVivaModal({
   open,
@@ -57,6 +56,7 @@ export function AiVivaModal({
   assignmentTitle = "Course Laboratory Defense",
   classId,
   classroom: passedClassroom,
+  studentId = "student-demo",
   studentName = "Alex Rivera"
 }: AiVivaModalProps) {
   const [targetClassroom, setTargetClassroom] = useState<ClassroomData | undefined>(passedClassroom)
@@ -64,14 +64,129 @@ export function AiVivaModal({
   const [proLimitOpen, setProLimitOpen] = useState(false)
   const [pricingModalOpen, setPricingModalOpen] = useState(false)
 
-  const [currentStep, setCurrentStep] = useState<number>(0)
-  const [currentAnswer, setCurrentAnswer] = useState("")
-  const [qaHistory, setQaHistory] = useState<VivaQAHistory[]>([])
-  const [isCompleted, setIsCompleted] = useState(false)
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [currentQuestion, setCurrentQuestion] = useState<VivaQuestionItem | null>(null)
-  const [evaluationResult, setEvaluationResult] = useState<VivaFinalEvaluation | null>(null)
+  // Viva Session & State Machine
+  const [vivaState, setVivaState] = useState<VivaState>('PREPARING')
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [questions, setQuestions] = useState<VivaQuestionItem[]>([])
+  const [currentIdx, setCurrentIdx] = useState<number>(0)
+  const [report, setReport] = useState<VivaReportData | null>(null)
 
+  // Speech Recognition & Audio States
+  const [isRecording, setIsRecording] = useState(false)
+  const [transcript, setTranscript] = useState("")
+  const [micPermission, setMicPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt')
+  const [micError, setMicError] = useState<string | null>(null)
+  const [isSpeakingTts, setIsSpeakingTts] = useState(false)
+
+  const recognitionRef = useRef<unknown>(null)
+
+  const currentQ = questions[currentIdx] || null
+  const hasMaterials = Boolean(
+    targetClassroom &&
+    ((targetClassroom.materials && targetClassroom.materials.length > 0) ||
+      (targetClassroom.chapters && targetClassroom.chapters.length > 0))
+  )
+
+  // Initialize Speech Recognition
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const windowObj = window as unknown as { SpeechRecognition: new () => { continuous: boolean; interimResults: boolean; lang: string; start: () => void; stop: () => void; onresult: (e: { results: Array<Array<{ transcript: string }> > }) => void; onerror: (e: { error: string }) => void; onend: () => void }; webkitSpeechRecognition: new () => { continuous: boolean; interimResults: boolean; lang: string; start: () => void; stop: () => void; onresult: (e: { results: Array<Array<{ transcript: string }> > }) => void; onerror: (e: { error: string }) => void; onend: () => void } }
+      const SpeechRecognition = windowObj.SpeechRecognition || windowObj.webkitSpeechRecognition
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition()
+        recognition.continuous = true
+        recognition.interimResults = true
+        recognition.lang = 'en-US'
+
+        recognition.onresult = (event) => {
+          let currentTranscript = ""
+          for (let i = 0; i < event.results.length; i++) {
+            currentTranscript += event.results[i][0].transcript
+          }
+          setTranscript(currentTranscript)
+        }
+
+        recognition.onerror = (event) => {
+          console.error("Speech recognition error:", event.error)
+          setIsRecording(false)
+          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            setMicPermission('denied')
+            setMicError("Microphone access denied. Please enable microphone permissions in your browser settings.")
+          }
+        }
+
+        recognition.onend = () => {
+          setIsRecording(false)
+        }
+
+        recognitionRef.current = recognition
+      }
+    }
+  }, [])
+
+  // Text-To-Speech (TTS) Question Playback
+  const speakQuestionAloud = useCallback((text: string) => {
+    if (typeof window === "undefined" || !('speechSynthesis' in window)) return
+
+    window.speechSynthesis.cancel() // Stop any previous speech
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.rate = 0.95
+    utterance.pitch = 1.0
+
+    utterance.onstart = () => {
+      setIsSpeakingTts(true)
+      setVivaState('EXAMINER_SPEAKING')
+    }
+
+    utterance.onend = () => {
+      setIsSpeakingTts(false)
+      setVivaState('YOUR_TURN')
+    }
+
+    utterance.onerror = () => {
+      setIsSpeakingTts(false)
+      setVivaState('YOUR_TURN')
+    }
+
+    window.speechSynthesis.speak(utterance)
+  }, [])
+
+  const initSession = useCallback(async (clsId: string) => {
+    setVivaState('PREPARING')
+    const res = await startVivaSessionServer(studentId, clsId)
+
+    if (res.success && res.questions && res.questions.length > 0) {
+      const sessId = res.session?.id || res.sessionId || `viva-sess-${Date.now()}`
+      setSessionId(sessId)
+
+      const qList: VivaQuestionItem[] = res.questions.map((q) => ({
+        id: q.id,
+        sessionId: q.sessionId || sessId,
+        order: q.order || 1,
+        concept: q.concept || "Core Fundamentals",
+        questionText: q.questionText,
+        difficulty: (q.difficulty as 'Basic' | 'Medium' | 'Advanced') || "Medium",
+        isFollowUp: !!q.isFollowUp,
+        parentQuestionId: q.parentQuestionId || undefined
+      }))
+
+      setQuestions(qList)
+      const lastAnsweredIdx = qList.findIndex((q) => !q.transcript)
+      const activeIdx = lastAnsweredIdx !== -1 ? lastAnsweredIdx : qList.length - 1
+      setCurrentIdx(activeIdx)
+
+      const firstQ = qList[activeIdx]
+      if (firstQ) {
+        speakQuestionAloud(firstQ.questionText)
+      } else {
+        setVivaState('YOUR_TURN')
+      }
+    } else {
+      setVivaState('YOUR_TURN')
+    }
+  }, [studentId, speakQuestionAloud])
+
+  // Initialize or Restore Viva Session on Modal Open
   useEffect(() => {
     if (open) {
       const sub = getStoredSubscription()
@@ -80,306 +195,503 @@ export function AiVivaModal({
       const activeClass = passedClassroom || (classId ? getStoredClassrooms().find((c) => c.classId === classId) : getStoredClassrooms()[0])
       setTargetClassroom(activeClass)
 
-      // Reset session
-      setCurrentStep(0)
-      setCurrentAnswer("")
-      setQaHistory([])
-      setIsCompleted(false)
-      setIsAnalyzing(false)
-      setEvaluationResult(null)
+      // Reset state
+      setTranscript("")
+      setMicError(null)
 
-      if (activeClass?.materials && activeClass.materials.length > 0) {
-        const initialQ = generateInitialQuestion(activeClass)
-        setCurrentQuestion(initialQ)
-      } else {
-        setCurrentQuestion(null)
+      if (activeClass) {
+        initSession(activeClass.classId)
+      }
+    } else {
+      if (typeof window !== "undefined" && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel()
       }
     }
-  }, [open, passedClassroom, classId])
+  }, [open, passedClassroom, classId, initSession])
 
+  // Microphone Control Handlers
+  const startRecording = async () => {
+    setMicError(null)
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        await navigator.mediaDevices.getUserMedia({ audio: true })
+        setMicPermission('granted')
+      }
 
-  const hasMaterials = Boolean(targetClassroom?.materials && targetClassroom.materials.length > 0)
+      const rec = recognitionRef.current as { start: () => void; stop: () => void } | null
+      if (rec) {
+        setTranscript("")
+        rec.start()
+        setIsRecording(true)
+        setVivaState('LISTENING')
+      } else {
+        setMicError("Web Speech API is not supported in this browser. Please use Google Chrome or Safari.")
+      }
+    } catch {
+      setMicPermission('denied')
+      setMicError("Microphone access is required for the oral viva. Please enable microphone permissions in your browser.")
+    }
+  }
 
-  // Handle Answer Submission & Adaptive Next Question Generation
-  const handleAnswerSubmit = () => {
-    if (!currentAnswer.trim() || !currentQuestion || !targetClassroom) return
+  const stopRecording = () => {
+    const rec = recognitionRef.current as { start: () => void; stop: () => void } | null
+    if (rec && isRecording) {
+      rec.stop()
+      setIsRecording(false)
+      setVivaState('ANSWER_CAPTURED')
+    }
+  }
 
-    if (!isPro(subscription) && currentStep >= 2) {
+  // Submit Spoken Answer to Server Action
+  const handleAnswerSubmit = async () => {
+    if (!transcript.trim()) {
+      toast.warning("No speech captured yet. Please speak your response aloud.")
+      return
+    }
+
+    if (!isPro(subscription) && currentIdx >= 2) {
       setProLimitOpen(true)
       return
     }
 
-    setIsAnalyzing(true)
+    if (!sessionId || !currentQ) return
 
-    const userText = currentAnswer.trim()
-    const wordCount = userText.split(/\s+/).length
+    setVivaState('PROCESSING')
+    const toastId = toast.loading("Examiner processing your verbal answer...")
 
-    // Evaluate answer quality
-    let answerScore = 8.5
-    let feedback = "Demonstrated clear conceptual reasoning and accurate domain terminology."
+    const res = await submitVivaResponseServer(studentId, sessionId, currentQ.id, transcript)
 
-    if (wordCount < 6 || userText.toLowerCase().includes("don't know") || userText.toLowerCase().includes("not sure")) {
-      answerScore = 4.5
-      feedback = "Answer was incomplete or lacked specific core mechanisms."
-    } else if (wordCount > 25 && (userText.toLowerCase().includes("recursion") || userText.toLowerCase().includes("queue") || userText.toLowerCase().includes("stack") || userText.toLowerCase().includes("derivative") || userText.toLowerCase().includes("force"))) {
-      answerScore = 9.5
-      feedback = "Outstanding response with rigorous technical detail and structural clarity."
-    }
+    if (res.success) {
+      toast.dismiss(toastId)
 
-    const newQA: VivaQAHistory = {
-      question: currentQuestion.questionText,
-      studentAnswer: userText,
-      feedback,
-      score: answerScore,
-      difficulty: currentQuestion.difficulty
-    }
+      if (res.isCompleted) {
+        // Finalize Session & Generate Report
+        const finalRes = await finalizeVivaSessionServer(studentId, sessionId)
+        if (finalRes.success && finalRes.report) {
+          setReport(finalRes.report)
+          setVivaState('VIVA_COMPLETED')
 
-    const updatedHistory = [...qaHistory, newQA]
-    setQaHistory(updatedHistory)
-    setCurrentAnswer("")
+          // Local store sync
+          const vivaSessionData: VivaSessionData = {
+            vivaId: finalRes.report.sessionId,
+            assignmentId,
+            assignmentTitle,
+            studentId,
+            studentName,
+            classId: targetClassroom?.classId || "class-1",
+            topic: finalRes.report.topic,
+            status: "COMPLETED",
+            vivaScore: finalRes.report.overallScore,
+            overallScore: finalRes.report.overallScore,
+            conceptualScore: finalRes.report.conceptualScore,
+            correctnessScore: finalRes.report.correctnessScore,
+            reasoningScore: finalRes.report.reasoningScore,
+            communicationScore: finalRes.report.communicationScore,
+            deliveryFluencyScore: finalRes.report.deliveryFluencyScore,
+            summary: finalRes.report.summary,
+            strengths: finalRes.report.strengths,
+            weaknesses: finalRes.report.weaknesses,
+            conceptMastery: finalRes.report.conceptMastery,
+            recommendedNextSteps: finalRes.report.recommendedNextSteps,
+            questions: finalRes.report.questions.map((q) => ({
+              id: q.id,
+              order: q.order,
+              concept: q.concept,
+              questionText: q.questionText,
+              transcript: q.transcript,
+              feedback: q.conceptualFeedback,
+              conceptualFeedback: q.conceptualFeedback,
+              whatExplainedWell: q.whatExplainedWell,
+              whatWasMissing: q.whatWasMissing,
+              score: q.score,
+              difficulty: q.difficulty,
+              isFollowUp: q.isFollowUp,
+              parentQuestionId: q.parentQuestionId
+            })),
+            completedAt: new Date().toLocaleDateString()
+          }
 
-    setTimeout(() => {
-      const nextStep = currentStep + 1
-      setCurrentStep(nextStep)
+          saveVivaSession(vivaSessionData)
+          saveMasteryEvidence(studentId, targetClassroom?.classId || "class-1", "core-concept", {
+            type: "Viva",
+            title: `AI Oral Viva: ${targetClassroom?.className || assignmentTitle}`,
+            score: finalRes.report.overallScore,
+            maxScore: 10,
+            percentage: finalRes.report.overallScore * 10,
+            notes: `Completed adaptive oral viva defense for ${targetClassroom?.className}.`
+          })
 
-      if (nextStep >= 3) {
-        // Complete Viva session & calculate final scores
-        completeVivaSession(updatedHistory)
-      } else {
-        // Generate adaptive next question based on score
-        const nextQ = generateAdaptiveNextQuestion(targetClassroom, answerScore, nextStep)
-        setCurrentQuestion(nextQ)
-        setIsAnalyzing(false)
+          toast.success("Viva Assessment completed successfully!")
+        }
+      } else if (res.nextQuestion) {
+        const nextQ = res.nextQuestion
+        setQuestions((prev) => [...prev, nextQ])
+        setCurrentIdx((prev) => prev + 1)
+        setTranscript("")
+        speakQuestionAloud(nextQ.questionText)
       }
-    }, 600)
+    } else {
+      toast.error(res.message || "Failed to evaluate answer. Please try again.", { id: toastId })
+      setVivaState('YOUR_TURN')
+    }
   }
 
-  // Calculate final performance summary
-  const completeVivaSession = (history: VivaQAHistory[]) => {
-    const avgScore = history.reduce((acc, q) => acc + q.score, 0) / history.length
-    const roundedScore = Math.round(avgScore * 10) / 10
+  // Handle Retry Weak Concepts
+  const handleRetryWeakConcepts = async () => {
+    if (!targetClassroom || !report) return
+    const weakTopics = report.conceptMastery
+      .filter((c) => c.status === 'Needs Revision' || c.status === 'Moderate')
+      .map((c) => c.concept)
 
-    const strong: string[] = []
-    const weak: string[] = []
+    const toastId = toast.loading("Generating targeted revision viva for weak concepts...")
+    const res = await retryWeakConceptsServer(studentId, targetClassroom.classId, weakTopics)
 
-    history.forEach((h, idx) => {
-      if (h.score >= 7.5) {
-        strong.push(`Q${idx + 1}: High mastery of ${h.difficulty} conceptual principles`)
-      } else {
-        weak.push(`Q${idx + 1}: Needs review on ${h.difficulty} definitions & edge cases`)
-      }
-    })
-
-    if (strong.length === 0) strong.push("Basic attempt of foundational concepts")
-    if (weak.length === 0) weak.push("None identified — solid grasp across all viva questions!")
-
-    const finalEval: VivaFinalEvaluation = {
-      vivaScore: roundedScore,
-      understandingScore: Math.min(10, Math.round((roundedScore + 0.5) * 10) / 10),
-      memorizationRisk: roundedScore >= 8.5 ? 'Low' : roundedScore >= 6.5 ? 'Moderate' : 'High',
-      strongAreas: strong,
-      weakAreas: weak,
-      overallFeedback: `Student completed ${history.length} viva defense questions grounded in ${targetClassroom?.className}. Demonstrated good technical articulation.`
+    if (res.success && res.questions) {
+      toast.success("New targeted Viva session ready!", { id: toastId })
+      setReport(null)
+      setSessionId(res.session?.id || res.sessionId || `viva-${Date.now()}`)
+      const qList: VivaQuestionItem[] = res.questions.map((q) => ({
+        id: q.id,
+        sessionId: q.sessionId,
+        order: q.order || 1,
+        concept: q.concept || "Weak Concept Focus",
+        questionText: q.questionText,
+        difficulty: (q.difficulty as 'Basic' | 'Medium' | 'Advanced') || "Medium",
+        isFollowUp: !!q.isFollowUp
+      }))
+      setQuestions(qList)
+      setCurrentIdx(0)
+      setTranscript("")
+      speakQuestionAloud(qList[0].questionText)
+    } else {
+      toast.error("Failed to start retry session.", { id: toastId })
     }
-
-    setEvaluationResult(finalEval)
-    setIsAnalyzing(false)
-    setIsCompleted(true)
-
-    // Save session to data store
-    const vivaSession: VivaSessionData = {
-      vivaId: `viva-${Date.now()}`,
-      assignmentId,
-      assignmentTitle,
-      studentId: "student-demo",
-      studentName,
-      classId: targetClassroom?.classId || "class-1",
-      questions: history.map(h => ({
-        question: h.question,
-        studentAnswer: h.studentAnswer,
-        feedback: h.feedback,
-        score: h.score
-      })),
-      vivaScore: finalEval.vivaScore,
-      understandingScore: finalEval.understandingScore,
-      memorizationRisk: finalEval.memorizationRisk,
-      weakConcept: weak[0] || "Conceptual Application",
-      completedAt: new Date().toLocaleDateString()
-    }
-    saveVivaSession(vivaSession)
-
-    saveMasteryEvidence("student-demo", targetClassroom?.classId || "class-1", "core-concept", {
-      type: "Viva",
-      title: `AI Oral Viva: ${targetClassroom?.className || assignmentTitle}`,
-      score: finalEval.vivaScore,
-      maxScore: 10,
-      percentage: finalEval.vivaScore * 10,
-      notes: `Completed adaptive oral defense for ${targetClassroom?.className}.`
-    })
-
-    toast.success("AI Viva Assessment completed successfully!")
   }
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-
-      <DialogContent className="max-w-2xl bg-[#FFF9F1] border border-[#E5DCD0] shadow-2xl rounded-2xl p-6 text-[#292724] max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="pb-3 border-b border-[#E5DCD0]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#8B7EC8] bg-[#8B7EC8]/10 px-2.5 py-0.5 rounded-full border border-[#8B7EC8]/30 flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-[#E9B949]" /> AI Viva Examiner
-            </span>
-            <span className="text-xs font-mono font-bold text-[#77716A]">
-              {hasMaterials && !isCompleted ? `Question ${currentStep + 1} of 3` : "Course Material Required"}
-            </span>
-          </div>
-          <DialogTitle className="text-xl font-serif font-black text-[#292724] mt-2">
-            Conceptual Oral Question — {targetClassroom?.className || assignmentTitle}
-          </DialogTitle>
-          <DialogDescription className="text-xs text-[#77716A]">
-            Adaptive, grounded oral assessment based on your teacher&apos;s uploaded course material.
-          </DialogDescription>
-        </DialogHeader>
-
-        {/* 1. NO COURSE MATERIAL WARNING */}
-        {!hasMaterials ? (
-          <Card className="bg-white border-2 border-[#8B7EC8]/40 rounded-2xl p-8 text-center space-y-4 shadow-2xs my-4">
-            <div className="w-14 h-14 bg-purple-100 text-[#8B7EC8] rounded-full flex items-center justify-center mx-auto border border-purple-200">
-              <BookOpen className="w-7 h-7" />
+        <DialogContent className="max-w-4xl bg-[#FFF9F1] border border-[#E5DCD0] shadow-2xl rounded-2xl p-6 text-[#292724] max-h-[92vh] overflow-y-auto">
+          <DialogHeader className="pb-3 border-b border-[#E5DCD0]">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[#8B7EC8] bg-[#8B7EC8]/15 px-2.5 py-0.5 rounded-full border border-[#8B7EC8]/30 flex items-center gap-1.5 uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 text-[#E9B949]" /> AI Examiner • Adaptive Oral Viva
+              </span>
+              <span className="text-xs font-mono font-bold text-[#77716A]">
+                {vivaState === 'VIVA_COMPLETED' ? "Viva Completed" : `Concepts Evaluated: ${questions.filter(q => q.transcript).length} / 5`}
+              </span>
             </div>
-            <div className="space-y-1">
-              <h3 className="text-lg font-serif font-black text-[#292724]">No course material available yet.</h3>
-              <p className="text-xs text-[#77716A] font-semibold max-w-md mx-auto">
-                Your teacher needs to upload notes before an AI Oral Viva can be generated.
-              </p>
-            </div>
-            <Button
-              onClick={() => onOpenChange(false)}
-              className="bg-[#8B7EC8] hover:bg-[#7a6db7] text-white font-bold text-xs py-2 px-6 rounded-xl shadow-2xs cursor-pointer"
-            >
-              Back to Workspace
-            </Button>
-          </Card>
+            <DialogTitle className="text-xl font-serif font-black text-[#292724] mt-2 flex items-center gap-2">
+              <Volume2 className="w-5 h-5 text-[#8B7EC8]" /> Oral Assessment: {targetClassroom?.className || assignmentTitle}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-[#77716A]">
+              Adaptive, voice-first conceptual defense grounded in your teacher&apos;s course materials.
+            </DialogDescription>
+          </DialogHeader>
 
-        /* 2. ACTIVE VIVA QUESTION SESSION */
-        ) : !isCompleted ? (
-          <div className="space-y-5 pt-3">
-            {currentQuestion && (
-              <>
-                <Card className="bg-white border-2 border-[#8B7EC8]/40 rounded-2xl p-5 space-y-3 shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2 text-[#8B7EC8]">
-                      <Mic className="w-5 h-5 animate-pulse" />
-                      <h4 className="text-xs font-bold uppercase tracking-wider">AI Examiner Prompt:</h4>
-                    </div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                      currentQuestion.difficulty === 'Prerequisite' ? 'bg-amber-100 text-amber-800' :
-                      currentQuestion.difficulty === 'Advanced' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {currentQuestion.difficulty} Question
+          {/* 1. NO COURSE MATERIAL WARNING */}
+          {!hasMaterials ? (
+            <Card className="bg-white border-2 border-[#8B7EC8]/40 rounded-2xl p-8 text-center space-y-4 shadow-2xs my-4">
+              <div className="w-14 h-14 bg-purple-100 text-[#8B7EC8] rounded-full flex items-center justify-center mx-auto border border-purple-200">
+                <BookOpen className="w-7 h-7" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-serif font-black text-[#292724]">No course material available yet.</h3>
+                <p className="text-xs text-[#77716A] font-semibold max-w-md mx-auto">
+                  Your teacher needs to upload course material before a classroom-based viva can begin.
+                </p>
+              </div>
+              <Button
+                onClick={() => onOpenChange(false)}
+                className="bg-[#8B7EC8] hover:bg-[#7a6db7] text-white font-bold text-xs py-2 px-6 rounded-xl shadow-2xs cursor-pointer"
+              >
+                Back to Workspace
+              </Button>
+            </Card>
+
+          /* 2. ACTIVE VIVA VOICE-FIRST EXAM SESSION */
+          ) : vivaState !== 'VIVA_COMPLETED' ? (
+            <div className="space-y-5 pt-3">
+              {/* Status State Badge */}
+              <div className="flex items-center justify-between">
+                <span className={`text-xs font-bold px-3 py-1 rounded-full border flex items-center gap-1.5 ${
+                  vivaState === 'EXAMINER_SPEAKING' ? 'bg-purple-100 text-purple-800 border-purple-300' :
+                  vivaState === 'LISTENING' ? 'bg-red-100 text-red-800 border-red-300 animate-pulse' :
+                  vivaState === 'PROCESSING' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                  'bg-emerald-100 text-emerald-800 border-emerald-300'
+                }`}>
+                  <span className="w-2 h-2 rounded-full bg-current" />
+                  {vivaState === 'EXAMINER_SPEAKING' && "Examiner Speaking..."}
+                  {vivaState === 'YOUR_TURN' && "Your Turn — Speak Your Answer"}
+                  {vivaState === 'LISTENING' && "Listening to Voice Answer..."}
+                  {vivaState === 'ANSWER_CAPTURED' && "Answer Captured — Ready to Submit"}
+                  {vivaState === 'PROCESSING' && "Examiner Evaluating Context..."}
+                  {vivaState === 'PREPARING' && "Preparing Examiner Prompt..."}
+                </span>
+
+                {currentQ?.isFollowUp && (
+                  <span className="text-xs font-bold text-[#8B7EC8] bg-[#8B7EC8]/10 px-2.5 py-0.5 rounded-full border border-[#8B7EC8]/30">
+                    Follow-Up Probing Question
+                  </span>
+                )}
+              </div>
+
+              {/* Examiner Question Card */}
+              {currentQ && (
+                <Card className="bg-white border-2 border-[#8B7EC8]/40 rounded-2xl p-5 space-y-4 shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-[#E5DCD0] pb-2">
+                    <span className="text-xs font-mono font-bold text-[#8B7EC8]">
+                      Turn {currentIdx + 1} • Concept: {currentQ.concept}
                     </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => speakQuestionAloud(currentQ.questionText)}
+                      disabled={isSpeakingTts}
+                      className="text-xs font-bold text-[#8B7EC8] border-[#8B7EC8] hover:bg-[#8B7EC8]/10 rounded-xl cursor-pointer flex items-center gap-1"
+                    >
+                      <Volume2 className="w-3.5 h-3.5" /> Replay Question
+                    </Button>
                   </div>
 
-                  <p className="text-sm font-serif font-bold text-[#292724] leading-relaxed">
-                    &quot;{currentQuestion.questionText}&quot;
+                  <p className="text-base font-serif font-bold text-[#292724] leading-relaxed">
+                    &quot;{currentQ.questionText}&quot;
                   </p>
                 </Card>
+              )}
 
+              {/* Voice Microphone Controls (Zero Typing Input) */}
+              <Card className="bg-white border border-[#E5DCD0] rounded-2xl p-5 space-y-4 text-center shadow-2xs">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-center space-x-2">
+                    <h4 className="text-xs font-bold text-[#292724] uppercase tracking-wider">Voice Response Mode</h4>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      micPermission === 'granted' ? 'bg-emerald-100 text-emerald-800' :
+                      micPermission === 'denied' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      Mic: {micPermission}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#77716A]">Speak clearly into your microphone to answer the examiner.</p>
+                </div>
+
+                {/* Mic Error Banner */}
+                {micError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 font-medium flex items-center justify-between">
+                    <span>{micError}</span>
+                    <Button size="sm" variant="outline" onClick={startRecording} className="text-xs font-bold rounded-xl border-red-300 text-red-800">
+                      Enable Mic
+                    </Button>
+                  </div>
+                )}
+
+                {/* Recording Control Button */}
+                <div className="flex justify-center items-center space-x-3">
+                  {!isRecording ? (
+                    <Button
+                      onClick={startRecording}
+                      disabled={vivaState === 'PROCESSING' || vivaState === 'EXAMINER_SPEAKING'}
+                      className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-sm px-6 py-3 rounded-2xl shadow-md cursor-pointer flex items-center gap-2"
+                    >
+                      <Mic className="w-5 h-5" /> Start Spoken Answer
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={stopRecording}
+                      className="bg-red-600 hover:bg-red-700 text-white font-bold text-sm px-6 py-3 rounded-2xl shadow-md cursor-pointer flex items-center gap-2 animate-pulse"
+                    >
+                      <MicOff className="w-5 h-5" /> Stop & Capture Answer
+                    </Button>
+                  )}
+                </div>
+
+                {/* Captured Transcript Display (Read-Only Transparency) */}
+                <div className="space-y-1 text-left bg-[#FFF9F1] p-3.5 rounded-xl border border-[#E5DCD0]">
+                  <span className="text-[10px] font-bold text-[#77716A] uppercase block">Captured Speech Transcript:</span>
+                  <p className="text-xs font-medium text-[#292724] min-h-[40px]">
+                    {transcript || <span className="text-[#77716A] italic">Click &quot;Start Spoken Answer&quot; and speak aloud...</span>}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setTranscript("")
+                      setVivaState('YOUR_TURN')
+                    }}
+                    disabled={!transcript}
+                    className="text-xs font-bold rounded-xl border-[#E5DCD0] cursor-pointer flex items-center gap-1"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" /> Re-record Answer
+                  </Button>
+
+                  <Button
+                    onClick={handleAnswerSubmit}
+                    disabled={!transcript.trim() || vivaState === 'PROCESSING'}
+                    className="bg-[#8B7EC8] hover:bg-[#7a6db7] text-white font-bold text-xs px-6 py-2.5 rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5"
+                  >
+                    Submit Voice Answer & Continue <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </Card>
+            </div>
+
+          /* 3. FINAL VIVA PERFORMANCE REPORT SCREEN (Matching Reference Layout) */
+          ) : (
+            <div className="space-y-6 pt-3">
+              {/* OVERALL PERFORMANCE CARD */}
+              <Card className="bg-white border-2 border-[#8B7EC8]/40 rounded-2xl p-6 space-y-4 shadow-2xs">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-[#E5DCD0] pb-4">
+                  <div className="space-y-1 text-center md:text-left">
+                    <span className="text-xs font-bold text-[#8B7EC8] uppercase tracking-wider">Official Viva Defense Report</span>
+                    <h3 className="text-2xl font-serif font-black text-[#292724]">Overall Viva Performance</h3>
+                    <p className="text-xs text-[#77716A] font-semibold">{report?.summary}</p>
+                  </div>
+                  <div className="p-4 bg-[#FFF9F1] border-2 border-[#8B7EC8] rounded-2xl text-center min-w-[140px]">
+                    <span className="text-[10px] font-bold text-[#77716A] uppercase block">Overall Score</span>
+                    <span className="text-3xl font-serif font-black text-[#E76F51]">{report?.overallScore} / 10</span>
+                  </div>
+                </div>
+
+                {/* SKILL EVALUATION 5-DIMENSION BREAKDOWN */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-[#292724]">Your Answer / Conceptual Defense:</label>
-                  <textarea
-                    value={currentAnswer}
-                    onChange={(e) => setCurrentAnswer(e.target.value)}
-                    placeholder="Explain your conceptual understanding in detail..."
-                    rows={4}
-                    className="w-full bg-white border border-[#E5DCD0] text-xs font-medium text-[#292724] rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-[#8B7EC8]"
-                  />
+                  <h4 className="text-xs font-bold text-[#292724] uppercase tracking-wider">Skill Evaluation</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
+                    <div className="p-3 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl text-center">
+                      <span className="text-[10px] font-bold text-[#77716A] block">Conceptual</span>
+                      <span className="text-base font-bold text-[#8B7EC8]">{report?.conceptualScore} / 10</span>
+                    </div>
+                    <div className="p-3 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl text-center">
+                      <span className="text-[10px] font-bold text-[#77716A] block">Correctness</span>
+                      <span className="text-base font-bold text-[#75B798]">{report?.correctnessScore} / 10</span>
+                    </div>
+                    <div className="p-3 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl text-center">
+                      <span className="text-[10px] font-bold text-[#77716A] block">Reasoning</span>
+                      <span className="text-base font-bold text-[#E76F51]">{report?.reasoningScore} / 10</span>
+                    </div>
+                    <div className="p-3 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl text-center">
+                      <span className="text-[10px] font-bold text-[#77716A] block">Communication</span>
+                      <span className="text-base font-bold text-[#8B7EC8]">{report?.communicationScore} / 10</span>
+                    </div>
+                    <div className="p-3 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl text-center col-span-2 md:col-span-1">
+                      <span className="text-[10px] font-bold text-[#77716A] block">Delivery Fluency</span>
+                      <span className="text-base font-bold text-amber-700">{report?.deliveryFluencyScore} / 10</span>
+                    </div>
+                  </div>
                 </div>
 
+                {/* CONCEPT MASTERY BADGES */}
+                <div className="space-y-2 pt-2">
+                  <h4 className="text-xs font-bold text-[#292724] uppercase tracking-wider">Concept Mastery</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {report?.conceptMastery.map((cm, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between min-w-[180px] ${
+                          cm.status === 'Strong'
+                            ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                            : cm.status === 'Moderate'
+                            ? 'bg-blue-50 border-blue-300 text-blue-900'
+                            : 'bg-amber-50 border-amber-300 text-amber-900 font-bold'
+                        }`}
+                      >
+                        <span>{cm.concept}</span>
+                        <span className="font-mono text-xs font-bold ml-2">{cm.status} ({cm.score})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* STRENGTHS & AREAS TO IMPROVE */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <div className="space-y-1.5 bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200">
+                    <h5 className="text-xs font-bold text-emerald-800 uppercase tracking-wide flex items-center gap-1">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Demonstrated Strengths
+                    </h5>
+                    <ul className="list-disc list-inside text-xs text-emerald-950 font-medium space-y-1">
+                      {report?.strengths.map((s, i) => <li key={i}>{s}</li>)}
+                    </ul>
+                  </div>
+
+                  <div className="space-y-1.5 bg-amber-50/70 p-4 rounded-2xl border border-amber-200">
+                    <h5 className="text-xs font-bold text-amber-800 uppercase tracking-wide flex items-center gap-1">
+                      <AlertTriangle className="w-4 h-4 text-amber-600" /> Areas to Improve
+                    </h5>
+                    <ul className="list-disc list-inside text-xs text-amber-950 font-medium space-y-1">
+                      {report?.weaknesses.map((w, i) => <li key={i}>{w}</li>)}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* RECOMMENDED NEXT STEPS */}
+                <div className="p-4 bg-[#FFF9F1] border border-[#E5DCD0] rounded-2xl space-y-2">
+                  <h5 className="text-xs font-bold text-[#8B7EC8] uppercase tracking-wide flex items-center gap-1">
+                    <ShieldCheck className="w-4 h-4 text-[#8B7EC8]" /> Recommended Revision Pathway
+                  </h5>
+                  <ul className="list-decimal list-inside text-xs text-[#292724] font-medium space-y-1">
+                    {report?.recommendedNextSteps.map((step, i) => <li key={i}>{step}</li>)}
+                  </ul>
+                </div>
+              </Card>
+
+              {/* HIERARCHICAL QUESTION BREAKDOWN */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-serif font-bold text-[#292724] flex items-center gap-2">
+                  <Award className="w-4 h-4 text-[#8B7EC8]" /> Turn-by-Turn Question Breakdown & Transcripts
+                </h4>
+
+                {report?.questions.map((q, idx) => (
+                  <Card key={q.id} className="p-4 bg-white border border-[#E5DCD0] rounded-2xl space-y-3 shadow-2xs">
+                    <div className="flex items-center justify-between border-b border-[#E5DCD0] pb-2">
+                      <span className="text-xs font-mono font-bold text-[#E76F51]">
+                        Q{idx + 1}. {q.concept} {q.isFollowUp ? "(Follow-Up Probing)" : "(Primary Concept)"}
+                      </span>
+                      <span className="text-xs font-mono font-bold text-[#8B7EC8]">
+                        Score: {q.score} / 10
+                      </span>
+                    </div>
+
+                    <p className="text-xs font-bold text-[#292724]">&quot;{q.questionText}&quot;</p>
+
+                    <div className="p-3 bg-[#FFF9F1] rounded-xl border border-[#E5DCD0] text-xs space-y-1">
+                      <span className="font-bold text-[#77716A] uppercase text-[10px] block">Your Spoken Answer Transcript:</span>
+                      <p className="text-[#292724] font-medium italic">&quot;{q.transcript || "No verbal answer captured"}&quot;</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                      <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200">
+                        <strong className="text-emerald-800 block text-[10px] uppercase">What You Explained Well:</strong>
+                        <p className="text-emerald-950 font-medium">{q.whatExplainedWell || "Demonstrated core understanding."}</p>
+                      </div>
+                      <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200">
+                        <strong className="text-amber-800 block text-[10px] uppercase">What Was Missing / Needs Improvement:</strong>
+                        <p className="text-amber-950 font-medium">{q.whatWasMissing || "Expand on structural complexity."}</p>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+
+              {/* ACTION BUTTONS FOOTER */}
+              <div className="flex items-center justify-between pt-2 border-t border-[#E5DCD0]">
                 <Button
-                  onClick={handleAnswerSubmit}
-                  disabled={isAnalyzing || !currentAnswer.trim()}
-                  className="w-full bg-[#8B7EC8] hover:bg-[#7a6db7] text-white font-bold py-2.5 text-xs rounded-xl shadow-2xs cursor-pointer"
+                  onClick={handleRetryWeakConcepts}
+                  className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-xs px-5 py-2.5 rounded-xl cursor-pointer shadow-md flex items-center gap-1.5"
                 >
-                  {isAnalyzing ? "Evaluating Response & Adapting..." : currentStep === 2 ? "Submit Final Answer & Finish Viva" : "Submit Answer & Continue"} <Send className="w-3.5 h-3.5 ml-1.5" />
+                  <RefreshCw className="w-4 h-4" /> Retry Weak Concepts (New Targeted Viva)
                 </Button>
-              </>
-            )}
-          </div>
 
-        /* 3. FINAL VIVA EVALUATION SUMMARY */
-        ) : (
-          <div className="space-y-5 pt-3">
-            <Card className="bg-white border-2 border-[#75B798]/40 rounded-2xl p-5 space-y-4 shadow-2xs">
-              <div className="text-center space-y-2">
-                <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-200">
-                  <Award className="w-6 h-6" />
-                </div>
-                <h3 className="text-lg font-serif font-black text-[#292724]">AI Viva Defense Evaluation Summary</h3>
-                <p className="text-xs text-[#77716A] font-semibold">
-                  Course: {targetClassroom?.className}
-                </p>
-              </div>
-
-              {/* Scores Grid */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="p-3 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl text-center">
-                  <p className="text-[10px] font-bold text-[#77716A] uppercase">Viva Score</p>
-                  <p className="text-lg font-serif font-bold text-[#E76F51]">{evaluationResult?.vivaScore} / 10</p>
-                </div>
-                <div className="p-3 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl text-center">
-                  <p className="text-[10px] font-bold text-[#77716A] uppercase">Understanding</p>
-                  <p className="text-lg font-serif font-bold text-[#8B7EC8]">{evaluationResult?.understandingScore} / 10</p>
-                </div>
-                <div className="p-3 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl text-center">
-                  <p className="text-[10px] font-bold text-[#77716A] uppercase">Memory Risk</p>
-                  <p className="text-lg font-serif font-bold text-[#75B798]">{evaluationResult?.memorizationRisk}</p>
-                </div>
-              </div>
-
-              {/* Strong Areas */}
-              <div className="space-y-1">
-                <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wide">Strong Areas:</h4>
-                <ul className="list-disc list-inside text-xs text-[#292724] font-medium space-y-0.5 bg-emerald-50/60 p-3 rounded-xl border border-emerald-200">
-                  {evaluationResult?.strongAreas.map((sa, i) => (
-                    <li key={i}>{sa}</li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Weak Areas */}
-              <div className="space-y-1">
-                <h4 className="text-xs font-bold text-amber-800 uppercase tracking-wide">Weak Areas / Revision Focus:</h4>
-                <ul className="list-disc list-inside text-xs text-[#292724] font-medium space-y-0.5 bg-amber-50/60 p-3 rounded-xl border border-amber-200">
-                  {evaluationResult?.weakAreas.map((wa, i) => (
-                    <li key={i}>{wa}</li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Detailed Feedback */}
-              <div className="p-3 bg-[#FFF9F1] border border-[#E5DCD0] rounded-xl text-xs space-y-1">
-                <p className="font-bold text-[#8B7EC8] flex items-center gap-1">
-                  <ShieldCheck className="w-4 h-4 text-[#8B7EC8]" /> Examiner Advisory Feedback:
-                </p>
-                <p className="text-[#292724] font-medium leading-relaxed">
-                  {evaluationResult?.overallFeedback}
-                </p>
-              </div>
-
-              <div className="flex justify-end pt-2">
                 <Button
                   onClick={() => onOpenChange(false)}
-                  className="bg-[#75B798] hover:bg-[#64a587] text-white font-bold text-xs py-2.5 px-6 rounded-xl shadow-2xs cursor-pointer"
+                  className="bg-[#75B798] hover:bg-[#64a587] text-white font-bold text-xs px-6 py-2.5 rounded-xl shadow-2xs cursor-pointer"
                 >
-                  Close Viva Assessment
+                  Close & Return to Dashboard
                 </Button>
               </div>
-            </Card>
-          </div>
-        )}
-      </DialogContent>
+            </div>
+          )}
+        </DialogContent>
       </Dialog>
 
       {/* PRO LIMIT DIALOG */}
@@ -400,77 +712,4 @@ export function AiVivaModal({
       />
     </>
   )
-}
-
-
-// Generate initial question grounded in classroom materials/subject
-function generateInitialQuestion(classroom: ClassroomData): VivaQuestionItem {
-  const subjectLower = (classroom.subject || classroom.className || "").toLowerCase()
-  const matName = classroom.materials?.[0]?.fileName?.replace(/\.[^/.]+$/, "") || classroom.className
-
-  if (subjectLower.includes("math") || subjectLower.includes("calculus") || subjectLower.includes("algebra")) {
-    return {
-      id: "q1",
-      questionText: `Based on your course materials in ${matName}: Explain geometrically what the derivative of a function represents at a specific point x = a.`,
-      difficulty: "Core",
-      topic: "Calculus & Derivatives"
-    }
-  }
-
-  if (subjectLower.includes("phys") || subjectLower.includes("mechanic")) {
-    return {
-      id: "q1",
-      questionText: `Based on your course materials in ${matName}: How does Newton's Second Law explain the change in velocity of an object when an unbalanced external force is applied?`,
-      difficulty: "Core",
-      topic: "Newtonian Physics"
-    }
-  }
-
-  return {
-    id: "q1",
-    questionText: `Based on ${matName}: What is the primary conceptual difference between Depth-First Search (DFS) and Breadth-First Search (BFS) in tree traversal?`,
-    difficulty: "Core",
-    topic: "Tree Traversal"
-  }
-}
-
-// Generate adaptive next question based on student performance
-function generateAdaptiveNextQuestion(classroom: ClassroomData, previousScore: number, stepIndex: number): VivaQuestionItem {
-  const subjectLower = (classroom.subject || classroom.className || "").toLowerCase()
-
-  // Case 1: Weak Answer (< 6.0) -> Simpler Prerequisite Question
-
-  if (previousScore < 6.0) {
-    if (subjectLower.includes("math") || subjectLower.includes("calculus")) {
-      return {
-        id: `q${stepIndex + 1}`,
-        questionText: `Let's simplify: What is the fundamental formula for calculating the slope between two points (x1, y1) and (x2, y2)?`,
-        difficulty: "Prerequisite",
-        topic: "Foundational Math"
-      }
-    }
-    return {
-      id: `q${stepIndex + 1}`,
-      questionText: `Let's simplify: What basic data structure does Breadth-First Search (BFS) use to process nodes level by level?`,
-      difficulty: "Prerequisite",
-      topic: "Basic Data Structures"
-    }
-  }
-
-  // Case 2: Strong Answer (>= 6.0) -> Deeper Application Question
-  if (subjectLower.includes("math") || subjectLower.includes("calculus")) {
-    return {
-      id: `q${stepIndex + 1}`,
-      questionText: `Great work! How does the Fundamental Theorem of Calculus link integration with differentiation?`,
-      difficulty: "Advanced",
-      topic: "Advanced Calculus"
-    }
-  }
-
-  return {
-    id: `q${stepIndex + 1}`,
-    questionText: `Excellent reasoning! How would you modify DFS to detect whether a cycle exists in a directed graph?`,
-    difficulty: "Advanced",
-    topic: "Algorithmic Design"
-  }
 }

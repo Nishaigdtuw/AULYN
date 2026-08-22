@@ -321,18 +321,49 @@ export interface StudentMastery {
   lastUpdated: string
 }
 
+export interface VivaQuestionDetail {
+  id?: string
+  order?: number
+  concept?: string
+  question?: string
+  questionText?: string
+  studentAnswer?: string
+  transcript?: string
+  feedback?: string
+  conceptualFeedback?: string
+  whatExplainedWell?: string
+  whatWasMissing?: string
+  score?: number
+  difficulty?: string
+  isFollowUp?: boolean
+  parentQuestionId?: string
+}
+
 export interface VivaSessionData {
   vivaId: string
-  assignmentId: string
-  assignmentTitle: string
+  assignmentId?: string
+  assignmentTitle?: string
   studentId: string
-  studentName: string
+  studentName?: string
   classId: string
-  questions: { question: string; studentAnswer: string; feedback: string; score: number }[]
+  topic?: string
+  status?: string
+  questions: VivaQuestionDetail[]
   vivaScore: number // 0 - 10
-  understandingScore: number // 0 - 10
-  memorizationRisk: 'Low' | 'Moderate' | 'High'
-  weakConcept: string
+  overallScore?: number
+  conceptualScore?: number
+  correctnessScore?: number
+  reasoningScore?: number
+  communicationScore?: number
+  deliveryFluencyScore?: number
+  understandingScore?: number // 0 - 10
+  memorizationRisk?: 'Low' | 'Moderate' | 'High'
+  weakConcept?: string
+  summary?: string
+  strengths?: string[]
+  weaknesses?: string[]
+  conceptMastery?: { concept: string; status: 'Strong' | 'Moderate' | 'Needs Revision'; score: number }[]
+  recommendedNextSteps?: string[]
   completedAt: string
 }
 
@@ -935,9 +966,15 @@ export function getVivaSessions(studentId?: string): VivaSessionData[] {
   return list
 }
 
+export function getVivaSessionById(vivaId: string): VivaSessionData | undefined {
+  if (typeof window === "undefined") return undefined
+  const list = getVivaSessions()
+  return list.find((v) => v.vivaId === vivaId || (v as VivaSessionData & { id?: string }).id === vivaId)
+}
+
 export function saveVivaSession(viva: VivaSessionData) {
   if (typeof window === "undefined") return
-  const list = getVivaSessions()
+  const list = getVivaSessions().filter((v) => v.vivaId !== viva.vivaId)
   list.unshift(viva)
   localStorage.setItem(VIVA_KEY, JSON.stringify(list))
   window.dispatchEvent(new Event("aulyn-data-update"))

@@ -24,6 +24,7 @@ model user {
   enrolled enrolled[]
   chapter chapter[]
   quiz_attempts quiz_attempt[]
+  viva_sessions viva_session[]
 }
 
 model classroom {
@@ -35,6 +36,7 @@ model classroom {
   chapter chapter[]
   quizzes quiz[]
   quiz_attempts quiz_attempt[]
+  viva_sessions viva_session[]
 }
 
 model enrolled {
@@ -137,4 +139,58 @@ model quiz_answer {
   savedAt DateTime @default(now())
   attempt quiz_attempt @relation(fields: [attemptId], references: [attemptId], onDelete: Cascade)
   question quiz_question @relation(fields: [questionId], references: [questionId], onDelete: Cascade)
+}
+
+model viva_session {
+  id String @id @default(cuid())
+  studentId String
+  classId String
+  topic String
+  status String @default("IN_PROGRESS")
+  overallScore Float?
+  conceptualScore Float?
+  correctnessScore Float?
+  reasoningScore Float?
+  communicationScore Float?
+  deliveryFluencyScore Float?
+  summary String?
+  strengths String?
+  weaknesses String?
+  conceptMastery String?
+  recommendedNextSteps String?
+  isRetry Boolean @default(false)
+  retryConcepts String?
+  startedAt DateTime @default(now())
+  completedAt DateTime?
+  user user @relation(fields: [studentId], references: [userId])
+  classroom classroom @relation(fields: [classId], references: [classId])
+  questions viva_question[]
+}
+
+model viva_question {
+  id String @id @default(cuid())
+  sessionId String
+  order Int
+  concept String
+  questionText String
+  difficulty String @default("Medium")
+  isFollowUp Boolean @default(false)
+  parentQuestionId String?
+  transcript String?
+  score Float?
+  correctness Float?
+  completeness Float?
+  reasoning Float?
+  relevance Float?
+  communication Float?
+  deliveryFluency Float?
+  misconceptionDetected Boolean @default(false)
+  misconceptionSummary String?
+  whatExplainedWell String?
+  whatWasMissing String?
+  conceptualFeedback String?
+  nextAction String?
+  askedAt DateTime @default(now())
+  answeredAt DateTime?
+  session viva_session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 }
