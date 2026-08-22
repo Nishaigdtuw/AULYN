@@ -146,7 +146,7 @@ export function AdaptiveQuizModal({
         setQuestions(generated)
 
         const mastery = getStudentMastery("student-demo", classroom?.classId || "dsa-2026")
-        const target = mastery.find((m) => m.conceptId === "tree-traversal") || mastery[0]
+        const target = mastery.find((m: { conceptId: string; score: number }) => m.conceptId === "tree-traversal") || mastery[0]
         setInitialMasteryScore(target?.score || 0)
       }
     }

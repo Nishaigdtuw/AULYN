@@ -540,6 +540,28 @@ export async function submitQuizAttemptServer(studentId: string, attemptId: stri
       include: { answers: true }
     })
 
+    // Record learning evidence in DB
+    try {
+      await prisma.learning_evidence.create({
+        data: {
+          studentId,
+          classId: attempt.classId,
+          conceptName: attempt.quiz.topic || attempt.quiz.title,
+          sourceType: "QUIZ",
+          sourceRecordId: attemptId,
+          sourceTitle: attempt.quiz.title,
+          score: objectiveScore,
+          maxScore: attempt.totalMarks || 10,
+          percentage,
+          confidence: "Medium",
+          weight: 1.0,
+          summary: `Completed quiz ${attempt.quiz.title} with score ${objectiveScore}/${attempt.totalMarks} (${percentage}%)`
+        }
+      })
+    } catch (eErr) {
+      console.warn("Skipped quiz evidence DB creation:", eErr)
+    }
+
     return { success: true, attempt: updatedAttempt }
   } catch (err: unknown) {
     console.error("submitQuizAttemptServer error:", err)

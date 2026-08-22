@@ -28,6 +28,8 @@ import { AssignmentSubmissionModal } from "@/components/assignment-submission-mo
 import { StudentNotesAI } from "@/components/student-notes-ai"
 import { StudentLectureSummaryModal } from "@/components/student-lecture-summary-modal"
 import { ExamInterfaceModal } from "@/components/exam-interface-modal"
+import { StudentUnderstandingGraph } from "@/components/student-understanding-graph"
+import { ClassroomLeaderboard } from "@/components/classroom-leaderboard"
 
 import { DoubtThreadsModal } from "@/components/doubt-threads-modal"
 import { StudentGroupsModal } from "@/components/student-groups-modal"
@@ -742,13 +744,18 @@ export default function StudentPortal() {
           </div>
 
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-6 max-w-3xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6">
-
+            <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 max-w-4xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6 gap-1">
               <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Overview
               </TabsTrigger>
+              <TabsTrigger value="understanding" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
+                Understanding Map
+              </TabsTrigger>
+              <TabsTrigger value="leaderboard" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-amber-600 font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
+                Leaderboard
+              </TabsTrigger>
               <TabsTrigger value="materials" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
-                Course Materials
+                Materials
               </TabsTrigger>
               <TabsTrigger value="quizzes" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Quizzes
@@ -758,9 +765,6 @@ export default function StudentPortal() {
               </TabsTrigger>
               <TabsTrigger value="visualizer" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#8B7EC8] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Code IDE
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
-                Settings
               </TabsTrigger>
             </TabsList>
 
@@ -891,6 +895,25 @@ export default function StudentPortal() {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* STUDENT UNDERSTANDING GRAPH TAB */}
+            <TabsContent value="understanding" className="space-y-6 animate-in fade-in-50 duration-200">
+              <StudentUnderstandingGraph
+                studentId={self?.userId || "student-demo"}
+                classId={activeClassroom?.classId || "class-1"}
+                onOpenVisualizer={() => setActiveMainTab("visualizer")}
+                onOpenViva={() => setAiVivaOpen(true)}
+                onOpenPractice={() => setAdaptiveQuizOpen(true)}
+              />
+            </TabsContent>
+
+            {/* CLASSROOM LEADERBOARD TAB */}
+            <TabsContent value="leaderboard" className="space-y-6 animate-in fade-in-50 duration-200">
+              <ClassroomLeaderboard
+                classId={activeClassroom?.classId || "class-1"}
+                currentStudentId={self?.userId || "student-demo"}
+              />
             </TabsContent>
 
             {/* MATERIALS & NOTES TAB */}

@@ -34,3 +34,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# architecture documentation (local only)
+architecture.md
+AULYN_Architecture_*
+AULYN_Master_Architecture.*
+AULYN_Execution_Lifecycle.*
+
+
+

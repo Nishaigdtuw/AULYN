@@ -25,6 +25,8 @@ model user {
   chapter chapter[]
   quiz_attempts quiz_attempt[]
   viva_sessions viva_session[]
+  learning_evidence learning_evidence[]
+  concept_masteries student_concept_mastery[]
 }
 
 model classroom {
@@ -37,6 +39,9 @@ model classroom {
   quizzes quiz[]
   quiz_attempts quiz_attempt[]
   viva_sessions viva_session[]
+  learning_concepts learning_concept[]
+  learning_evidence learning_evidence[]
+  concept_masteries student_concept_mastery[]
 }
 
 model enrolled {
@@ -193,4 +198,75 @@ model viva_question {
   askedAt DateTime @default(now())
   answeredAt DateTime?
   session viva_session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model learning_concept {
+  conceptId String @id @default(cuid())
+  classId String
+  parentConceptId String?
+  conceptName String
+  category String @default("Core")
+  order Int @default(0)
+  createdAt DateTime @default(now())
+  classroom classroom @relation(fields: [classId], references: [classId], onDelete: Cascade)
+  evidence learning_evidence[]
+  masteries student_concept_mastery[]
+}
+
+model learning_evidence {
+  evidenceId String @id @default(cuid())
+  studentId String
+  classId String
+  conceptId String?
+  conceptName String
+  sourceType String
+  sourceRecordId String?
+  sourceTitle String
+  score Float
+  maxScore Float @default(10)
+  percentage Float
+  confidence String @default("Medium")
+  weight Float @default(1.0)
+  summary String?
+  weakness String?
+  recommendation String?
+  timestamp DateTime @default(now())
+  user user @relation(fields: [studentId], references: [userId], onDelete: Cascade)
+  classroom classroom @relation(fields: [classId], references: [classId], onDelete: Cascade)
+  concept learning_concept? @relation(fields: [conceptId], references: [conceptId])
+}
+
+model student_concept_mastery {
+  masteryId String @id @default(cuid())
+  studentId String
+  classId String
+  conceptId String?
+  conceptName String
+  masteryScore Float
+  status String
+  confidence String @default("Low")
+  evidenceCount Int @default(0)
+  primaryWeakness String?
+  recommendedAction String?
+  updatedAt DateTime @updatedAt
+  user user @relation(fields: [studentId], references: [userId], onDelete: Cascade)
+  classroom classroom @relation(fields: [classId], references: [classId], onDelete: Cascade)
+  concept learning_concept? @relation(fields: [conceptId], references: [conceptId])
+}
+
+model assignment_viva_request {
+  requestId String @id @default(cuid())
+  assignmentId String
+  submissionId String
+  studentId String
+  classId String
+  teacherId String
+  status String @default("PENDING")
+  vivaSessionId String?
+  writtenScore Float?
+  vivaScore Float?
+  consistency String?
+  insightSummary String?
+  requestedAt DateTime @default(now())
+  completedAt DateTime?
 }

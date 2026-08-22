@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from "react"
-import { FileCheck, Send, Code2, Eye, Download } from "lucide-react"
+import { FileCheck, Send, Code2, Eye, Download, Mic } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { SubmissionData, gradeSubmission, viewDocumentFile, downloadDocumentFile } from "@/lib/data-store"
 import { saveMasteryEvidence } from "@/lib/mastery-engine"
+import { createAssignmentVerificationServer } from "@/actions/intelligence/action"
 
 interface TeacherReviewModalProps {
   open: boolean
@@ -146,12 +147,38 @@ export function TeacherReviewModal({
               </div>
             </div>
 
-            <Button
-              onClick={handlePublishGrade}
-              className="w-full bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold py-3 text-xs rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-2 transition-all duration-200"
-            >
-              <Send className="w-4 h-4" /> Publish Grade
-            </Button>
+            <div className="space-y-2 pt-2">
+              <Button
+                onClick={handlePublishGrade}
+                className="w-full bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold py-3 text-xs rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-2 transition-all duration-200"
+              >
+                <Send className="w-4 h-4" /> Publish Grade
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={async () => {
+                  if (!submission) return
+                  const res = await createAssignmentVerificationServer(
+                    "prof-sarah",
+                    submission.studentId,
+                    submission.classId,
+                    submission.assignmentId,
+                    submission.submissionId,
+                    marks
+                  )
+                  if (res.success) {
+                    toast.success(`Concept Verification requested for ${submission.studentName}! Notification sent.`)
+                  } else {
+                    toast.error("Failed to request concept verification.")
+                  }
+                }}
+                className="w-full border-[#8B7EC8] text-[#8B7EC8] hover:bg-[#8B7EC8]/10 font-bold py-2.5 text-xs rounded-xl cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Mic className="w-4 h-4 text-[#8B7EC8]" /> Request Assignment Verification Viva
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

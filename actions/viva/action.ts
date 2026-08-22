@@ -512,6 +512,29 @@ export async function finalizeVivaSessionServer(
             completedAt: new Date()
           }
         })
+
+        // Also create learning_evidence records in Prisma DB for each evaluated concept
+        for (const q of questionsToEvaluate) {
+          const qScore = q.score || overallScore
+          const perc = Math.round(qScore * 10)
+          await prisma.learning_evidence.create({
+            data: {
+              studentId,
+              classId,
+              conceptName: q.concept || topic,
+              sourceType: "VIVA",
+              sourceRecordId: sessionId,
+              sourceTitle: `Oral Viva: ${topic}`,
+              score: qScore,
+              maxScore: 10,
+              percentage: perc,
+              confidence: "High",
+              weight: 1.5,
+              weakness: q.whatWasMissing || (qScore < 7 ? `Requires deeper explanation on ${q.concept}` : undefined),
+              recommendation: qScore < 7 ? `Retry Spoken Viva for ${q.concept}` : `Practice advanced questions on ${q.concept}`
+            }
+          }).catch((err) => console.warn("Skipped individual viva evidence DB creation:", err))
+        }
       } catch (dbUpdateErr) {
         console.warn("Prisma session update skipped in finalizeVivaSessionServer:", dbUpdateErr)
       }

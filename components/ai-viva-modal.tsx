@@ -16,7 +16,7 @@ import {
   getStoredSubscription
 } from "@/lib/data-store"
 
-import { saveMasteryEvidence } from "@/lib/mastery-engine"
+import { saveMasteryEvidence, recordLearningEvidence } from "@/lib/mastery-engine"
 import { isPro } from "@/lib/subscription"
 import { ProLimitDialog } from "@/components/pro-limit-dialog"
 import PricingModal from "@/components/pricing-modal"
@@ -29,6 +29,15 @@ import {
   VivaReportData
 } from "@/actions/viva/action"
 
+export interface AssignmentVivaInput {
+  assignmentId: string
+  assignmentTitle: string
+  submissionId: string
+  submissionContent: string
+  writtenScore: number
+  requestId?: string
+}
+
 interface AiVivaModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -38,6 +47,7 @@ interface AiVivaModalProps {
   classroom?: ClassroomData
   studentId?: string
   studentName?: string
+  assignmentVivaInput?: AssignmentVivaInput
 }
 
 export type VivaState =
@@ -473,6 +483,27 @@ export function AiVivaModal({
             }
 
             saveVivaSession(vivaSessionData)
+
+            // Record Learning Evidence in central mastery engine
+            finalRes.report.conceptMastery.forEach((cm) => {
+              recordLearningEvidence({
+                studentId,
+                classId: targetClassroom?.classId || "class-1",
+                conceptId: cm.concept.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+                conceptName: cm.concept,
+                sourceType: "VIVA",
+                sourceRecordId: finalRes.report?.sessionId,
+                sourceTitle: `Oral Viva: ${finalRes.report?.topic || assignmentTitle}`,
+                score: cm.score,
+                maxScore: 10,
+                percentage: Math.round(cm.score * 10),
+                confidence: "High",
+                weight: 1.5,
+                weakness: cm.status === 'Needs Revision' ? `Requires deeper verbal reasoning for ${cm.concept}` : undefined,
+                recommendation: cm.status === 'Needs Revision' ? `Retry Spoken Viva for ${cm.concept}` : undefined
+              })
+            })
+
             saveMasteryEvidence(studentId, targetClassroom?.classId || "class-1", "core-concept", {
               type: "Viva",
               title: `AI Oral Viva: ${targetClassroom?.className || assignmentTitle}`,

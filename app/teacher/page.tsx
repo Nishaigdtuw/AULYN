@@ -28,6 +28,8 @@ import { UploadMaterialModal } from "@/components/upload-material-modal"
 import { TeacherReviewModal } from "@/components/teacher-review-modal"
 import { TeacherQuizModal } from "@/components/teacher-quiz-modal"
 import { QuizAttemptsModal } from "@/components/quiz-attempts-modal"
+import { TeacherClassUnderstanding } from "@/components/teacher-class-understanding"
+import { ClassroomLeaderboard } from "@/components/classroom-leaderboard"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { getStoredClassrooms, saveStoredClassrooms, ClassroomData, getSubmissions, SubmissionData, AnnouncementData, NotificationItem, AssignmentData, viewDocumentFile, downloadDocumentFile, createClassroom, getStoredSubscription, SubscriptionData, QuizData, getQuizzesForClass, deleteQuiz, getQuizAttemptsForQuiz, getVivaSessions } from "@/lib/data-store"
@@ -761,9 +763,15 @@ ${activeClassroom.assignments?.map(a => `Assignment: ${a.title} | Submissions: $
           )}
 
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-6 max-w-3xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6">
+            <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 max-w-4xl bg-[#F1E8DD] p-1 rounded-xl border border-[#E5DCD0] shadow-2xs mb-6 gap-1">
               <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Overview
+              </TabsTrigger>
+              <TabsTrigger value="understanding" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
+                Class Intelligence
+              </TabsTrigger>
+              <TabsTrigger value="leaderboard" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-amber-600 font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
+                Mastery League
               </TabsTrigger>
               <TabsTrigger value="students" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#8B7EC8] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Roster
@@ -776,9 +784,6 @@ ${activeClassroom.assignments?.map(a => `Assignment: ${a.title} | Submissions: $
               </TabsTrigger>
               <TabsTrigger value="analytics" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#75B798] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
                 Analytics
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="rounded-lg data-[state=active]:bg-[#FFF9F1] data-[state=active]:text-[#E76F51] font-bold text-xs data-[state=active]:shadow-2xs transition-all duration-200 cursor-pointer">
-                Settings
               </TabsTrigger>
             </TabsList>
 
@@ -921,6 +926,26 @@ ${activeClassroom.assignments?.map(a => `Assignment: ${a.title} | Submissions: $
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* CLASSROOM LEARNING INTELLIGENCE TAB */}
+            <TabsContent value="understanding" className="space-y-6 animate-in fade-in-50 duration-200">
+              <TeacherClassUnderstanding
+                classId={activeClassroom?.classId || "class-1"}
+                onCreateQuizForConcept={(conceptName) => {
+                  setActiveMainTab("quizzes")
+                  toast.info(`Switched to Quizzes tab. Generate a quiz for: ${conceptName}`)
+                }}
+                onOpenLiveSession={() => setLiveSessionOpen(true)}
+              />
+            </TabsContent>
+
+            {/* CLASSROOM MASTERY LEAGUE TAB */}
+            <TabsContent value="leaderboard" className="space-y-6 animate-in fade-in-50 duration-200">
+              <ClassroomLeaderboard
+                classId={activeClassroom?.classId || "class-1"}
+                currentStudentId="student-demo"
+              />
             </TabsContent>
 
             {/* EVIDENCE ANALYTICS TAB */}
