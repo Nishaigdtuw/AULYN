@@ -400,15 +400,34 @@ export function AiVivaModal({
     setVivaState('PROCESSING_RESPONSE')
     const toastId = toast.loading("Examiner evaluating your verbal explanation...")
 
+    // Update transcript in local questions list immediately
+    const updatedQuestions = questions.map((q, idx) =>
+      idx === currentIdx ? { ...q, transcript } : q
+    )
+    setQuestions(updatedQuestions)
+
     try {
-      const res = await submitVivaResponseServer(studentId, sessionId, currentQ.id, transcript)
+      const res = await submitVivaResponseServer(
+        studentId,
+        sessionId,
+        currentQ.id,
+        transcript,
+        currentQ,
+        updatedQuestions
+      )
 
       if (res.success) {
         toast.dismiss(toastId)
 
         if (res.isCompleted) {
           // Finalize Session & Generate Performance Report
-          const finalRes = await finalizeVivaSessionServer(studentId, sessionId)
+          const finalRes = await finalizeVivaSessionServer(
+            studentId,
+            sessionId,
+            updatedQuestions,
+            targetClassroom?.classId,
+            targetClassroom?.className
+          )
           if (finalRes.success && finalRes.report) {
             setReport(finalRes.report)
             setVivaState('COMPLETED')
