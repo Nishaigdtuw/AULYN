@@ -40,14 +40,24 @@ interface AiVivaModalProps {
   studentName?: string
 }
 
-type VivaState =
-  | 'PREPARING'
-  | 'EXAMINER_SPEAKING'
-  | 'YOUR_TURN'
+export type VivaState =
+  | 'IDLE'
+  | 'LOADING_QUESTION'
+  | 'QUESTION_READY'
+  | 'REQUESTING_MIC'
   | 'LISTENING'
-  | 'ANSWER_CAPTURED'
-  | 'PROCESSING'
-  | 'VIVA_COMPLETED'
+  | 'PROCESSING_RESPONSE'
+  | 'LOADING_NEXT_QUESTION'
+  | 'COMPLETED'
+  | 'ERROR'
+
+export type MicState =
+  | 'NOT_REQUESTED'
+  | 'REQUESTING'
+  | 'GRANTED'
+  | 'DENIED'
+  | 'UNAVAILABLE'
+  | 'ERROR'
 
 export function AiVivaModal({
   open,
@@ -65,7 +75,8 @@ export function AiVivaModal({
   const [pricingModalOpen, setPricingModalOpen] = useState(false)
 
   // Viva Session & State Machine
-  const [vivaState, setVivaState] = useState<VivaState>('PREPARING')
+  const [vivaState, setVivaState] = useState<VivaState>('IDLE')
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [questions, setQuestions] = useState<VivaQuestionItem[]>([])
   const [currentIdx, setCurrentIdx] = useState<number>(0)
@@ -74,119 +85,134 @@ export function AiVivaModal({
   // Speech Recognition & Audio States
   const [isRecording, setIsRecording] = useState(false)
   const [transcript, setTranscript] = useState("")
-  const [micPermission, setMicPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt')
+  const [micState, setMicState] = useState<MicState>('NOT_REQUESTED')
   const [micError, setMicError] = useState<string | null>(null)
   const [isSpeakingTts, setIsSpeakingTts] = useState(false)
 
+  const mediaStreamRef = useRef<MediaStream | null>(null)
   const recognitionRef = useRef<unknown>(null)
 
   const currentQ = questions[currentIdx] || null
-  const hasMaterials = Boolean(
-    targetClassroom &&
-    ((targetClassroom.materials && targetClassroom.materials.length > 0) ||
-      (targetClassroom.chapters && targetClassroom.chapters.length > 0))
-  )
 
-  // Initialize Speech Recognition
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const windowObj = window as unknown as { SpeechRecognition: new () => { continuous: boolean; interimResults: boolean; lang: string; start: () => void; stop: () => void; onresult: (e: { results: Array<Array<{ transcript: string }> > }) => void; onerror: (e: { error: string }) => void; onend: () => void }; webkitSpeechRecognition: new () => { continuous: boolean; interimResults: boolean; lang: string; start: () => void; stop: () => void; onresult: (e: { results: Array<Array<{ transcript: string }> > }) => void; onerror: (e: { error: string }) => void; onend: () => void } }
-      const SpeechRecognition = windowObj.SpeechRecognition || windowObj.webkitSpeechRecognition
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition()
-        recognition.continuous = true
-        recognition.interimResults = true
-        recognition.lang = 'en-US'
-
-        recognition.onresult = (event) => {
-          let currentTranscript = ""
-          for (let i = 0; i < event.results.length; i++) {
-            currentTranscript += event.results[i][0].transcript
-          }
-          setTranscript(currentTranscript)
-        }
-
-        recognition.onerror = (event) => {
-          console.error("Speech recognition error:", event.error)
-          setIsRecording(false)
-          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-            setMicPermission('denied')
-            setMicError("Microphone access denied. Please enable microphone permissions in your browser settings.")
-          }
-        }
-
-        recognition.onend = () => {
-          setIsRecording(false)
-        }
-
-        recognitionRef.current = recognition
-      }
+  const stopMediaStream = useCallback(() => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop())
+      mediaStreamRef.current = null
     }
   }, [])
 
-  // Text-To-Speech (TTS) Question Playback
+  // Cleanup MediaStream and TTS on Unmount
+  useEffect(() => {
+    return () => {
+      stopMediaStream()
+      if (typeof window !== "undefined" && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel()
+      }
+    }
+  }, [stopMediaStream])
+
+  // Text-To-Speech (TTS) Question Playback (Non-blocking enhancement)
   const speakQuestionAloud = useCallback((text: string) => {
     if (typeof window === "undefined" || !('speechSynthesis' in window)) return
 
-    window.speechSynthesis.cancel() // Stop any previous speech
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.rate = 0.95
-    utterance.pitch = 1.0
+    try {
+      window.speechSynthesis.cancel() // Stop any previous speech
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.rate = 0.95
+      utterance.pitch = 1.0
 
-    utterance.onstart = () => {
-      setIsSpeakingTts(true)
-      setVivaState('EXAMINER_SPEAKING')
-    }
+      utterance.onstart = () => {
+        setIsSpeakingTts(true)
+      }
 
-    utterance.onend = () => {
+      utterance.onend = () => {
+        setIsSpeakingTts(false)
+      }
+
+      utterance.onerror = () => {
+        setIsSpeakingTts(false)
+      }
+
+      window.speechSynthesis.speak(utterance)
+    } catch (ttsErr) {
+      console.warn("TTS Playback error:", ttsErr)
       setIsSpeakingTts(false)
-      setVivaState('YOUR_TURN')
     }
-
-    utterance.onerror = () => {
-      setIsSpeakingTts(false)
-      setVivaState('YOUR_TURN')
-    }
-
-    window.speechSynthesis.speak(utterance)
   }, [])
 
-  const initSession = useCallback(async (clsId: string) => {
-    setVivaState('PREPARING')
-    const res = await startVivaSessionServer(studentId, clsId)
+  // Initialize or Restore Viva Session
+  const initSession = useCallback(async (cls: ClassroomData) => {
+    // Extract classroom material topics
+    const matTopics: string[] = []
+    if (cls.materials && cls.materials.length > 0) {
+      cls.materials.forEach((m) => {
+        if (m.fileName) matTopics.push(m.fileName.replace(/\.[^/.]+$/, ""))
+      })
+    }
+    if (cls.chapters && cls.chapters.length > 0) {
+      cls.chapters.forEach((ch) => {
+        if (ch.chapterName) matTopics.push(ch.chapterName)
+      })
+    }
 
-    if (res.success && res.questions && res.questions.length > 0) {
-      const sessId = res.session?.id || res.sessionId || `viva-sess-${Date.now()}`
-      setSessionId(sessId)
+    if (matTopics.length === 0) {
+      setVivaState('ERROR')
+      setErrorMessage("No course material is available yet. Your teacher needs to upload course material before the Viva can begin.")
+      return
+    }
 
-      const qList: VivaQuestionItem[] = res.questions.map((q) => ({
-        id: q.id,
-        sessionId: q.sessionId || sessId,
-        order: q.order || 1,
-        concept: q.concept || "Core Fundamentals",
-        questionText: q.questionText,
-        difficulty: (q.difficulty as 'Basic' | 'Medium' | 'Advanced') || "Medium",
-        isFollowUp: !!q.isFollowUp,
-        parentQuestionId: q.parentQuestionId || undefined
-      }))
+    setVivaState('LOADING_QUESTION')
+    setErrorMessage(null)
 
-      setQuestions(qList)
-      const lastAnsweredIdx = qList.findIndex((q) => !q.transcript)
-      const activeIdx = lastAnsweredIdx !== -1 ? lastAnsweredIdx : qList.length - 1
-      setCurrentIdx(activeIdx)
+    try {
+      const res = await startVivaSessionServer(
+        studentId,
+        cls.classId,
+        false,
+        undefined,
+        matTopics,
+        cls.className
+      )
 
-      const firstQ = qList[activeIdx]
-      if (firstQ) {
-        speakQuestionAloud(firstQ.questionText)
+      if (res.success && res.questions && res.questions.length > 0) {
+        const sessId = res.session?.id || res.sessionId || `viva-sess-${Date.now()}`
+        setSessionId(sessId)
+
+        const qList: VivaQuestionItem[] = res.questions.map((q) => ({
+          id: q.id,
+          sessionId: q.sessionId || sessId,
+          order: q.order || 1,
+          concept: q.concept || matTopics[0] || "Core Fundamentals",
+          questionText: q.questionText,
+          difficulty: (q.difficulty as 'Basic' | 'Medium' | 'Advanced') || "Medium",
+          isFollowUp: !!q.isFollowUp,
+          parentQuestionId: q.parentQuestionId || undefined
+        }))
+
+        setQuestions(qList)
+        const lastAnsweredIdx = qList.findIndex((q) => !q.transcript)
+        const activeIdx = lastAnsweredIdx !== -1 ? lastAnsweredIdx : qList.length - 1
+        setCurrentIdx(activeIdx)
+
+        setVivaState('QUESTION_READY')
+
+        // Play TTS aloud (non-blocking)
+        const firstQ = qList[activeIdx]
+        if (firstQ) {
+          speakQuestionAloud(firstQ.questionText)
+        }
       } else {
-        setVivaState('YOUR_TURN')
+        setVivaState('ERROR')
+        setErrorMessage(res.message || "Unable to generate the Viva question right now. Please retry.")
       }
-    } else {
-      setVivaState('YOUR_TURN')
+    } catch (err: unknown) {
+      console.error("Failed to start Viva session:", err)
+      setVivaState('ERROR')
+      setErrorMessage("Unable to generate the Viva question right now. Please retry.")
     }
   }, [studentId, speakQuestionAloud])
 
-  // Initialize or Restore Viva Session on Modal Open
+  // Reset or Load Session on Modal Open
   useEffect(() => {
     if (open) {
       const sub = getStoredSubscription()
@@ -195,57 +221,172 @@ export function AiVivaModal({
       const activeClass = passedClassroom || (classId ? getStoredClassrooms().find((c) => c.classId === classId) : getStoredClassrooms()[0])
       setTargetClassroom(activeClass)
 
-      // Reset state
+      // Reset audio states
       setTranscript("")
       setMicError(null)
+      setMicState('NOT_REQUESTED')
+      setErrorMessage(null)
 
       if (activeClass) {
-        initSession(activeClass.classId)
+        initSession(activeClass)
+      } else {
+        setVivaState('ERROR')
+        setErrorMessage("No active classroom found for this Viva.")
       }
     } else {
+      stopMediaStream()
       if (typeof window !== "undefined" && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel()
       }
+      setVivaState('IDLE')
     }
-  }, [open, passedClassroom, classId, initSession])
+  }, [open, passedClassroom, classId, initSession, stopMediaStream])
 
-  // Microphone Control Handlers
+  // Microphone Recording Handler (Only triggered on user click)
   const startRecording = async () => {
     setMicError(null)
+
+    // Check browser support
+    if (typeof window === "undefined" || !navigator?.mediaDevices?.getUserMedia) {
+      setMicState('UNAVAILABLE')
+      setMicError("Your browser does not support microphone access for this feature.")
+      return
+    }
+
+    setMicState('REQUESTING')
+    setVivaState('REQUESTING_MIC')
+
+    // Request MediaStream Audio Permission
     try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        await navigator.mediaDevices.getUserMedia({ audio: true })
-        setMicPermission('granted')
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      mediaStreamRef.current = stream
+      setMicState('GRANTED')
+    } catch (err: unknown) {
+      stopMediaStream()
+      if (err && typeof err === 'object' && 'name' in err) {
+        const errorName = (err as { name: string }).name
+        if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError') {
+          setMicState('DENIED')
+          setMicError("Microphone permission was denied. Please allow microphone access in your browser settings and try again.")
+        } else if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
+          setMicState('UNAVAILABLE')
+          setMicError("No microphone was detected on your device.")
+        } else if (errorName === 'NotReadableError' || errorName === 'TrackStartError') {
+          setMicState('ERROR')
+          setMicError("Your microphone is currently unavailable or being used by another application.")
+        } else if (errorName === 'SecurityError') {
+          setMicState('ERROR')
+          setMicError("Microphone access is blocked in this browser context (HTTPS required).")
+        } else {
+          setMicState('ERROR')
+          setMicError("Unable to access microphone. Please try again.")
+        }
+      } else {
+        setMicState('ERROR')
+        setMicError("Unable to access microphone. Please try again.")
+      }
+      setVivaState('QUESTION_READY')
+      return
+    }
+
+    // Initialize Web Speech API SpeechRecognition
+    const windowObj = window as unknown as {
+      SpeechRecognition?: new () => {
+        continuous: boolean
+        interimResults: boolean
+        lang: string
+        start: () => void
+        stop: () => void
+        onresult: (e: { results: Array<Array<{ transcript: string }>> }) => void
+        onerror: (e: { error: string }) => void
+        onend: () => void
+      }
+      webkitSpeechRecognition?: new () => {
+        continuous: boolean
+        interimResults: boolean
+        lang: string
+        start: () => void
+        stop: () => void
+        onresult: (e: { results: Array<Array<{ transcript: string }>> }) => void
+        onerror: (e: { error: string }) => void
+        onend: () => void
+      }
+    }
+
+    const SpeechRecognitionClass = windowObj.SpeechRecognition || windowObj.webkitSpeechRecognition
+
+    if (!SpeechRecognitionClass) {
+      setMicError("Web Speech API is not supported in this browser. Please use Google Chrome or Safari.")
+      setVivaState('QUESTION_READY')
+      return
+    }
+
+    try {
+      if (recognitionRef.current) {
+        try {
+          const rec = recognitionRef.current as { stop: () => void }
+          rec.stop()
+        } catch {}
       }
 
-      const rec = recognitionRef.current as { start: () => void; stop: () => void } | null
-      if (rec) {
-        setTranscript("")
-        rec.start()
-        setIsRecording(true)
-        setVivaState('LISTENING')
-      } else {
-        setMicError("Web Speech API is not supported in this browser. Please use Google Chrome or Safari.")
+      const recognition = new SpeechRecognitionClass()
+      recognition.continuous = true
+      recognition.interimResults = true
+      recognition.lang = 'en-US'
+
+      recognition.onresult = (event) => {
+        let currentTranscript = ""
+        for (let i = 0; i < event.results.length; i++) {
+          currentTranscript += event.results[i][0].transcript
+        }
+        setTranscript(currentTranscript)
       }
-    } catch {
-      setMicPermission('denied')
-      setMicError("Microphone access is required for the oral viva. Please enable microphone permissions in your browser.")
+
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error)
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          setMicState('DENIED')
+          setMicError("Microphone permission was denied. Please allow microphone access in your browser settings and try again.")
+        } else if (event.error === 'no-speech') {
+          // No speech detected, keep listening state active
+        } else if (event.error === 'audio-capture') {
+          setMicState('UNAVAILABLE')
+          setMicError("No microphone was detected on your device.")
+        }
+      }
+
+      recognition.onend = () => {
+        setIsRecording(false)
+      }
+
+      recognitionRef.current = recognition
+      setTranscript("")
+      recognition.start()
+      setIsRecording(true)
+      setVivaState('LISTENING')
+    } catch (recErr) {
+      console.error("Error starting SpeechRecognition:", recErr)
+      setIsRecording(false)
+      setVivaState('QUESTION_READY')
     }
   }
 
   const stopRecording = () => {
-    const rec = recognitionRef.current as { start: () => void; stop: () => void } | null
+    const rec = recognitionRef.current as { stop: () => void } | null
     if (rec && isRecording) {
-      rec.stop()
+      try {
+        rec.stop()
+      } catch {}
       setIsRecording(false)
-      setVivaState('ANSWER_CAPTURED')
     }
+    stopMediaStream()
+    setVivaState('QUESTION_READY')
   }
 
   // Submit Spoken Answer to Server Action
   const handleAnswerSubmit = async () => {
     if (!transcript.trim()) {
-      toast.warning("No speech captured yet. Please speak your response aloud.")
+      toast.warning("I couldn't process that recording. Please answer again.")
       return
     }
 
@@ -256,83 +397,102 @@ export function AiVivaModal({
 
     if (!sessionId || !currentQ) return
 
-    setVivaState('PROCESSING')
-    const toastId = toast.loading("Examiner processing your verbal answer...")
+    setVivaState('PROCESSING_RESPONSE')
+    const toastId = toast.loading("Examiner evaluating your verbal explanation...")
 
-    const res = await submitVivaResponseServer(studentId, sessionId, currentQ.id, transcript)
+    try {
+      const res = await submitVivaResponseServer(studentId, sessionId, currentQ.id, transcript)
 
-    if (res.success) {
-      toast.dismiss(toastId)
+      if (res.success) {
+        toast.dismiss(toastId)
 
-      if (res.isCompleted) {
-        // Finalize Session & Generate Report
-        const finalRes = await finalizeVivaSessionServer(studentId, sessionId)
-        if (finalRes.success && finalRes.report) {
-          setReport(finalRes.report)
-          setVivaState('VIVA_COMPLETED')
+        if (res.isCompleted) {
+          // Finalize Session & Generate Performance Report
+          const finalRes = await finalizeVivaSessionServer(studentId, sessionId)
+          if (finalRes.success && finalRes.report) {
+            setReport(finalRes.report)
+            setVivaState('COMPLETED')
 
-          // Local store sync
-          const vivaSessionData: VivaSessionData = {
-            vivaId: finalRes.report.sessionId,
-            assignmentId,
-            assignmentTitle,
-            studentId,
-            studentName,
-            classId: targetClassroom?.classId || "class-1",
-            topic: finalRes.report.topic,
-            status: "COMPLETED",
-            vivaScore: finalRes.report.overallScore,
-            overallScore: finalRes.report.overallScore,
-            conceptualScore: finalRes.report.conceptualScore,
-            correctnessScore: finalRes.report.correctnessScore,
-            reasoningScore: finalRes.report.reasoningScore,
-            communicationScore: finalRes.report.communicationScore,
-            deliveryFluencyScore: finalRes.report.deliveryFluencyScore,
-            summary: finalRes.report.summary,
-            strengths: finalRes.report.strengths,
-            weaknesses: finalRes.report.weaknesses,
-            conceptMastery: finalRes.report.conceptMastery,
-            recommendedNextSteps: finalRes.report.recommendedNextSteps,
-            questions: finalRes.report.questions.map((q) => ({
-              id: q.id,
-              order: q.order,
-              concept: q.concept,
-              questionText: q.questionText,
-              transcript: q.transcript,
-              feedback: q.conceptualFeedback,
-              conceptualFeedback: q.conceptualFeedback,
-              whatExplainedWell: q.whatExplainedWell,
-              whatWasMissing: q.whatWasMissing,
-              score: q.score,
-              difficulty: q.difficulty,
-              isFollowUp: q.isFollowUp,
-              parentQuestionId: q.parentQuestionId
-            })),
-            completedAt: new Date().toLocaleDateString()
+            // Sync with central local data store
+            const vivaSessionData: VivaSessionData = {
+              vivaId: finalRes.report.sessionId,
+              assignmentId,
+              assignmentTitle,
+              studentId,
+              studentName,
+              classId: targetClassroom?.classId || "class-1",
+              topic: finalRes.report.topic,
+              status: "COMPLETED",
+              vivaScore: finalRes.report.overallScore,
+              overallScore: finalRes.report.overallScore,
+              conceptualScore: finalRes.report.conceptualScore,
+              correctnessScore: finalRes.report.correctnessScore,
+              reasoningScore: finalRes.report.reasoningScore,
+              communicationScore: finalRes.report.communicationScore,
+              deliveryFluencyScore: finalRes.report.deliveryFluencyScore,
+              summary: finalRes.report.summary,
+              strengths: finalRes.report.strengths,
+              weaknesses: finalRes.report.weaknesses,
+              conceptMastery: finalRes.report.conceptMastery,
+              recommendedNextSteps: finalRes.report.recommendedNextSteps,
+              questions: finalRes.report.questions.map((q) => ({
+                id: q.id,
+                order: q.order,
+                concept: q.concept,
+                questionText: q.questionText,
+                transcript: q.transcript,
+                feedback: q.conceptualFeedback,
+                conceptualFeedback: q.conceptualFeedback,
+                whatExplainedWell: q.whatExplainedWell,
+                whatWasMissing: q.whatWasMissing,
+                score: q.score,
+                difficulty: q.difficulty,
+                isFollowUp: q.isFollowUp,
+                parentQuestionId: q.parentQuestionId
+              })),
+              completedAt: new Date().toLocaleDateString()
+            }
+
+            saveVivaSession(vivaSessionData)
+            saveMasteryEvidence(studentId, targetClassroom?.classId || "class-1", "core-concept", {
+              type: "Viva",
+              title: `AI Oral Viva: ${targetClassroom?.className || assignmentTitle}`,
+              score: finalRes.report.overallScore,
+              maxScore: 10,
+              percentage: finalRes.report.overallScore * 10,
+              notes: `Completed adaptive oral viva defense for ${targetClassroom?.className}.`
+            })
+
+            toast.success("Viva Assessment completed successfully!")
+          } else {
+            setVivaState('QUESTION_READY')
+            toast.error(finalRes.error || "Failed to finalize report. Please retry.")
           }
-
-          saveVivaSession(vivaSessionData)
-          saveMasteryEvidence(studentId, targetClassroom?.classId || "class-1", "core-concept", {
-            type: "Viva",
-            title: `AI Oral Viva: ${targetClassroom?.className || assignmentTitle}`,
-            score: finalRes.report.overallScore,
-            maxScore: 10,
-            percentage: finalRes.report.overallScore * 10,
-            notes: `Completed adaptive oral viva defense for ${targetClassroom?.className}.`
-          })
-
-          toast.success("Viva Assessment completed successfully!")
+        } else if (res.nextQuestion) {
+          const nextQ: VivaQuestionItem = {
+            id: res.nextQuestion.id,
+            sessionId: res.nextQuestion.sessionId || sessionId,
+            order: res.nextQuestion.order,
+            concept: res.nextQuestion.concept,
+            questionText: res.nextQuestion.questionText,
+            difficulty: (res.nextQuestion.difficulty as 'Basic' | 'Medium' | 'Advanced') || "Medium",
+            isFollowUp: !!res.nextQuestion.isFollowUp,
+            parentQuestionId: res.nextQuestion.parentQuestionId || undefined
+          }
+          setQuestions((prev) => [...prev, nextQ])
+          setCurrentIdx((prev) => prev + 1)
+          setTranscript("")
+          setVivaState('QUESTION_READY')
+          speakQuestionAloud(nextQ.questionText)
         }
-      } else if (res.nextQuestion) {
-        const nextQ = res.nextQuestion
-        setQuestions((prev) => [...prev, nextQ])
-        setCurrentIdx((prev) => prev + 1)
-        setTranscript("")
-        speakQuestionAloud(nextQ.questionText)
+      } else {
+        toast.error(res.message || "Failed to evaluate answer. Please try again.", { id: toastId })
+        setVivaState('QUESTION_READY')
       }
-    } else {
-      toast.error(res.message || "Failed to evaluate answer. Please try again.", { id: toastId })
-      setVivaState('YOUR_TURN')
+    } catch (err: unknown) {
+      console.error("Error submitting viva response:", err)
+      toast.error("Unable to submit answer right now. Please retry.", { id: toastId })
+      setVivaState('QUESTION_READY')
     }
   }
 
@@ -344,26 +504,31 @@ export function AiVivaModal({
       .map((c) => c.concept)
 
     const toastId = toast.loading("Generating targeted revision viva for weak concepts...")
-    const res = await retryWeakConceptsServer(studentId, targetClassroom.classId, weakTopics)
+    try {
+      const res = await retryWeakConceptsServer(studentId, targetClassroom.classId, weakTopics)
 
-    if (res.success && res.questions) {
-      toast.success("New targeted Viva session ready!", { id: toastId })
-      setReport(null)
-      setSessionId(res.session?.id || res.sessionId || `viva-${Date.now()}`)
-      const qList: VivaQuestionItem[] = res.questions.map((q) => ({
-        id: q.id,
-        sessionId: q.sessionId,
-        order: q.order || 1,
-        concept: q.concept || "Weak Concept Focus",
-        questionText: q.questionText,
-        difficulty: (q.difficulty as 'Basic' | 'Medium' | 'Advanced') || "Medium",
-        isFollowUp: !!q.isFollowUp
-      }))
-      setQuestions(qList)
-      setCurrentIdx(0)
-      setTranscript("")
-      speakQuestionAloud(qList[0].questionText)
-    } else {
+      if (res.success && res.questions && res.questions.length > 0) {
+        toast.success("New targeted Viva session ready!", { id: toastId })
+        setReport(null)
+        setSessionId(res.session?.id || res.sessionId || `viva-${Date.now()}`)
+        const qList: VivaQuestionItem[] = res.questions.map((q) => ({
+          id: q.id,
+          sessionId: q.sessionId || `viva-${Date.now()}`,
+          order: q.order || 1,
+          concept: q.concept || "Weak Concept Focus",
+          questionText: q.questionText,
+          difficulty: (q.difficulty as 'Basic' | 'Medium' | 'Advanced') || "Medium",
+          isFollowUp: !!q.isFollowUp
+        }))
+        setQuestions(qList)
+        setCurrentIdx(0)
+        setTranscript("")
+        setVivaState('QUESTION_READY')
+        speakQuestionAloud(qList[0].questionText)
+      } else {
+        toast.error("Failed to start retry session.", { id: toastId })
+      }
+    } catch {
       toast.error("Failed to start retry session.", { id: toastId })
     }
   }
@@ -378,7 +543,7 @@ export function AiVivaModal({
                 <Sparkles className="w-3.5 h-3.5 text-[#E9B949]" /> AI Examiner • Adaptive Oral Viva
               </span>
               <span className="text-xs font-mono font-bold text-[#77716A]">
-                {vivaState === 'VIVA_COMPLETED' ? "Viva Completed" : `Concepts Evaluated: ${questions.filter(q => q.transcript).length} / 5`}
+                {vivaState === 'COMPLETED' ? "Viva Completed" : `Questions Evaluated: ${questions.filter(q => q.transcript).length} / 5`}
               </span>
             </div>
             <DialogTitle className="text-xl font-serif font-black text-[#292724] mt-2 flex items-center gap-2">
@@ -389,44 +554,64 @@ export function AiVivaModal({
             </DialogDescription>
           </DialogHeader>
 
-          {/* 1. NO COURSE MATERIAL WARNING */}
-          {!hasMaterials ? (
-            <Card className="bg-white border-2 border-[#8B7EC8]/40 rounded-2xl p-8 text-center space-y-4 shadow-2xs my-4">
-              <div className="w-14 h-14 bg-purple-100 text-[#8B7EC8] rounded-full flex items-center justify-center mx-auto border border-purple-200">
+          {/* 1. ERROR / NO MATERIAL STATE */}
+          {vivaState === 'ERROR' ? (
+            <Card className="bg-white border-2 border-red-300 rounded-2xl p-8 text-center space-y-4 shadow-2xs my-4">
+              <div className="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto border border-red-200">
                 <BookOpen className="w-7 h-7" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-lg font-serif font-black text-[#292724]">No course material available yet.</h3>
+                <h3 className="text-lg font-serif font-black text-[#292724]">Viva Notice</h3>
                 <p className="text-xs text-[#77716A] font-semibold max-w-md mx-auto">
-                  Your teacher needs to upload course material before a classroom-based viva can begin.
+                  {errorMessage || "Unable to load Viva session right now."}
                 </p>
               </div>
-              <Button
-                onClick={() => onOpenChange(false)}
-                className="bg-[#8B7EC8] hover:bg-[#7a6db7] text-white font-bold text-xs py-2 px-6 rounded-xl shadow-2xs cursor-pointer"
-              >
-                Back to Workspace
-              </Button>
+              <div className="flex justify-center space-x-3">
+                {targetClassroom && (
+                  <Button
+                    onClick={() => initSession(targetClassroom)}
+                    className="bg-[#8B7EC8] hover:bg-[#7a6db7] text-white font-bold text-xs py-2 px-6 rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> Retry Question
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="border-[#E5DCD0] text-[#77716A] hover:bg-[#F1E8DD] font-bold text-xs py-2 px-6 rounded-xl cursor-pointer"
+                >
+                  Back to Workspace
+                </Button>
+              </div>
             </Card>
 
-          /* 2. ACTIVE VIVA VOICE-FIRST EXAM SESSION */
-          ) : vivaState !== 'VIVA_COMPLETED' ? (
+          /* 2. LOADING QUESTION STATE */
+          ) : vivaState === 'LOADING_QUESTION' || vivaState === 'LOADING_NEXT_QUESTION' ? (
+            <Card className="bg-white border-2 border-[#8B7EC8]/40 rounded-2xl p-10 text-center space-y-4 shadow-2xs my-6">
+              <RefreshCw className="w-8 h-8 text-[#8B7EC8] animate-spin mx-auto" />
+              <div className="space-y-1">
+                <h3 className="text-base font-serif font-bold text-[#292724]">Preparing your viva question...</h3>
+                <p className="text-xs text-[#77716A] font-semibold">Generating conceptual prompt from classroom course materials.</p>
+              </div>
+            </Card>
+
+          /* 3. ACTIVE VIVA VOICE-FIRST EXAM SESSION */
+          ) : vivaState !== 'COMPLETED' ? (
             <div className="space-y-5 pt-3">
               {/* Status State Badge */}
               <div className="flex items-center justify-between">
                 <span className={`text-xs font-bold px-3 py-1 rounded-full border flex items-center gap-1.5 ${
-                  vivaState === 'EXAMINER_SPEAKING' ? 'bg-purple-100 text-purple-800 border-purple-300' :
+                  isSpeakingTts ? 'bg-purple-100 text-purple-800 border-purple-300' :
                   vivaState === 'LISTENING' ? 'bg-red-100 text-red-800 border-red-300 animate-pulse' :
-                  vivaState === 'PROCESSING' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                  vivaState === 'PROCESSING_RESPONSE' ? 'bg-amber-100 text-amber-800 border-amber-300' :
                   'bg-emerald-100 text-emerald-800 border-emerald-300'
                 }`}>
                   <span className="w-2 h-2 rounded-full bg-current" />
-                  {vivaState === 'EXAMINER_SPEAKING' && "Examiner Speaking..."}
-                  {vivaState === 'YOUR_TURN' && "Your Turn — Speak Your Answer"}
-                  {vivaState === 'LISTENING' && "Listening to Voice Answer..."}
-                  {vivaState === 'ANSWER_CAPTURED' && "Answer Captured — Ready to Submit"}
-                  {vivaState === 'PROCESSING' && "Examiner Evaluating Context..."}
-                  {vivaState === 'PREPARING' && "Preparing Examiner Prompt..."}
+                  {isSpeakingTts && "Examiner Speaking Question..."}
+                  {!isSpeakingTts && vivaState === 'QUESTION_READY' && "Your Turn — Read Question & Speak Answer"}
+                  {vivaState === 'REQUESTING_MIC' && "Requesting Microphone Access..."}
+                  {vivaState === 'LISTENING' && "Listening to Spoken Answer..."}
+                  {vivaState === 'PROCESSING_RESPONSE' && "Examiner Evaluating Spoken Response..."}
                 </span>
 
                 {currentQ?.isFollowUp && (
@@ -437,7 +622,7 @@ export function AiVivaModal({
               </div>
 
               {/* Examiner Question Card */}
-              {currentQ && (
+              {currentQ ? (
                 <Card className="bg-white border-2 border-[#8B7EC8]/40 rounded-2xl p-5 space-y-4 shadow-2xs">
                   <div className="flex items-center justify-between border-b border-[#E5DCD0] pb-2">
                     <span className="text-xs font-mono font-bold text-[#8B7EC8]">
@@ -458,6 +643,15 @@ export function AiVivaModal({
                     &quot;{currentQ.questionText}&quot;
                   </p>
                 </Card>
+              ) : (
+                <Card className="bg-white border border-[#E5DCD0] rounded-2xl p-6 text-center space-y-3">
+                  <p className="text-xs text-[#77716A] italic">No question loaded yet.</p>
+                  {targetClassroom && (
+                    <Button size="sm" onClick={() => initSession(targetClassroom)} className="bg-[#8B7EC8] text-white text-xs font-bold rounded-xl">
+                      Retry Loading Question
+                    </Button>
+                  )}
+                </Card>
               )}
 
               {/* Voice Microphone Controls (Zero Typing Input) */}
@@ -465,23 +659,46 @@ export function AiVivaModal({
                 <div className="space-y-1">
                   <div className="flex items-center justify-center space-x-2">
                     <h4 className="text-xs font-bold text-[#292724] uppercase tracking-wider">Voice Response Mode</h4>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      micPermission === 'granted' ? 'bg-emerald-100 text-emerald-800' :
-                      micPermission === 'denied' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-700'
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                      micState === 'GRANTED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                      micState === 'DENIED' ? 'bg-red-100 text-red-800 border border-red-300' :
+                      micState === 'UNAVAILABLE' || micState === 'ERROR' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                      'bg-gray-100 text-gray-700 border border-gray-300'
                     }`}>
-                      Mic: {micPermission}
+                      Microphone: {
+                        micState === 'GRANTED' ? 'Ready ✓' :
+                        micState === 'DENIED' ? 'Blocked / Denied' :
+                        micState === 'UNAVAILABLE' ? 'Not Detected' :
+                        micState === 'ERROR' ? 'Hardware Error' :
+                        'Permission Needed'
+                      }
                     </span>
                   </div>
                   <p className="text-[11px] text-[#77716A]">Speak clearly into your microphone to answer the examiner.</p>
                 </div>
 
-                {/* Mic Error Banner */}
+                {/* Mic Error / Retry Banner */}
                 {micError && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 font-medium flex items-center justify-between">
-                    <span>{micError}</span>
-                    <Button size="sm" variant="outline" onClick={startRecording} className="text-xs font-bold rounded-xl border-red-300 text-red-800">
-                      Enable Mic
-                    </Button>
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 font-medium space-y-2 text-left">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                      <span>{micError}</span>
+                    </div>
+                    {micState === 'DENIED' && (
+                      <p className="text-[11px] text-red-700 font-normal">
+                        Allow microphone access for this site from your browser&apos;s site settings (click the lock/tune icon near the URL bar), then click Retry Microphone.
+                      </p>
+                    )}
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={startRecording}
+                        className="text-xs font-bold rounded-xl border-red-300 text-red-800 hover:bg-red-100 cursor-pointer flex items-center gap-1"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" /> Retry Microphone
+                      </Button>
+                    </div>
                   </div>
                 )}
 
@@ -490,8 +707,8 @@ export function AiVivaModal({
                   {!isRecording ? (
                     <Button
                       onClick={startRecording}
-                      disabled={vivaState === 'PROCESSING' || vivaState === 'EXAMINER_SPEAKING'}
-                      className="bg-[#E76F51] hover:bg-[#d55e42] text-white font-bold text-sm px-6 py-3 rounded-2xl shadow-md cursor-pointer flex items-center gap-2"
+                      disabled={vivaState !== 'QUESTION_READY' || !currentQ}
+                      className="bg-[#E76F51] hover:bg-[#d55e42] disabled:opacity-50 text-white font-bold text-sm px-6 py-3 rounded-2xl shadow-md cursor-pointer flex items-center gap-2"
                     >
                       <Mic className="w-5 h-5" /> Start Spoken Answer
                     </Button>
@@ -518,7 +735,7 @@ export function AiVivaModal({
                     variant="outline"
                     onClick={() => {
                       setTranscript("")
-                      setVivaState('YOUR_TURN')
+                      setVivaState('QUESTION_READY')
                     }}
                     disabled={!transcript}
                     className="text-xs font-bold rounded-xl border-[#E5DCD0] cursor-pointer flex items-center gap-1"
@@ -528,8 +745,8 @@ export function AiVivaModal({
 
                   <Button
                     onClick={handleAnswerSubmit}
-                    disabled={!transcript.trim() || vivaState === 'PROCESSING'}
-                    className="bg-[#8B7EC8] hover:bg-[#7a6db7] text-white font-bold text-xs px-6 py-2.5 rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5"
+                    disabled={!transcript.trim() || vivaState === 'PROCESSING_RESPONSE'}
+                    className="bg-[#8B7EC8] hover:bg-[#7a6db7] disabled:opacity-50 text-white font-bold text-xs px-6 py-2.5 rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5"
                   >
                     Submit Voice Answer & Continue <ArrowRight className="w-4 h-4" />
                   </Button>
@@ -537,7 +754,7 @@ export function AiVivaModal({
               </Card>
             </div>
 
-          /* 3. FINAL VIVA PERFORMANCE REPORT SCREEN (Matching Reference Layout) */
+          /* 4. FINAL VIVA PERFORMANCE REPORT SCREEN */
           ) : (
             <div className="space-y-6 pt-3">
               {/* OVERALL PERFORMANCE CARD */}

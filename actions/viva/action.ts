@@ -60,59 +60,61 @@ export async function startVivaSessionServer(
   studentId: string,
   classId: string,
   isRetry: boolean = false,
-  retryConceptsInput?: string[]
+  retryConceptsInput?: string[],
+  clientMaterialTopics?: string[],
+  clientClassName?: string
 ) {
   try {
     // A. Check for existing active IN_PROGRESS session (for refresh recovery)
     if (prisma) {
-      const activeSession = await prisma.viva_session.findFirst({
-        where: { studentId, classId, status: "IN_PROGRESS" },
-        include: { questions: { orderBy: { order: "asc" } } }
-      })
+      try {
+        const activeSession = await prisma.viva_session.findFirst({
+          where: { studentId, classId, status: "IN_PROGRESS" },
+          include: { questions: { orderBy: { order: "asc" } } }
+        })
 
-      if (activeSession) {
-        return {
-          success: true,
-          session: activeSession,
-          resumed: true,
-          questions: activeSession.questions
+        if (activeSession && activeSession.questions.length > 0) {
+          return {
+            success: true,
+            session: activeSession,
+            resumed: true,
+            questions: activeSession.questions
+          }
         }
+      } catch (dbCheckErr) {
+        console.warn("Prisma active session lookup skipped:", dbCheckErr)
       }
     }
 
     // B. Check course material availability
-    let hasMaterials = false
-    let materialTopics: string[] = []
-    let classroomName = "Course Laboratory Viva"
+    let materialTopics: string[] = clientMaterialTopics || []
+    let classroomName = clientClassName || "Course Laboratory Viva"
 
-    if (prisma) {
-      const cls = await prisma.classroom.findUnique({
-        where: { classId },
-        include: { chapter: { include: { content: true } } }
-      })
+    if (prisma && materialTopics.length === 0) {
+      try {
+        const cls = await prisma.classroom.findUnique({
+          where: { classId },
+          include: { chapter: { include: { content: true } } }
+        })
 
-      if (cls) {
-        classroomName = cls.className
-        const totalContent = cls.chapter.flatMap((c) => c.content)
-        if (totalContent.length > 0 || cls.chapter.length > 0) {
-          hasMaterials = true
-          materialTopics = cls.chapter.map((c) => c.chapterName)
+        if (cls) {
+          classroomName = cls.className
+          const totalContent = cls.chapter.flatMap((c) => c.content)
+          if (totalContent.length > 0 || cls.chapter.length > 0) {
+            materialTopics = cls.chapter.map((c) => c.chapterName)
+          }
         }
+      } catch (clsErr) {
+        console.warn("Prisma classroom lookup skipped:", clsErr)
       }
-    } else {
-      // Data-store fallback check is handled component-side
-      hasMaterials = true
-      materialTopics = ["Core Subject Mechanics", "Fundamental Application", "Algorithmic Reasoning"]
     }
 
     if (materialTopics.length === 0) {
-      materialTopics = [
-        "Data Structures & Algorithm Complexity",
-        "Binary Search Trees & Traversal Properties",
-        "Recursive Call Stack & Depth-First Search",
-        "Graph Traversal & Cycle Detection",
-        "Self-Balancing Trees & Rotations"
-      ]
+      return {
+        success: false,
+        code: "NO_SOURCE_MATERIAL",
+        message: "No course material is available yet. Your teacher needs to upload course material before the Viva can begin."
+      }
     }
 
     // C. Create new viva session
@@ -123,41 +125,53 @@ export async function startVivaSessionServer(
     const firstConcept = isRetry && retryConceptsInput?.[0] ? retryConceptsInput[0] : materialTopics[0]
     const initialQuestionText = await generateAiQuestionText(classroomName, firstConcept, 'Medium', false)
 
-    if (prisma) {
-      const newSession = await prisma.viva_session.create({
-        data: {
-          id: sessionId,
-          studentId,
-          classId,
-          topic: mainTopic,
-          status: "IN_PROGRESS",
-          isRetry,
-          retryConcepts: isRetry ? JSON.stringify(retryConceptsInput || []) : null,
-          startedAt: new Date()
-        }
-      })
-
-      const firstQuestion = await prisma.viva_question.create({
-        data: {
-          id: `vq-1-${Date.now()}`,
-          sessionId,
-          order: 1,
-          concept: firstConcept,
-          questionText: initialQuestionText,
-          difficulty: "Medium",
-          isFollowUp: false
-        }
-      })
-
+    if (!initialQuestionText || initialQuestionText.trim().length === 0) {
       return {
-        success: true,
-        session: newSession,
-        resumed: false,
-        questions: [firstQuestion]
+        success: false,
+        code: "QUESTION_GEN_FAILED",
+        message: "Unable to generate the Viva question right now. Please retry."
       }
     }
 
-    // Fallback response if Prisma is not connected directly
+    if (prisma) {
+      try {
+        const newSession = await prisma.viva_session.create({
+          data: {
+            id: sessionId,
+            studentId,
+            classId,
+            topic: mainTopic,
+            status: "IN_PROGRESS",
+            isRetry,
+            retryConcepts: isRetry ? JSON.stringify(retryConceptsInput || []) : null,
+            startedAt: new Date()
+          }
+        })
+
+        const firstQuestion = await prisma.viva_question.create({
+          data: {
+            id: `vq-1-${Date.now()}`,
+            sessionId,
+            order: 1,
+            concept: firstConcept,
+            questionText: initialQuestionText,
+            difficulty: "Medium",
+            isFollowUp: false
+          }
+        })
+
+        return {
+          success: true,
+          session: newSession,
+          resumed: false,
+          questions: [firstQuestion]
+        }
+      } catch (dbCreateErr) {
+        console.warn("Prisma viva session creation failed, using structured fallback session:", dbCreateErr)
+      }
+    }
+
+    // Fallback response if Prisma is not connected directly or DB insert failed
     const fallbackQuestion: VivaQuestionItem = {
       id: `vq-1-${Date.now()}`,
       sessionId,
@@ -176,7 +190,12 @@ export async function startVivaSessionServer(
     }
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err)
-    return { success: false, error: errorMsg }
+    return {
+      success: false,
+      code: "SERVER_ERROR",
+      message: "Unable to generate the Viva question right now. Please retry.",
+      error: errorMsg
+    }
   }
 }
 
